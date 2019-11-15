@@ -1,0 +1,58 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet",
+
+    // B2C tenant id
+    "TenantId": "your_b2c_tenant_id",
+
+    // B2c tenant name
+    "TenantName": "your_b2c_tenant_name",
+
+    // The client id of b2c application, which has admin permissions
+    "AdminClientId": "your_app_client_id",
+
+    // The client secret of b2c application, which has admin permissions
+    "AdminClientSecret": "your_app_client_secret",
+
+    // The password secret key, uses to generate password from email. Sample: 91046323-94w2-413d-cc2c-d3f14bdfe098
+    "PasswordSecretKey": "your_password_secret_key",
+
+    // The prefix of password, uses to by pass azure password complex policy, must have upper letter, number & special character. Sample: YourDomain244@
+    "PasswordPrefix": "your_password_prefix",
+
+    // The client secret key, uses to prevent spamming server. Sample: 576747bf-1400-4698-af63-cdf3fbd5ea58
+    "TokenClientSecret": "your_token_client_secret",
+
+    // The client issuer domain, uses to prevent spamming server
+    "TokenIssuer": "https://www.yourdomain.com",
+
+    // The client subject, uses to prevent spamming server. Sample: 67dcab4b-871a-402a-8ad7-0e1f3d0ed3e3
+    "TokenSubject": "your_token_subject",
+
+    // The b2c policy to manage tokens & refresh token. Name must keep the same as is
+    "AuthPolicy": "B2C_1_ROPC_Auth",
+
+    // The b2c policy to sign in or sign up users. Name must keep the same as is
+    "SignInSignUpPolicy": "B2C_1A_signup_signin",
+
+    // The b2c application id to manage login, as well as tokens & refresh token. Sample: a69c6994-a35d-4c17-a4d6-1dc678bd8e22 
+    "B2CClientId": "your_b2c_client_id",
+
+    // Cosmos db name
+    "DatabaseId": "your_cosmos_database_name",
+
+    // The default partition. Sample: default
+    "DefaultPartition": "your_default_partition",
+
+    // The paritition key of db. Sample: partition
+    "PartitionKey": "your_partition_key",
+
+    // The master key of cosmos db
+    "DatabaseMasterKey": "your_cosmos_master_key",
+
+    // The database url of cosmos db
+    "DatabaseUrl": "https://yourdomain.documents.azure.com:443/"
+  }
+}
