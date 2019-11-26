@@ -63,7 +63,7 @@
       </ContentDefinition>
 
       <ContentDefinition Id="api.idpselections">
-        <LoadUri>[your url to custom html</LoadUri>
+        <LoadUri>[your url to custom html]</LoadUri>
         <RecoveryUri>~/common/default_page_error.html</RecoveryUri>
         <DataUri>urn:com:microsoft:aad:b2c:elements:idpselection:1.0.0</DataUri>
         <Metadata>
@@ -73,7 +73,7 @@
       </ContentDefinition>
 
       <ContentDefinition Id="api.idpselections.signup">
-        <LoadUri>[your url to custom html</LoadUri>
+        <LoadUri>[your url to custom html]</LoadUri>
         <RecoveryUri>~/common/default_page_error.html</RecoveryUri>
         <DataUri>urn:com:microsoft:aad:b2c:elements:idpselection:1.0.0</DataUri>
         <Metadata>
@@ -83,7 +83,7 @@
       </ContentDefinition>
 
       <ContentDefinition Id="api.signuporsignin">
-        <LoadUri>[your url to custom html</LoadUri>
+        <LoadUri>[your url to custom html]</LoadUri>
         <RecoveryUri>~/common/default_page_error.html</RecoveryUri>
         <DataUri>urn:com:microsoft:aad:b2c:elements:unifiedssp:1.0.0</DataUri>
         <Metadata>
@@ -92,7 +92,7 @@
       </ContentDefinition>
 
       <ContentDefinition Id="api.selfasserted">
-        <LoadUri>[your url to custom html</LoadUri>
+        <LoadUri>[your url to custom html]</LoadUri>
         <RecoveryUri>~/common/default_page_error.html</RecoveryUri>
         <DataUri>urn:com:microsoft:aad:b2c:elements:selfasserted:1.1.0</DataUri>
         <Metadata>
@@ -101,7 +101,7 @@
       </ContentDefinition>
 
       <ContentDefinition Id="api.selfasserted.profileupdate">
-        <LoadUri>[your url to custom html</LoadUri>
+        <LoadUri>[your url to custom html]</LoadUri>
         <RecoveryUri>~/common/default_page_error.html</RecoveryUri>
         <DataUri>urn:com:microsoft:aad:b2c:elements:selfasserted:1.1.0</DataUri>
         <Metadata>
@@ -110,7 +110,7 @@
       </ContentDefinition>
 
       <ContentDefinition Id="api.localaccountsignup">
-        <LoadUri>[your url to custom html</LoadUri>
+        <LoadUri>[your url to custom html]</LoadUri>
         <RecoveryUri>~/common/default_page_error.html</RecoveryUri>
         <DataUri>urn:com:microsoft:aad:b2c:elements:selfasserted:1.1.0</DataUri>
         <Metadata>
@@ -119,7 +119,7 @@
       </ContentDefinition>
 
       <ContentDefinition Id="api.localaccountpasswordreset">
-        <LoadUri>[your url to custom html</LoadUri>
+        <LoadUri>[your url to custom html]</LoadUri>
         <RecoveryUri>~/common/default_page_error.html</RecoveryUri>
         <DataUri>urn:com:microsoft:aad:b2c:elements:selfasserted:1.1.0</DataUri>
         <Metadata>
@@ -173,8 +173,8 @@
                         <InputClaim ClaimTypeReferenceId="grant_type" DefaultValue="password" />
                         <InputClaim ClaimTypeReferenceId="scope" DefaultValue="openid" />
                         <InputClaim ClaimTypeReferenceId="nca" PartnerClaimType="nca" DefaultValue="1" />
-                        <InputClaim ClaimTypeReferenceId="client_id" DefaultValue="ff46dd7c-a49b-496c-a012-4f0bde56d82c" />
-                        <InputClaim ClaimTypeReferenceId="resource_id" PartnerClaimType="resource" DefaultValue="84303114-a536-484d-8992-2daa9eedf75f" />
+                        <InputClaim ClaimTypeReferenceId="client_id" DefaultValue="{Your_ProxyIdentityExperienceFramework}" />
+                        <InputClaim ClaimTypeReferenceId="resource_id" PartnerClaimType="resource" DefaultValue="{Your_IdentityExperienceFramework}" />
                     </InputClaims>
                     <OutputClaims>
                         <OutputClaim ClaimTypeReferenceId="objectId" PartnerClaimType="oid" />
