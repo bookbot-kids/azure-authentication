@@ -12,3 +12,5 @@
     + Replace  {Your_IdentityExperienceFramework} with your b2c IdentityExperienceFramework in app id in TrustFrameworkExtensions.xml
 - Setup cosmos SQL database and fill the key into `local.settings.json` https://docs.microsoft.com/en-us/azure/cosmos-db/create-cosmosdb-resources-portal
 - Go to Azure b2c portal and create 3 default groups with following name: "new", "admin", "guest" https://docs.microsoft.com/en-us/azure/active-directory/fundamentals/active-directory-groups-create-azure-portal
+- After publish these functions, go to azure function portal to add environment variables from local.settings.json https://docs.microsoft.com/en-us/azure/azure-functions/functions-how-to-use-azure-function-app-settings#settings
+- Go to function manages to set code for all functions, we will use param code=[function_key] to call APIs https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-http-webhook?tabs=csharp#obtaining-keys
