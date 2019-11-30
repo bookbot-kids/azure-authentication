@@ -63,7 +63,19 @@ namespace Authentication
             var(exist, user) = await ADUser.FindOrCreate(email, name);
             if (exist)
             {
-                return new JsonResult(new { success = true, exist, user }) { StatusCode = StatusCodes.Status200OK };
+                // Get group of exist user
+                var groupdIds = await user.GroupIds();
+                string userGroupName = null;
+                if (groupdIds != null && groupdIds.Count > 0)
+                {
+                    var userGroup = await ADGroup.FindById(groupdIds[0]);
+                    if (userGroup != null)
+                    {
+                        userGroupName = userGroup.Name;
+                    }   
+                }
+
+                return new JsonResult(new { success = true, exist, user, group = userGroupName }) { StatusCode = StatusCodes.Status200OK };
             }
 
             // there is an error when creating user
@@ -83,7 +95,7 @@ namespace Authentication
             }
 
             // Success, retunr user info
-            return new JsonResult(new { success = true, exist, user }) { StatusCode = StatusCodes.Status200OK };
+            return new JsonResult(new { success = true, exist, user, group = "new" }) { StatusCode = StatusCodes.Status200OK };
         }
     }
 }
