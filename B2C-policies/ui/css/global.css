@@ -48,21 +48,17 @@ body {
   color: A4A4A4;
 }
 .verificationInfoText {
-  padding: 0px 5px;
-  width: 80px !important;
-  font-size: calc(10px + 1.4vh);
-  font-weight: 400;
-  line-height: calc(12px + 1.6vh);
-  color: white;
+  color: black;
+  display: none !important;
 }
 
 .verificationErrorText {
   padding: 0px 5px;
   width: 80px !important;
-  font-size: calc(10px + 1.4vh);
+  font-size: calc(8px + 1.4vh);
   font-weight: 400;
-  line-height: calc(12px + 1.6vh);
-  color: white;
+  line-height: calc(10px + 1.6vh);
+  color: #E63C43;
 }
 
 .verificationSuccessText {
@@ -90,7 +86,7 @@ label, .password-label {
   color: #4A4A4A;
   text-align: left;
   width: 100%;
-  margin-top: 6vh;
+  margin-top: 0px;
 }
 
 #api {
@@ -396,7 +392,7 @@ li {
 .buttons button#cancel,
 .buttons button#email_ver_but_edit,
 .buttons button#email_ver_but_resend {
-  background-color: #4B83B7;
+  background-color: white;
   border-color: #4B83B7;
   color: white;
 }
@@ -421,6 +417,7 @@ li {
   border: none;
   margin-top: 1%;
   margin-bottom: 0;
+  display: none !important;
 }
 
 
