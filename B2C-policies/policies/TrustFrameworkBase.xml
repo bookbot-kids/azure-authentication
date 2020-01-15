@@ -1012,9 +1012,9 @@
             <Item Key="client_id">{service:te}</Item>
             <Item Key="issuer_refresh_token_user_identity_claim_type">objectId</Item>
             <Item Key="SendTokenResponseBodyWithJsonNumbers">true</Item>
-            <Item Key="token_lifetime_secs">28800</Item>
-            <Item Key="id_token_lifetime_secs">28800</Item>
-            <Item Key="refresh_token_lifetime_secs">2419200</Item>
+            <Item Key="token_lifetime_secs">86400</Item>
+            <Item Key="id_token_lifetime_secs">86400</Item>
+            <Item Key="refresh_token_lifetime_secs">7776000</Item>
             <Item Key="allow_infinite_rolling_refresh_token">True</Item>            
           </Metadata>
           <CryptographicKeys>
