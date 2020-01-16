@@ -21,7 +21,7 @@ namespace Authentication
         /// Parameters:<br/>
         /// <list type="bullet">
         /// <item><description>"token": The client token to prevent spamming server. This token is generated from client by JWT</description></item>
-        /// <item><description>"access_token": The b2c access token</description></item>
+        /// <item><description>"id token": The b2c id token</description></item>
         /// </list> 
         /// If the access_token is missing, then return the guest permissions from cosmos
         /// Otherwise validate the access token, then get user and email from the access token and finally get the cosmos permission for that user  
@@ -46,9 +46,9 @@ namespace Authentication
             // default is guest
             var guestGroup = await ADGroup.FindByName(Configurations.AzureB2C.GuestGroup);
 
-            // validate b2c access token
-            string accessToken = req.Query["access_token"];
-            if (string.IsNullOrWhiteSpace(accessToken))
+            // validate b2c id token
+            string idToken = req.Query["id_token"];
+            if (string.IsNullOrWhiteSpace(idToken))
             {
                 // If the access token is missing, then return permissions for guest
                 var guestPermissions = await guestGroup.GetPermissions();
@@ -56,7 +56,7 @@ namespace Authentication
             }
 
             // Validate the access token, then get email
-            var(result, message, email) = await ADAccess.Instance.ValidateAccessToken(accessToken);
+            var (result, message, email) = await ADAccess.Instance.ValidateIdToken(idToken);
             if (!result)
             {
                 return HttpHelper.CreateErrorResponse(message, StatusCodes.Status401Unauthorized);
