@@ -18,13 +18,15 @@ namespace Authentication.Shared.Services
     public interface IAzureGraphRestApi
     {
         /// <summary>
-        /// Get AD User
+        /// Get AD User by id
         /// </summary>
+        /// <param name="tenantId">Tenant id</param>
+        /// <param name="userId">User id</param>
         /// <param name="accessToken">Access token</param>
         /// <returns>ADUser class</returns>
         [Headers("Accept: application/json")]
-        [Get("/me?api-version=1.6")]
-        Task<ADUser> GetUser([Header("Authorization")] string accessToken);
+        [Get("/{tenantId}/users/{userId}?api-version=1.6")]
+        Task<ADUser> GetUserById([AliasAs("tenantId")] string tenantId, [AliasAs("userId")] string userId, [Header("Authorization")] string accessToken);
 
         /// <summary>
         /// Check if user is in a group
@@ -177,13 +179,14 @@ namespace Authentication.Shared.Services
         /// <summary>
         /// Get user
         /// </summary>
-        /// <param name="token">access token</param>
+        /// <param name=")">access )</param>
         /// <returns><see cref="ADUser" /> class</returns>
-        public async Task<ADUser> GetUser(string token)
+        public async Task<ADUser> GetUserById(string id)
         {
             try
             {
-                return await azureGraphRestApi.GetUser(token);
+                var masterToken = await ADAccess.Instance.GetMasterKey();
+                return await azureGraphRestApi.GetUserById(Configurations.AzureB2C.TenantId, id, HttpHelper.GetBearerAuthorization(masterToken));
             }
             catch
             {

@@ -14,13 +14,13 @@ namespace Authentication.Shared.Models
     public partial class ADUser
     {
         /// <summary>
-        /// Find user by token
+        /// Find user by id
         /// </summary>
-        /// <param name="token">user token</param>
+        /// <param name="id">user id</param>
         /// <returns>ADUser class</returns>
-        public static Task<ADUser> FindByToken(string token)
+        public static Task<ADUser> FindById(string id)
         {
-            return AzureB2CService.Instance.GetUser(token);
+            return AzureB2CService.Instance.GetUserById(id);
         }
 
         /// <summary>

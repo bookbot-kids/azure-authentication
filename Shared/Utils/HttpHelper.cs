@@ -48,11 +48,13 @@ namespace Authentication.Shared.Utils
                 return CreateErrorResponse("auth_token is missing", StatusCodes.Status401Unauthorized);
             }
 
-            var user = await ADUser.FindByToken(authToken);
-            if (user == null || string.IsNullOrWhiteSpace(user.ObjectId))
+            var (result, message, id) = await ADAccess.Instance.ValidateAccessToken(authToken);
+            if (!result || string.IsNullOrWhiteSpace(id))
             {
                 return CreateErrorResponse("auth_token is invalid", StatusCodes.Status401Unauthorized);
             }
+
+            var user = await ADUser.FindById(id);
 
             // make sure user is in admin group
             var adminGroup = await ADGroup.FindByName(Configurations.AzureB2C.AdminGroup);

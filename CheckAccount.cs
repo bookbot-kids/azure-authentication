@@ -40,7 +40,7 @@ namespace Authentication
             Logger.Log = log;
 
             // validate client token by issuer & subject. Return error if token is invalid
-            var (result, message, _) = ADAccess.Instance.ValidateClientToken(req.Query["token"]);
+            var (result, message, _) = ADAccess.Instance.ValidateClientToken(req.Query["client_token"]);
             if (!result)
             {
                 return HttpHelper.CreateErrorResponse(message);

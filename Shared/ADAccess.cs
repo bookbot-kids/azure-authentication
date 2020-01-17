@@ -106,37 +106,14 @@ namespace Authentication.Shared
         /// </summary>
         /// <param name="token">Id token</param>
         /// <returns>Result, message, email</returns>
-        public Task<(bool, string, string)> ValidateIdToken(string token)
-        {
-            return ValidateToken(token, Configurations.AzureB2C.SignInSignUpPolicy);
-        }
-
-        /// <summary>
-        /// Validate B2C access token
-        /// </summary>
-        /// <param name="token">access token</param>
-        /// <returns>Result, message, email</returns>
-        public Task<(bool, string, string)> ValidateAccessToken(string token)
-        {
-            return ValidateToken(token, Configurations.AzureB2C.AuthPolicy);
-        }
-
-        /// <summary>
-        /// Validate b2c token by the custom policy.<br/>
-        /// Each policy has its own data to validate the token.<br/>
-        /// If the token is valid, then return result (true) and email. Otherwise return false and error message
-        /// </summary>
-        /// <param name="token">the token</param>
-        /// <param name="policy">policy name</param>
-        /// <returns>If the token is valid return (true, null, email), otherwise return (false, errorMessage, null)</returns>
-        private async Task<(bool, string, string)> ValidateToken(string token, string policy)
+        public async Task<(bool, string, string)> ValidateIdToken(string token)
         {
             if (string.IsNullOrWhiteSpace(token))
             {
                 return (false, "token is missing", null);
             }
 
-            var claimsIdentity = await TokenHelper.ValidateB2CToken(token, policy);
+            var claimsIdentity = await TokenHelper.ValidateB2CToken(token, Configurations.AzureB2C.SignInSignUpPolicy);
             if (claimsIdentity != null)
             {
                 var emailClaim = claimsIdentity.Claims.FirstOrDefault(c => c.Type.Contains("email"));
@@ -145,7 +122,34 @@ namespace Authentication.Shared
                     return (true, null, emailClaim.Value);
                 }
 
-                return (false, "Can not find user with this id token", null);
+                return (false, "Can not find user with this token", null);
+            }
+
+            return (false, "Token is invalid", null);
+        }
+
+        /// <summary>
+        /// Validate B2C access token
+        /// </summary>
+        /// <param name="token">access token</param>
+        /// <returns>Result, message, userid</returns>
+        public async Task<(bool, string, string)> ValidateAccessToken(string token)
+        {
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                return (false, "token is missing", null);
+            }
+
+            var claimsIdentity = await TokenHelper.ValidateB2CToken(token, Configurations.AzureB2C.AuthPolicy);
+            if (claimsIdentity != null)
+            {
+                var idClaim = claimsIdentity.Claims.FirstOrDefault(c => c.Type.Contains("oid") || c.Type.Contains("objectidentifier"));
+                if (idClaim != null)
+                {
+                    return (true, null, idClaim.Value);
+                }
+
+                return (false, "Can not find user with this token", null);
             }
 
             return (false, "Token is invalid", null);

@@ -37,7 +37,7 @@ namespace Authentication
             Logger.Log = log;
 
             // validate client token to prevent spamming 
-            var(clientResult, clientMessage, _) = ADAccess.Instance.ValidateClientToken(req.Query["token"]);
+            var (clientResult, clientMessage, _) = ADAccess.Instance.ValidateClientToken(req.Query["client_token"]);
             if (!clientResult)
             {
                 return HttpHelper.CreateErrorResponse(clientMessage);
@@ -46,24 +46,31 @@ namespace Authentication
             // default is guest
             var guestGroup = await ADGroup.FindByName(Configurations.AzureB2C.GuestGroup);
 
-            // validate b2c access token
-            string accessToken = req.Query["access_token"];
-            if (string.IsNullOrWhiteSpace(accessToken))
+            // validate b2c refresh token
+            string refreshToken = req.Query["refresh_token"];
+            if (string.IsNullOrWhiteSpace(refreshToken))
             {
-                // If the access token is missing, then return permissions for guest
+                // If the refresh token is missing, then return permissions for guest
                 var guestPermissions = await guestGroup.GetPermissions();
                 return new JsonResult(new { success = true, permissions = guestPermissions }) { StatusCode = StatusCodes.Status200OK };
             }
 
-            // Validate the access token, then get email
-            var(result, message, email) = await ADAccess.Instance.ValidateAccessToken(accessToken);
+            // get access token by refresh token
+            var adToken = await ADAccess.Instance.RefreshToken(refreshToken);
+            if(adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
+            {
+                return HttpHelper.CreateErrorResponse("refresh token is invalid", StatusCodes.Status401Unauthorized);
+            }
+
+            // Validate the access token, then get id
+            var (result, message, id) = await ADAccess.Instance.ValidateAccessToken(adToken.AccessToken);
             if (!result)
             {
                 return HttpHelper.CreateErrorResponse(message, StatusCodes.Status401Unauthorized);
             }
 
             // find ad user by its email
-            var user = await ADUser.FindByEmail(email);
+            var user = await ADUser.FindById(id);
             if (user == null)
             {
                 return HttpHelper.CreateErrorResponse("user not exist");
