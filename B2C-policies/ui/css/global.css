@@ -389,26 +389,32 @@ li {
   font-weight: 600;
 }
 
-.buttons button#cancel,
-.buttons button#email_ver_but_edit,
 .buttons button#email_ver_but_resend {
-  background-color: white;
+  background-color: #e6e6e6;
   border-color: #4B83B7;
-  color: white;
+  color: #333;
+}
+
+#email_ver_but_edit {
+    background-color: white;
+    border-color: #4B83B7;
+    color: white;
+    display: none !important;
 }
 
 .buttons button#cancel {
   display: none;
 }
 
-.buttons button:hover#cancel,
-.buttons button:hover#email_ver_but_edit,
+/*
 .buttons button:hover#email_ver_but_resend {
   background-color: #e6e6e6;
   background-image: none;
   border-color: #adadad;
   color: #333;
 }
+*/
+
 
 .buttons button#continue {
   background-color: white;
@@ -417,7 +423,6 @@ li {
   border: none;
   margin-top: 1%;
   margin-bottom: 0;
-  display: none !important;
 }
 
 
