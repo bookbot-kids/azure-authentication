@@ -57,5 +57,16 @@ namespace Extensions
             var plainTextBytes = Encoding.UTF8.GetBytes(str);
             return Convert.ToBase64String(plainTextBytes);
         }
+
+        /// <summary>
+        /// Compare string ignore case
+        /// </summary>
+        /// <param name="str">input string</param>
+        /// <param name="other">other string</param>
+        /// <returns>true if string is equal</returns>
+        public static bool EqualsIgnoreCase(this string str, string other)
+        {
+            return str.Equals(other, StringComparison.OrdinalIgnoreCase);
+        }
     }
 }

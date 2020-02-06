@@ -103,7 +103,7 @@ namespace Authentication.Shared.Services
         /// <param name="tableName">table name</param>
         /// <param name="partition">partition key</param>
         /// <returns>Permission class</returns>
-        public async Task<Permission> CreatePermission(string userId, string permissionId, bool readOnly, string tableName, string partition = null)
+        public async Task<PermissionProperties> CreatePermission(string userId, string permissionId, bool readOnly, string tableName, string partition = null)
         {
             try
             {
@@ -115,7 +115,7 @@ namespace Authentication.Shared.Services
                     new PartitionKey(partition ?? Configurations.Cosmos.DefaultPartition));
                 var result = await client.GetDatabase(Configurations.Cosmos.DatabaseId)
                     .GetUser(userId).CreatePermissionAsync(permission, Configurations.Cosmos.ResourceTokenExpiration);
-                return result?.Permission;
+                return result.Resource;
             }
             catch (CosmosException)
             {
@@ -152,7 +152,7 @@ namespace Authentication.Shared.Services
         /// </summary>
         /// <param name="userId">User id</param>
         /// <returns>List of permissions</returns>
-        public async Task<List<PermissionProperties>> GetCosmosPermissions(string userId)
+        public async Task<List<PermissionProperties>> GetPermissions(string userId)
         {
             var result = new List<PermissionProperties>();
             try
@@ -172,6 +172,76 @@ namespace Authentication.Shared.Services
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Get cosmos permission
+        /// </summary>
+        /// <param name="userId">user id</param>
+        /// <param name="permissionName">permission name</param>
+        /// <returns>Permission object</returns>
+        public async Task<PermissionProperties> GetPermission(string userId, string permissionName)
+        {
+            try
+            {
+                var permission = client.GetDatabase(Configurations.Cosmos.DatabaseId).GetUser(userId).GetPermission(permissionName);
+                return await permission.ReadAsync();
+            }
+            catch (CosmosException)
+            {
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Remove permission 
+        /// </summary>
+        /// <param name="userId">user id</param>
+        /// <param name="permissionName">permission name</param>
+        /// <returns>Permission propert</returns>
+        public async Task<PermissionProperties> RemovePermission(string userId, string permissionName)
+        {
+            try
+            {
+                var permission = client.GetDatabase(Configurations.Cosmos.DatabaseId).GetUser(userId).GetPermission(permissionName);
+                return await permission.DeleteAsync();
+            }
+            catch (CosmosException)
+            {
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Replace permission by a new one
+        /// </summary>
+        /// <param name="userId">user id</param>
+        /// <param name="permissionId">permission id</param>
+        /// <param name="readOnly">is read only</param>
+        /// <param name="tableName">table name</param>
+        /// <param name="partition">partition key</param>
+        /// <returns>Permission propert</returns>
+        public async Task<PermissionProperties> ReplacePermission(string userId, string permissionId, bool readOnly, string tableName, string partition = null)
+        {
+            try
+            {
+                var collection = client.GetContainer(Configurations.Cosmos.DatabaseId, tableName);
+                var permission = new PermissionProperties(
+                    permissionId,
+                    readOnly ? PermissionMode.Read : PermissionMode.All,
+                    collection,
+                    new PartitionKey(partition ?? Configurations.Cosmos.DefaultPartition));
+                var result = await client.GetDatabase(Configurations.Cosmos.DatabaseId)
+                    .GetUser(userId).UpsertPermissionAsync(permission, Configurations.Cosmos.ResourceTokenExpiration);
+                return result?.Resource;
+            }
+            catch (CosmosException)
+            {
+            }
+
+            return null;
         }
 
         /// <summary>

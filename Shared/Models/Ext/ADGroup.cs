@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Runtime.Caching;
 using System.Threading.Tasks;
 using Authentication.Shared.Services;
+using Authentication.Shared.Utils;
+using Extensions;
 using Microsoft.Azure.Cosmos;
+using Microsoft.Extensions.Logging;
 
 namespace Authentication.Shared.Models
 {
@@ -131,28 +134,94 @@ namespace Authentication.Shared.Models
         /// <returns>List of permissions</returns>
         public async Task<List<PermissionProperties>> GetPermissions()
         {
+            var result = new List<PermissionProperties>();
             if (string.IsNullOrWhiteSpace(Name))
             {
-                return new List<PermissionProperties>();
+                return result;
             }
 
-            var cache = MemoryCache.Default;
-            var cacheKey = $"role_{Name}";
-            if (cache.GetCacheItem(cacheKey) != null)
+            // create user if needed
+            await DataService.Instance.CreateUser(Name);
+
+            // admin should have read-write permission for all tables
+            if(Name.EqualsIgnoreCase("admin"))
             {
-                return (List<PermissionProperties>)cache.GetCacheItem(cacheKey).Value;
-            }
-            else
-            {
-                // cache is expired, get new one
-                var permissions = await DataService.Instance.GetCosmosPermissions(Name);
-                cache.Set(cacheKey, permissions, new CacheItemPolicy
+                var tables = await CosmosRolePermission.GetAllTables();
+                foreach(var table in tables)
                 {
-                    SlidingExpiration = TimeSpan.FromMinutes(20)
-                });
+                    var permission = await DataService.Instance.GetPermission("admin", table);
+                    if(permission == null)
+                    {
+                        // create permission if not exist
+                        var newPermission = await DataService.Instance.CreatePermission("admin", table, false, table);
+                        if (newPermission != null)
+                        {
+                            result.Add(newPermission);
+                        }
+                        else
+                        {
+                            Logger.Log?.LogWarning($"error create permission admin - ${table}");
+                        }
+                    } else
+                    {
+                        result.Add(permission);
+                    }
+                }
 
-                return permissions;
+                return result;
             }
+
+            var rolePermissions = await CosmosRolePermission.QueryByRole(Name);
+            foreach (var rolePermission in rolePermissions)
+            {
+                // don't return none, id-read, id-read-write permission in that group
+                if (rolePermission.Permission.EqualsIgnoreCase("none")
+                    || rolePermission.Permission.EqualsIgnoreCase("id-read")
+                    || rolePermission.Permission.EqualsIgnoreCase("id-read-write"))
+                {
+                    continue;
+                }
+
+                // get cosmos permission by id: role_name/table_name
+                var permission = await DataService.Instance.GetPermission(Name, rolePermission.Table);
+                if (permission == null)
+                {
+                    // create permission if not exist
+                    var newPermission = await rolePermission.CreateCosmosPermission(Name, rolePermission.Table);
+                    if(newPermission != null)
+                    {
+                        result.Add(newPermission);
+                    } else
+                    {
+                        Logger.Log?.LogWarning($"error create permission ${Name} ${rolePermission.Table}");
+                    }
+                   
+                }
+                else
+                {
+                    if ((rolePermission.Permission.EqualsIgnoreCase("read") && permission.PermissionMode != PermissionMode.Read)
+                        || (rolePermission.Permission.EqualsIgnoreCase("read-write") && permission.PermissionMode != PermissionMode.All))
+                    {
+                        // rolePermission is changed, need to update in cosmos
+                        var updatedPermission = await DataService.Instance.ReplacePermission(Name, rolePermission.Table,
+                            rolePermission.Permission.EqualsIgnoreCase("read"), rolePermission.Table);
+                        if (updatedPermission != null)
+                        {
+                            result.Add(updatedPermission);
+                        }
+                        else
+                        {
+                            Logger.Log?.LogWarning($"error update permission ${Name} ${rolePermission.Table}");
+                        }
+                    }
+                    else
+                    {
+                        result.Add(permission);
+                    }
+                }
+            }
+
+            return result;
         }
     }
 }

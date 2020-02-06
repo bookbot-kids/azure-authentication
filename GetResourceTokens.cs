@@ -92,7 +92,7 @@ namespace Authentication
             var permissions = await userGroup.GetPermissions();
 
             // get user permissions
-            var userPermissions = await user.GetPermissions();
+            var userPermissions = await user.GetPermissions(userGroup.Name);
             permissions.AddRange(userPermissions);
 
             // return list of permissions

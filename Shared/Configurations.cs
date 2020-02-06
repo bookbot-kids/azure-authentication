@@ -54,7 +54,9 @@ namespace Authentication.Shared
             public static readonly string[] AcceptedPermissions =
             {
             "read",
-            "read-write"
+            "read-write",
+            "id-read",
+            "id-read-write"
             };
         }
 

@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using Authentication.Shared.Services;
+using Extensions;
 using Microsoft.Azure.Cosmos;
 
 namespace Authentication.Shared.Models
@@ -11,6 +12,11 @@ namespace Authentication.Shared.Models
     /// </summary>
     public partial class CosmosRolePermission
     {
+        public bool IsReadOnly
+        {
+            get { return Permission.EqualsIgnoreCase("read") || Permission.EqualsIgnoreCase("id-read"); }
+        }
+
         /// <summary>
         /// Create cosmos user
         /// </summary>
@@ -43,6 +49,13 @@ namespace Authentication.Shared.Models
             return DataService.Instance.QueryDocuments<CosmosRolePermission>("RolePermissions", query);
         }
 
+        public static Task<List<CosmosRolePermission>> QueryByIdPermissions()
+        {
+            var query = new QueryDefinition("select * from c where c.permission = @p1 or c.permission = @p2")
+                .WithParameter("@p1", "id-read").WithParameter("@p2", "id-read-write");
+            return DataService.Instance.QueryDocuments<CosmosRolePermission>("RolePermissions", query);
+        }
+
         /// <summary>
         /// Get all the defined tables in database
         /// </summary>
@@ -57,10 +70,11 @@ namespace Authentication.Shared.Models
         /// </summary>
         /// <param name="userId">user id</param>
         /// <param name="permissionId">permission id</param>
+        /// /// <param name="partition">partition key</param>
         /// <returns>Permission class</returns>
-        public Task<Permission> CreateCosmosPermission(string userId, string permissionId)
+        public Task<PermissionProperties> CreateCosmosPermission(string userId, string permissionId, string partition = null)
         {
-            return DataService.Instance.CreatePermission(userId, permissionId, Permission == "read", Table);
+            return DataService.Instance.CreatePermission(userId, permissionId, IsReadOnly, Table, partition);
         }
     }
 }

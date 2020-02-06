@@ -3,7 +3,9 @@ using System.Threading.Tasks;
 using Authentication.Shared.Requests;
 using Authentication.Shared.Services;
 using Authentication.Shared.Utils;
+using Extensions;
 using Microsoft.Azure.Cosmos;
+using Microsoft.Extensions.Logging;
 
 namespace Authentication.Shared.Models
 {
@@ -86,9 +88,59 @@ namespace Authentication.Shared.Models
         /// Get cosmos permission of this user
         /// </summary>
         /// <returns>List of permissions</returns>
-        public Task<List<PermissionProperties>> GetPermissions()
+        public async Task<List<PermissionProperties>> GetPermissions(string groupName)
         {
-            return DataService.Instance.GetCosmosPermissions(ObjectId);
+            var result = new List<PermissionProperties>();
+            // create user if needed
+            await DataService.Instance.CreateUser(ObjectId);
+
+            var rolePermissions = await CosmosRolePermission.QueryByIdPermissions();
+            foreach (var rolePermission in rolePermissions)
+            {
+                // only check for current group that user belongs
+                if(!groupName.EqualsIgnoreCase(rolePermission.Role))
+                {
+                    continue;
+                }
+
+                var permission = await DataService.Instance.GetPermission(ObjectId, rolePermission.Table);
+                if(permission == null)
+                {
+                    // create permission if not exist
+                    var newPermission = await rolePermission.CreateCosmosPermission(ObjectId, rolePermission.Table, ObjectId);
+                    if (newPermission != null)
+                    {
+                        result.Add(newPermission);
+                    }
+                    else
+                    {
+                        Logger.Log?.LogWarning($"error create permission ${ObjectId} ${rolePermission.Table}");
+                    }
+                } else
+                {
+                    if ((rolePermission.Permission.EqualsIgnoreCase("id-read") && permission.PermissionMode == PermissionMode.All)
+                        || (rolePermission.Permission.EqualsIgnoreCase("id-read-write") && permission.PermissionMode == PermissionMode.Read))
+                    {
+                        // rolePermission is changed, need to update in cosmos
+                        var updatedPermission = await DataService.Instance.ReplacePermission(ObjectId, rolePermission.Table,
+                            rolePermission.Permission.EqualsIgnoreCase("id-read"), rolePermission.Table, partition: ObjectId);
+                        if (updatedPermission != null)
+                        {
+                            result.Add(updatedPermission);
+                        }
+                        else
+                        {
+                            Logger.Log?.LogWarning($"error update permission ${ObjectId} ${rolePermission.Table}");
+                        }
+                    }
+                    else
+                    {
+                        result.Add(permission);
+                    }
+                }
+            }
+               
+            return result;
         }
     }
 }
