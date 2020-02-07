@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using Authentication.Shared;
+using Authentication.Shared.Models;
 using Authentication.Shared.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -64,9 +65,25 @@ namespace Authentication
             {
                 // using email (and generated password) to get access token
                 var token = await ADAccess.Instance.GetAccessToken(email);
+                var user = await ADUser.FindByEmail(email);
+                var group = "new";
+                if (user != null)
+                {
+                    // Get group of exist user
+                    var groupdIds = await user.GroupIds();
+                    if (groupdIds != null && groupdIds.Count > 0)
+                    {
+                        var userGroup = await ADGroup.FindById(groupdIds[0]);
+                        if (userGroup != null)
+                        {
+                            group = userGroup.Name;
+                        }
+                    }
+                }
+                
 
                 // return access token result
-                return new JsonResult(new { success = true, token }) { StatusCode = StatusCodes.Status200OK };
+                return new JsonResult(new { success = true, token, group }) { StatusCode = StatusCodes.Status200OK };
             }
             catch (Exception)
             {
