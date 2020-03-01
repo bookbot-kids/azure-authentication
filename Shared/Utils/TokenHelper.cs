@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Threading;
@@ -67,58 +68,66 @@ namespace Authentication.Shared.Utils
         /// <returns>claim principal</returns>
         public static async Task<ClaimsPrincipal> ValidateB2CToken(string idToken, string policy)
         {
-            var documentRetriever = new HttpDocumentRetriever { RequireHttps = ISSUER.StartsWith("https://", System.StringComparison.Ordinal) };
-
-            // get the custom policy document to validate
-            var configurationManager = new ConfigurationManager<OpenIdConnectConfiguration>(
-                $"{ISSUER}/v2.0/.well-known/openid-configuration?p={policy}",
-                new OpenIdConnectConfigurationRetriever(),
-                documentRetriever);
-
-            var config = await configurationManager.GetConfigurationAsync(CancellationToken.None);
-
-            // validate information
-            var validationParameter = new TokenValidationParameters
+            try
             {
-                RequireSignedTokens = true,
-                ValidateAudience = false,
-                ValidIssuers = new List<string> { $"https://{Configurations.AzureB2C.TenantName}.b2clogin.com/{Configurations.AzureB2C.TenantId}/v2.0/", $"https://login.microsoftonline.com/{Configurations.AzureB2C.TenantId}/v2.0/" },
-                ValidateIssuer = true,
-                ValidateIssuerSigningKey = false,
-                ValidateLifetime = true,
-                IssuerSigningKeys = config.SigningKeys
-            };
+                var documentRetriever = new HttpDocumentRetriever { RequireHttps = ISSUER.StartsWith("https://", System.StringComparison.Ordinal) };
 
-            ClaimsPrincipal result = null;
-            var tries = 0;
+                // get the custom policy document to validate
+                var configurationManager = new ConfigurationManager<OpenIdConnectConfiguration>(
+                    $"{ISSUER}/v2.0/.well-known/openid-configuration?p={policy}",
+                    new OpenIdConnectConfigurationRetriever(),
+                    documentRetriever);
 
-            // retry in case error
-            while (result == null && tries <= 1)
-            {
-                try
-                {
-                    var handler = new JwtSecurityTokenHandler();
+                var config = await configurationManager.GetConfigurationAsync(CancellationToken.None);
 
-                    // validate the token with above parameters
-                    result = handler.ValidateToken(idToken, validationParameter, out var token);
-                }
-                catch (SecurityTokenSignatureKeyNotFoundException)
+                // validate information
+                var validationParameter = new TokenValidationParameters
                 {
-                    // This exception is thrown if the signature key of the JWT could not be found.
-                    // This could be the case when the issuer changed its signing keys, so we trigger a 
-                    // refresh and retry validation.
-                    configurationManager.RequestRefresh();
-                    tries++;
-                }
-                catch (SecurityTokenException e)
+                    RequireSignedTokens = true,
+                    ValidateAudience = false,
+                    ValidIssuers = new List<string> { $"https://{Configurations.AzureB2C.TenantName}.b2clogin.com/{Configurations.AzureB2C.TenantId}/v2.0/", $"https://login.microsoftonline.com/{Configurations.AzureB2C.TenantId}/v2.0/" },
+                    ValidateIssuer = true,
+                    ValidateIssuerSigningKey = false,
+                    ValidateLifetime = true,
+                    IssuerSigningKeys = config.SigningKeys
+                };
+
+                ClaimsPrincipal result = null;
+                var tries = 0;
+
+                // retry in case error
+                while (result == null && tries <= 1)
                 {
-                    Logger.Log?.LogError(e.Message);
-                    return null;
+                    try
+                    {
+                        var handler = new JwtSecurityTokenHandler();
+
+                        // validate the token with above parameters
+                        result = handler.ValidateToken(idToken, validationParameter, out var token);
+                    }
+                    catch (SecurityTokenSignatureKeyNotFoundException)
+                    {
+                        // This exception is thrown if the signature key of the JWT could not be found.
+                        // This could be the case when the issuer changed its signing keys, so we trigger a 
+                        // refresh and retry validation.
+                        configurationManager.RequestRefresh();
+                        tries++;
+                    }
+                    catch (SecurityTokenException e)
+                    {
+                        Logger.Log?.LogError(e.Message);
+                        return null;
+                    }
                 }
+
+                // return claim principal result
+                return result;
             }
-
-            // return claim principal result
-            return result;
+            catch (Exception e)
+            {
+                Logger.Log?.LogError(e.Message);
+                return null;
+            }
         }
     }
 }

@@ -65,6 +65,11 @@ namespace Authentication
             {
                 // using email (and generated password) to get access token
                 var token = await ADAccess.Instance.GetAccessToken(email);
+                if(token == null)
+                {
+                    return HttpHelper.CreateErrorResponse("Can not get access token. The username or password provided in the request are invalid");
+                }
+
                 var user = await ADUser.FindByEmail(email);
                 var group = "new";
                 if (user != null)
