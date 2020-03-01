@@ -57,6 +57,11 @@ namespace Authentication.Shared.Utils
             {
                 return (false, "Token has invalid signature", null);
             }
+            catch (Exception e)
+            {
+                Logger.Log?.LogError(e.Message);
+                return (false, "Can not validate token, unknown error", null);
+            }
         }
 
         /// <summary>
