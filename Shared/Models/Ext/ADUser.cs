@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Authentication.Shared.Requests;
 using Authentication.Shared.Services;
@@ -97,6 +98,37 @@ namespace Authentication.Shared.Models
             var rolePermissions = await CosmosRolePermission.QueryByIdPermissions();
             foreach (var rolePermission in rolePermissions)
             {
+                // admin will have id-read-write permission for all tables
+                if("admin".EqualsIgnoreCase(groupName))
+                {
+                    var adminPermission = await DataService.Instance.GetPermission(ObjectId, rolePermission.Table);
+                    if (adminPermission == null)
+                    {
+                        // create permission if not exist
+                        var newPermission =  await DataService.Instance.CreatePermission(ObjectId, rolePermission.Table, false, rolePermission.Table, ObjectId);
+                        if (newPermission != null)
+                        {
+                            result.Add(newPermission);
+                        }
+                        else
+                        {
+                            Logger.Log?.LogWarning($"error create permission ${ObjectId} ${rolePermission.Table}");
+                        }
+                    } else
+                    {
+                        // prevent duplicate
+                        if(!result.Any(e => e.Id == adminPermission.Id && e.ResourceUri == adminPermission.ResourceUri
+                        && e.ETag == adminPermission.ETag && e.LastModified == adminPermission.LastModified
+                        && e.PermissionMode == adminPermission.PermissionMode))
+                        {
+                            result.Add(adminPermission);
+                        }
+                       
+                    }
+
+                    continue;
+                }
+
                 // only check for current group that user belongs
                 if(!groupName.EqualsIgnoreCase(rolePermission.Role))
                 {
@@ -135,7 +167,13 @@ namespace Authentication.Shared.Models
                     }
                     else
                     {
-                        result.Add(permission);
+                        // prevent duplicate
+                        if (!result.Any(e => e.Id == permission.Id && e.ResourceUri == permission.ResourceUri
+                         && e.ETag == permission.ETag && e.LastModified == permission.LastModified
+                         && e.PermissionMode == permission.PermissionMode))
+                        {
+                            result.Add(permission);
+                        }
                     }
                 }
             }

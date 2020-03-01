@@ -143,12 +143,23 @@ namespace Authentication.Shared.Models
             // create user if needed
             await DataService.Instance.CreateUser(Name);
 
-            // admin should have read-write permission for all tables
+            // admin should have read-write permission for all except tables that have id-read or id-read-write
             if(Name.EqualsIgnoreCase("admin"))
             {
                 var tables = await CosmosRolePermission.GetAllTables();
                 foreach(var table in tables)
                 {
+                    var rolePermisisons = await CosmosRolePermission.QueryByTable(table);
+                    if(rolePermisisons != null)
+                    {
+                        var containsIdPermission = rolePermisisons.Exists(e => e.Permission.EqualsIgnoreCase("id-read")
+                        || e.Permission.EqualsIgnoreCase("id-read-write"));
+                        if(containsIdPermission)
+                        {
+                            continue;
+                        }
+                    }
+
                     var permission = await DataService.Instance.GetPermission("admin", table);
                     if(permission == null)
                     {
