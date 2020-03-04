@@ -163,6 +163,12 @@ namespace Authentication.Shared.Models
             var connections = await Connection.QueryByShareUser(ObjectId);
             foreach (var connection in connections)
             {
+                // only process the accepted connection
+                if(!"accepted".EqualsIgnoreCase(connection.Status))
+                {
+                    continue;
+                }
+
                 var permission = await connection.GetPermission();
                 if (permission == null)
                 {
