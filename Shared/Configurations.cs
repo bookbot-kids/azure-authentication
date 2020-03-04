@@ -21,7 +21,7 @@ namespace Authentication.Shared
             /// <summary>
             /// The resource token expiration
             /// </summary>
-            public const int ResourceTokenExpiration = 18000;
+            public const int ResourceTokenExpiration = 86400;
 
             /// <summary>
             /// The partition key

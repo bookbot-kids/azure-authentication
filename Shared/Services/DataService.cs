@@ -114,7 +114,7 @@ namespace Authentication.Shared.Services
                     collection,
                     new PartitionKey(partition ?? Configurations.Cosmos.DefaultPartition));
                 var result = await client.GetDatabase(Configurations.Cosmos.DatabaseId)
-                    .GetUser(userId).CreatePermissionAsync(permission, Configurations.Cosmos.ResourceTokenExpiration);
+                    .GetUser(userId).CreatePermissionAsync(permission, tokenExpiryInSeconds: Configurations.Cosmos.ResourceTokenExpiration);
                 return result.Resource;
             }
             catch (CosmosException)
@@ -234,7 +234,7 @@ namespace Authentication.Shared.Services
                     collection,
                     new PartitionKey(partition ?? Configurations.Cosmos.DefaultPartition));
                 var result = await client.GetDatabase(Configurations.Cosmos.DatabaseId)
-                    .GetUser(userId).UpsertPermissionAsync(permission, Configurations.Cosmos.ResourceTokenExpiration);
+                    .GetUser(userId).UpsertPermissionAsync(permission, tokenExpiryInSeconds: Configurations.Cosmos.ResourceTokenExpiration);
                 return result?.Resource;
             }
             catch (CosmosException)
