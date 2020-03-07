@@ -1,6 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Net;
 using System.Threading.Tasks;
+using Authentication.Shared.Utils;
 using Microsoft.Azure.Cosmos;
+using Microsoft.Extensions.Logging;
 
 namespace Authentication.Shared.Services
 {
@@ -53,6 +57,38 @@ namespace Authentication.Shared.Services
             }
 
             return ret;
+        }
+
+        public async Task<T> CreateOrUpdateDocument<T>(string collectionName, string id, T doc, string partition = null)
+        {
+            var collection = client.GetContainer(Configurations.Cosmos.DatabaseId, collectionName);
+            var partitionKey = new PartitionKey(partition ?? Configurations.Cosmos.DefaultPartition);
+            
+            try
+            {
+                // Read the item to see if it exists.  
+                var item = await collection.ReadItemAsync<T>(id, partitionKey);
+                if(item != null)
+                {
+                   item = await collection.ReplaceItemAsync(doc, id, partitionKey: partitionKey);
+                }
+
+                return item.Resource;
+            }
+            catch (CosmosException ex)
+            {
+                if(ex.SubStatusCode == (int)HttpStatusCode.NotFound)
+                {
+                    var newItem = await collection.CreateItemAsync(doc, partitionKey: partitionKey);
+                    return newItem.Resource;
+                }
+               
+            } catch (Exception ex)
+            {
+                Logger.Log?.LogError("CreateOrUpdateDocument error " + ex.Message);
+            }
+
+            return default;
         }
 
         /// <summary>

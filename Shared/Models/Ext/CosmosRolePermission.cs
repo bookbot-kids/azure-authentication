@@ -22,7 +22,7 @@ namespace Authentication.Shared.Models
         /// </summary>
         /// <param name="userId">user id</param>
         /// <returns>User class</returns>
-        public static Task<User> CreateCosmosUser(string userId)
+        public static Task<Microsoft.Azure.Cosmos.User> CreateCosmosUser(string userId)
         {
             return DataService.Instance.CreateUser(userId);
         }

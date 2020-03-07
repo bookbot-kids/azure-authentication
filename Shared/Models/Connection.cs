@@ -32,6 +32,7 @@ namespace Authentication.Shared.Models
 
         /// <summary>
         /// Gets or sets status
+        /// Available statues: accepted, cancelled
         /// </summary>
         [JsonProperty(PropertyName = "status")]
         public string Status { get; set; }
@@ -47,6 +48,24 @@ namespace Authentication.Shared.Models
         /// </summary>
         [JsonProperty(PropertyName = "table")]
         public string Table { get; set; }
+
+        /// <summary>
+        /// Gets or sets partition
+        /// </summary>
+        [JsonProperty(PropertyName = "partition")]
+        public string Partition { get; set; }
+
+        /// <summary>
+        /// Gets or sets created at
+        /// </summary>
+        [JsonProperty(PropertyName = "createdAt")]
+        public long CreatedAt { get; set; }
+
+        /// <summary>
+        /// Gets or sets updated at
+        /// </summary>
+        [JsonProperty(PropertyName = "updatedAt")]
+        public long UpdatedAt { get; set; }
 
         /// <summary>
         /// Gets whether permission is read only

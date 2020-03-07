@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Authentication.Shared.Services;
 using Microsoft.Azure.Cosmos;
@@ -10,12 +11,52 @@ namespace Authentication.Shared.Models
         /// <summary>
         /// Query connection by shared user id
         /// </summary>
-        /// <param name="table">user id</param>
-        /// <returns>List of CosmosRolePermission</returns>
+        /// <param name="userId">user id</param>
+        /// <returns>List of Connection</returns>
         public static Task<List<Connection>> QueryByShareUser(string userId)
         {
             var query = new QueryDefinition("select * from c where c.user2 = @userId").WithParameter("@userId", userId);
             return DataService.Instance.QueryDocuments<Connection>("Connection", query);
+        }
+
+        /// <summary>
+        /// Query connection by user 1 & user 2
+        /// </summary>
+        /// <param name="user1"> user 1</param>
+        /// <param name="user2">user 2</param>
+        /// <returns>Connection class</returns>
+        public static async Task<Connection> QueryBy2Users(string user1, string user2)
+        {
+            var query = new QueryDefinition("select * from c where c.user1 = @user1 and c.user2 = @user2")
+                .WithParameter("@user1", user1).WithParameter("user2", user2);
+            var result = await DataService.Instance.QueryDocuments<Connection>("Connection", query);
+            return result.Count > 0? result[0] : null;
+        }
+
+        /// <summary>
+        /// Create or update Connection
+        /// </summary>
+        /// <returns>Permission class</returns>
+        public Task<Connection> CreateOrUpdate()
+        {
+            if(Id == null)
+            {
+                Id = Guid.NewGuid().ToString();
+            }
+
+            if (Partition == null)
+            {
+                Partition = User2;
+            }
+
+            if(CreatedAt == default)
+            {
+                CreatedAt = ((DateTimeOffset)DateTime.UtcNow).ToUnixTimeMilliseconds();
+            }
+
+            UpdatedAt = ((DateTimeOffset)DateTime.UtcNow).ToUnixTimeMilliseconds();
+
+            return DataService.Instance.CreateOrUpdateDocument("Connection", Id, this, Partition);
         }
 
         /// <summary>
