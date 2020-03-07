@@ -11,10 +11,10 @@ namespace Authentication.Shared.Models
         public string Id { get; set; }
 
         /// <summary>
-        /// Gets or sets from
+        /// Gets or sets from id
         /// </summary>
-        [JsonProperty(PropertyName = "from")]
-        public string From { get; set; }
+        [JsonProperty(PropertyName = "fromId")]
+        public string FromId { get; set; }
 
         /// <summary>
         /// Gets or sets email

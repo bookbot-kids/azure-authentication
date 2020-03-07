@@ -39,12 +39,14 @@ namespace Authentication.Shared.Services
         /// <param name="collectionName">collection name</param>
         /// <param name="query">query paramter</param>
         /// <param name="partition">partition key</param>
+        /// <param name="crossPartition">query cross partition</param>
         /// <returns>List of documents</returns>
-        public async Task<List<T>> QueryDocuments<T>(string collectionName, QueryDefinition query, string partition = null)
+        public async Task<List<T>> QueryDocuments<T>(string collectionName, QueryDefinition query, string partition = null, bool crossPartition = false)
         {
             var collection = client.GetContainer(Configurations.Cosmos.DatabaseId, collectionName);
             var partitionKey = new PartitionKey(partition ?? Configurations.Cosmos.DefaultPartition);
-            var queryOption = new QueryRequestOptions { PartitionKey = partitionKey };
+            var queryOption = crossPartition ? new QueryRequestOptions() :
+                new QueryRequestOptions { PartitionKey = partitionKey };
             var feeds = collection.GetItemQueryIterator<T>(query, requestOptions: queryOption);
             List<T> ret = new List<T>();
             while (feeds.HasMoreResults)
@@ -66,20 +68,14 @@ namespace Authentication.Shared.Services
             
             try
             {
-                // Read the item to see if it exists.  
-                var item = await collection.ReadItemAsync<T>(id, partitionKey);
-                if(item != null)
-                {
-                   item = await collection.ReplaceItemAsync(doc, id, partitionKey: partitionKey);
-                }
-
-                return item.Resource;
+                var newItem = await collection.CreateItemAsync(doc, partitionKey: partitionKey);
+                return newItem.Resource;
             }
             catch (CosmosException ex)
             {
-                if(ex.SubStatusCode == (int)HttpStatusCode.NotFound)
+                if (ex.StatusCode == HttpStatusCode.Conflict)
                 {
-                    var newItem = await collection.CreateItemAsync(doc, partitionKey: partitionKey);
+                    var newItem = await collection.ReplaceItemAsync(doc, id, partitionKey: partitionKey);
                     return newItem.Resource;
                 }
                

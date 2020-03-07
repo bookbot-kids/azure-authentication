@@ -13,14 +13,15 @@ namespace Authentication.Shared.Models
         public static async Task<ConnectionToken> GetById(string id)
         {
             var query = new QueryDefinition("select * from c where c.id = @id").WithParameter("@id", id);
-            var result = await DataService.Instance.QueryDocuments<ConnectionToken>("ConnectionToken", query);
+            var result = await DataService.Instance.QueryDocuments<ConnectionToken>("ConnectionToken", query, crossPartition: true);
             return result.Count == 0 ? null : result[0];
         }
 
-        public static async Task<ConnectionToken> GetByFromId(string id)
+        public static async Task<ConnectionToken> GetFrom(string fromId, string email)
         {
-            var query = new QueryDefinition("select * from c where c.from = @id").WithParameter("@id", id);
-            var result = await DataService.Instance.QueryDocuments<ConnectionToken>("ConnectionToken", query);
+            var query = new QueryDefinition("select * from c where c.fromId = @id and c.email = @email")
+                .WithParameter("@id", fromId).WithParameter("@email", email);
+            var result = await DataService.Instance.QueryDocuments<ConnectionToken>("ConnectionToken", query, partition: fromId);
             return result.Count == 0 ? null : result[0];
         }
 
@@ -37,7 +38,7 @@ namespace Authentication.Shared.Models
 
             if (Partition == null)
             {
-                Partition = From;
+                Partition = FromId;
             }
 
             if (CreatedAt == default)
@@ -86,12 +87,12 @@ namespace Authentication.Shared.Models
         {
             var profiles = await Profile.GetByUserId(Id);
             var profileIds = profiles.Select(s => s.Id).ToList();
-            var connection = await Connection.QueryBy2Users(From, professionalUser.Id);
+            var connection = await Connection.QueryBy2Users(FromId, professionalUser.Id);
             if (connection == null)
             {
                 var newConnection = new Connection()
                 {
-                    User1 = From,
+                    User1 = FromId,
                     User2 = professionalUser.Id,
                     Permission = Permission ?? "read",
                     Status = "accepted",
@@ -127,7 +128,7 @@ namespace Authentication.Shared.Models
 
         private async Task ParentDeny(User professionalUser)
         {
-            var connection = await Connection.QueryBy2Users(From, professionalUser.Id);
+            var connection = await Connection.QueryBy2Users(FromId, professionalUser.Id);
             if (connection != null)
             {
                 connection.Status = "cancelled";
@@ -146,6 +147,7 @@ namespace Authentication.Shared.Models
             string[] acceptedStates = { "invited"};
             if (State == null || !acceptedStates.Contains(State, StringComparer.OrdinalIgnoreCase))
             {
+                Logger.Log?.LogWarning($"invalid state {State}");
                 return;
             }
 
@@ -157,12 +159,12 @@ namespace Authentication.Shared.Models
             }
 
             //create connection token for parent
-            var connectionToken = await GetByFromId(parentUser.Id);
+            var connectionToken = await GetFrom(parentUser.Id, Email);
             if(connectionToken == null)
             {
                 var newConnectionToken = new ConnectionToken()
                 {
-                    From = parentUser.Id,
+                    FromId = parentUser.Id,
                     Email = Email,
                     FirstName = FirstName,
                     LastName = LastName,
@@ -178,16 +180,16 @@ namespace Authentication.Shared.Models
 
 
             // create connection
-            var connection = await Connection.QueryBy2Users(parentUser.Id, From);
+            var connection = await Connection.QueryBy2Users(parentUser.Id, FromId);
             if (connection == null)
             {
                 var newConnection = new Connection()
                 {
                     User1 = parentUser.Id,
-                    User2 = From,
+                    User2 = FromId,
                     Permission = Permission ?? "read",
                     Status = "pending",
-                    Partition = From,
+                    Partition = FromId,
                     Table = "Report",
                     Profiles = {}
                 };
@@ -206,7 +208,7 @@ namespace Authentication.Shared.Models
                     connection.Table = "Report";
                 }
 
-                connection.Partition = From;
+                connection.Partition = FromId;
                 connection.Status = "accepted";
                 await connection.CreateOrUpdate();
             }

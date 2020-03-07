@@ -28,8 +28,8 @@ namespace Authentication.Shared.Models
         public static async Task<Connection> QueryBy2Users(string user1, string user2)
         {
             var query = new QueryDefinition("select * from c where c.user1 = @user1 and c.user2 = @user2")
-                .WithParameter("@user1", user1).WithParameter("user2", user2);
-            var result = await DataService.Instance.QueryDocuments<Connection>("Connection", query);
+                .WithParameter("@user1", user1).WithParameter("@user2", user2);
+            var result = await DataService.Instance.QueryDocuments<Connection>("Connection", query, partition: user2);
             return result.Count > 0? result[0] : null;
         }
 

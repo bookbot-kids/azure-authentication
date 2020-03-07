@@ -16,7 +16,7 @@ namespace Authentication.Shared.Models
         public static async Task<User> GetByEmail(string email)
         {
             var query = new QueryDefinition("select * from c where c.email = @email").WithParameter("@email", email);
-            var result = await DataService.Instance.QueryDocuments<User>("User", query);
+            var result = await DataService.Instance.QueryDocuments<User>("User", query, crossPartition: true);
             return result.Count == 0 ? null : result[0];
         }
     }
