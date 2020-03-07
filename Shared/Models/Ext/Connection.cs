@@ -16,7 +16,7 @@ namespace Authentication.Shared.Models
         public static Task<List<Connection>> QueryByShareUser(string userId)
         {
             var query = new QueryDefinition("select * from c where c.user2 = @userId").WithParameter("@userId", userId);
-            return DataService.Instance.QueryDocuments<Connection>("Connection", query);
+            return DataService.Instance.QueryDocuments<Connection>("Connection", query, partition: userId);
         }
 
         /// <summary>
