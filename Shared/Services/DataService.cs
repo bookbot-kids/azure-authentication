@@ -217,7 +217,7 @@ namespace Authentication.Shared.Services
             try
             {
                 var permission = client.GetDatabase(Configurations.Cosmos.DatabaseId).GetUser(userId).GetPermission(permissionName);
-                return await permission.ReadAsync();
+                return await permission.ReadAsync(tokenExpiryInSeconds: Configurations.Cosmos.ResourceTokenExpiration);
             }
             catch (CosmosException)
             {
