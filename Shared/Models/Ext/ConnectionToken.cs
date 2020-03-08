@@ -131,6 +131,7 @@ namespace Authentication.Shared.Models
             var connectionToken = await GetFrom(professionalUser.Id, FromEmail);
             if(connectionToken != null)
             {
+                connectionToken.ToId = FromId;
                 connectionToken.State = "accepted";
                 await connectionToken.CreateOrUpdate();
             }
@@ -151,6 +152,7 @@ namespace Authentication.Shared.Models
             var connectionToken = await GetFrom(professionalUser.Id, FromEmail);
             if (connectionToken != null)
             {
+                connectionToken.ToId = FromId;
                 connectionToken.State = "deny";
                 await connectionToken.CreateOrUpdate();
             }

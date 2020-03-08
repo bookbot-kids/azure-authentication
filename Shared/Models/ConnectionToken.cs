@@ -29,6 +29,12 @@ namespace Authentication.Shared.Models
         public string Email { get; set; }
 
         /// <summary>
+        /// Gets or sets to user id
+        /// </summary>
+        [JsonProperty(PropertyName = "toId")]
+        public string ToId { get; set; }
+
+        /// <summary>
         /// Gets or sets state
         /// Available states: "invited", "shared", "unshared"
         /// </summary>
