@@ -85,7 +85,7 @@ namespace Authentication.Shared.Models
 
         private async Task ParentAccepted(User professionalUser)
         {
-            var profiles = await Profile.GetByUserId(Id);
+            var profiles = await Profile.GetByUserId(FromId);
             var profileIds = profiles.Select(s => s.Id).ToList();
 
             // update connect to accept

@@ -205,23 +205,20 @@ namespace Authentication.Shared.Models
                     }
                 }
 
-                if (connection.Profiles != null)
+                if (connection.Profiles != null && connection.Profiles.Count > 0)
                 {
-                    foreach (var profile in connection.Profiles)
-                    {
-                        await AddProfilePermission(result, connection, profile);
-                    }
+                    await AddProfilePermission(result, connection);
                 }
             }
         }
 
-        private async Task AddProfilePermission(List<PermissionProperties> result, Connection connection, string profileId)
+        private async Task AddProfilePermission(List<PermissionProperties> result, Connection connection)
         {
-            var permission = await connection.GetProfilePermission(profileId);
+            var permission = await connection.GetProfilePermission();
             if (permission == null)
             {
                 // create permission if not exist
-                var newPermission = await connection.CreateProfilePermission(profileId);
+                var newPermission = await connection.CreateProfilePermission();
                 if (newPermission != null)
                 {
                     result.Add(newPermission);
@@ -237,7 +234,7 @@ namespace Authentication.Shared.Models
                     || (connection.Permission.EqualsIgnoreCase("write") && permission.PermissionMode == PermissionMode.Read))
                 {
                     // rolePermission is changed, need to update in cosmos
-                    var updatedPermission = await connection.UpdateProfilePermission(profileId);
+                    var updatedPermission = await connection.UpdateProfilePermission();
                     if (updatedPermission != null)
                     {
                         result.Add(updatedPermission);

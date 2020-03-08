@@ -90,7 +90,7 @@ namespace Authentication.Shared.Models
         /// Get profile cosmos permission
         /// </summary>
         /// <returns>Permission class</returns>
-        public Task<PermissionProperties> GetProfilePermission(string profileId)
+        public Task<PermissionProperties> GetProfilePermission()
         {
             return DataService.Instance.GetPermission(User2, "Profile-shared");
         }
@@ -99,18 +99,18 @@ namespace Authentication.Shared.Models
         /// Create profile cosmos permission
         /// </summary>
         /// <returns>Permission class</returns>
-        public Task<PermissionProperties> CreateProfilePermission(string profileId)
+        public Task<PermissionProperties> CreateProfilePermission()
         {
-            return DataService.Instance.CreatePermission(User2, "Profile-shared", IsReadOnly, "Profile", profileId);
+            return DataService.Instance.CreatePermission(User2, "Profile-shared", IsReadOnly, "Profile", User1);
         }
 
         /// <summary>
         /// Update profile cosmos permission
         /// </summary>
         /// <returns>Permission class</returns>
-        public Task<PermissionProperties> UpdateProfilePermission(string profileId)
+        public Task<PermissionProperties> UpdateProfilePermission()
         {
-            return DataService.Instance.ReplacePermission(User2, "Profile-shared", IsReadOnly, "Profile", profileId);
+            return DataService.Instance.ReplacePermission(User2, "Profile-shared", IsReadOnly, "Profile", User1);
         }
 
     }
