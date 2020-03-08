@@ -87,6 +87,8 @@ namespace Authentication.Shared.Models
         {
             var profiles = await Profile.GetByUserId(Id);
             var profileIds = profiles.Select(s => s.Id).ToList();
+
+            // update connect to accept
             var connection = await Connection.QueryBy2Users(FromId, professionalUser.Id);
             if (connection == null)
             {
@@ -124,6 +126,15 @@ namespace Authentication.Shared.Models
                 connection.Status = "accepted";
                 await connection.CreateOrUpdate();
             }
+
+            // update connection token of professional to accepted
+            var connectionToken = await GetFrom(professionalUser.Id, FromEmail);
+            if(connectionToken != null)
+            {
+                connectionToken.State = "accepted";
+                await connectionToken.CreateOrUpdate();
+            }
+
         }
 
         private async Task ParentDeny(User professionalUser)
@@ -134,6 +145,14 @@ namespace Authentication.Shared.Models
                 connection.Status = "cancelled";
                 connection.Partition = professionalUser.Id;
                 await connection.CreateOrUpdate();
+            }
+
+            // update connection token of professional to deny
+            var connectionToken = await GetFrom(professionalUser.Id, FromEmail);
+            if (connectionToken != null)
+            {
+                connectionToken.State = "deny";
+                await connectionToken.CreateOrUpdate();
             }
         }
 
@@ -158,6 +177,12 @@ namespace Authentication.Shared.Models
                 return;
             }
 
+            if (FromEmail == null)
+            {
+                Logger.Log.LogError($"from email is missing");
+                return;
+            }
+
             //create connection token for parent
             var connectionToken = await GetFrom(parentUser.Id, Email);
             if(connectionToken == null)
@@ -165,13 +190,15 @@ namespace Authentication.Shared.Models
                 var newConnectionToken = new ConnectionToken()
                 {
                     FromId = parentUser.Id,
-                    Email = Email,
+                    Email = FromEmail,
+                    FromEmail = Email,
                     FirstName = FirstName,
                     LastName = LastName,
                     Type = "parent",
                     Partition = parentUser.Id,
                     ChildFirstName = ChildFirstName,
                     ChildLastName = ChildLastName,
+                    Permission = Permission,
                     State = "pending"
                 };
 

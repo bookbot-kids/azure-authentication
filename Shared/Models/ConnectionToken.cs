@@ -17,6 +17,12 @@ namespace Authentication.Shared.Models
         public string FromId { get; set; }
 
         /// <summary>
+        /// Gets or sets from email
+        /// </summary>
+        [JsonProperty(PropertyName = "fromEmail")]
+        public string FromEmail { get; set; }
+
+        /// <summary>
         /// Gets or sets email
         /// </summary>
         [JsonProperty(PropertyName = "email")]

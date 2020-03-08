@@ -9,7 +9,7 @@ namespace Authentication.Shared.Models
         public static async Task<User> GetById(string id)
         {
             var query = new QueryDefinition("select * from c where c.id = @id").WithParameter("@id", id);
-            var result = await DataService.Instance.QueryDocuments<User>("User", query);
+            var result = await DataService.Instance.QueryDocuments<User>("User", query, partition: id);
             return result.Count == 0 ? null : result[0];
         }
 
