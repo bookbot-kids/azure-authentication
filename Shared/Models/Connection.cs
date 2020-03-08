@@ -70,6 +70,7 @@ namespace Authentication.Shared.Models
         /// <summary>
         /// Gets whether permission is read only
         /// </summary>
+        [JsonIgnore]
         public bool IsReadOnly
         {
             get { return Permission.EqualsIgnoreCase("read"); }
