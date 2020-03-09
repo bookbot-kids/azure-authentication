@@ -87,7 +87,7 @@ namespace Authentication.Shared.Models
         /// Gets or sets viewed
         /// </summary>
         [JsonProperty(PropertyName = "viewed")]
-        public bool Viewed { get; set; }
+        public bool? Viewed { get; set; }
 
         /// <summary>
         /// Gets or sets created at
