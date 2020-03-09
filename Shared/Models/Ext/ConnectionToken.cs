@@ -134,6 +134,25 @@ namespace Authentication.Shared.Models
                 connectionToken.ToId = FromId;
                 connectionToken.State = "accepted";
                 await connectionToken.CreateOrUpdate();
+            } else
+            {
+                var childFirstName = profiles.Count > 0 ? profiles[0].FirstName : FirstName;
+                var childLastName = profiles.Count > 0 ? profiles[0].LastName : LastName;
+                var newConnectionToken = new ConnectionToken()
+                {
+                    ToId = FromId,
+                    Email = FromEmail,
+                    State = "accepted",
+                    FirstName = FirstName,
+                    LastName = LastName,
+                    ChildFirstName = childFirstName,
+                    ChildLastName = childLastName,
+                    FromEmail = professionalUser.Email,
+                    FromId = professionalUser.Id,
+                    Type = "professional",
+                };
+
+                await newConnectionToken.CreateOrUpdate();
             }
 
         }

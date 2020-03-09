@@ -84,6 +84,12 @@ namespace Authentication.Shared.Models
         public string Token { get; set; }
 
         /// <summary>
+        /// Gets or sets viewed
+        /// </summary>
+        [JsonProperty(PropertyName = "viewed")]
+        public bool Viewed { get; set; }
+
+        /// <summary>
         /// Gets or sets created at
         /// </summary>
         [JsonProperty(PropertyName = "createdAt")]
