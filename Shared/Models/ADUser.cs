@@ -50,5 +50,11 @@ namespace Authentication.Shared.Models
             [JsonProperty("value")]
             public string Value { get; set; }
         }
+
+        /// <summary>
+        /// Gets or sets password policies
+        /// </summary>
+        [JsonProperty("passwordPolicies")]
+        public string PasswordPolicies { get; set; }
     }
 }

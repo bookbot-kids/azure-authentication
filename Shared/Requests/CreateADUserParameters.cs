@@ -58,6 +58,12 @@ namespace Authentication.Shared.Requests
         }
 
         /// <summary>
+        /// Gets or sets password policies
+        /// </summary>
+        [JsonProperty("passwordPolicies")]
+        public string PasswordPolicies { get; set; } = "DisablePasswordExpiration";
+
+        /// <summary>
         /// Sign in name config
         /// </summary>
         public class SignInName
