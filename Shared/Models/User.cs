@@ -41,6 +41,18 @@ namespace Authentication.Shared.Models
         public string OrganisationName { get; set; }
 
         /// <summary>
+        /// Gets or sets gateway
+        /// </summary>
+        [JsonProperty(PropertyName = "gateway")]
+        public string Gateway { get; set; }
+
+        /// <summary>
+        /// Gets or sets subscription expired at
+        /// </summary>
+        [JsonProperty(PropertyName = "subscriptionExpiredAt")]
+        public long? SubscriptionExpiredAt { get; set; }
+
+        /// <summary>
         /// Gets or sets partition
         /// </summary>
         [JsonProperty(PropertyName = "partition")]

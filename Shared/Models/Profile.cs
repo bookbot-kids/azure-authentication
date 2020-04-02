@@ -25,8 +25,8 @@ namespace Authentication.Shared.Models
         /// <summary>
         /// Gets or sets date of birth
         /// </summary>
-        [JsonProperty(PropertyName = "dob")]
-        public string DateOfBirth { get; set; }
+        [JsonProperty(PropertyName = "birthDate")]
+        public long? DateOfBirth { get; set; }
 
         /// <summary>
         /// Gets or sets gender

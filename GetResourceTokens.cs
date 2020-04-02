@@ -52,7 +52,7 @@ namespace Authentication
             {
                 // If the refresh token is missing, then return permissions for guest
                 var guestPermissions = await guestGroup.GetPermissions();
-                return new JsonResult(new { success = true, permissions = guestPermissions }) { StatusCode = StatusCodes.Status200OK };
+                return new JsonResult(new { success = true, permissions = guestPermissions, group = guestGroup.Name }) { StatusCode = StatusCodes.Status200OK };
             }
 
             // get access token by refresh token
@@ -96,7 +96,7 @@ namespace Authentication
             permissions.AddRange(userPermissions);
 
             // return list of permissions
-            return new JsonResult(new { success = true, permissions }) { StatusCode = StatusCodes.Status200OK };
+            return new JsonResult(new { success = true, permissions, group = userGroup.Name }) { StatusCode = StatusCodes.Status200OK };
         }
     }
 }
