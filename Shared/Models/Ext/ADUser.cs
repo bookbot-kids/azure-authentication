@@ -86,6 +86,46 @@ namespace Authentication.Shared.Models
         }
 
         /// <summary>
+        /// Change group for current user
+        /// </summary>
+        /// <param name="newGroupName"></param>
+        /// <returns></returns>
+        public async Task<bool> UpdateGroup(string newGroupName)
+        {
+            var group = await ADGroup.FindByName(newGroupName);
+            var groupdIds = await GroupIds();
+            if (groupdIds?.Count > 0)
+            {
+                // remove user from all other groups
+                foreach (var id in groupdIds)
+                {
+                    if (id != group.Id)
+                    {
+                        var oldGroup = await ADGroup.FindById(id);
+                        if (oldGroup != null)
+                        {
+                            var removeResult = await oldGroup.RemoveUser(ObjectId);
+                            if (!removeResult)
+                            {
+                                return false;
+                            }
+                        }
+                    }
+                }
+
+                // if user already in given group, then return success
+                if (groupdIds.FirstOrDefault(s => s == group.Id) != null)
+                {
+                    return true;
+                }
+            }
+
+            // otherwise, add user into new group
+            var addResult = await group.AddUser(ObjectId);
+            return addResult;
+        }
+
+        /// <summary>
         /// Get cosmos permission of this user
         /// </summary>
         /// <returns>List of permissions</returns>

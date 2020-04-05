@@ -53,6 +53,36 @@ namespace Authentication.Shared.Models
         public long? SubscriptionExpiredAt { get; set; }
 
         /// <summary>
+        /// Gets or sets city
+        /// </summary>
+        [JsonProperty(PropertyName = "city")]
+        public string City { get; set; }
+
+        /// <summary>
+        /// Gets or sets region
+        /// </summary>
+        [JsonProperty(PropertyName = "region")]
+        public string Region { get; set; }
+
+        /// <summary>
+        /// Gets or sets country
+        /// </summary>
+        [JsonProperty(PropertyName = "country")]
+        public string Country { get; set; }
+
+        /// <summary>
+        /// Gets or sets is EU
+        /// </summary>
+        [JsonProperty(PropertyName = "isEU")]
+        public bool? IsEU { get; set; }
+
+        /// <summary>
+        /// Gets or sets last sign in ip
+        /// </summary>
+        [JsonProperty(PropertyName = "lastSignInIP")]
+        public string LastSignInIP { get; set; }
+
+        /// <summary>
         /// Gets or sets partition
         /// </summary>
         [JsonProperty(PropertyName = "partition")]

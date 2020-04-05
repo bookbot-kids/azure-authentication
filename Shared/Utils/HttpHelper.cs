@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using Authentication.Shared.Models;
 using Extensions;
 using Microsoft.AspNetCore.Http;
@@ -86,6 +88,22 @@ namespace Authentication.Shared.Utils
         public static string GetBearerAuthorization(string token)
         {
             return Configurations.AzureB2C.BearerAuthentication + token;
+        }
+
+        /// <summary>
+        /// Get id address from client request
+        /// </summary>
+        /// <param name="request">the request</param>
+        /// <returns>ip address</returns>
+        public static string GetIpFromRequestHeaders(HttpRequest request)
+        {
+            var headers = request.Headers["X-Forwarded-For"];
+            if (headers.Count > 0)
+            {
+                return headers.FirstOrDefault().Split(new char[] { ',' }).FirstOrDefault().Split(new char[] { ':' }).FirstOrDefault();
+            }
+
+            return "";
         }
     }
 }
