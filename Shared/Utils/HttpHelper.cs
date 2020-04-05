@@ -103,7 +103,7 @@ namespace Authentication.Shared.Utils
                 return headers.FirstOrDefault().Split(new char[] { ',' }).FirstOrDefault().Split(new char[] { ':' }).FirstOrDefault();
             }
 
-            return "";
+            return null;
         }
     }
 }
