@@ -87,5 +87,17 @@ namespace Authentication.Shared.Models
         /// </summary>
         [JsonProperty(PropertyName = "partition")]
         public string Partition { get; set; }
+
+        /// <summary>
+        /// Gets or sets created at
+        /// </summary>
+        [JsonProperty(PropertyName = "createdAt")]
+        public long CreatedAt { get; set; }
+
+        /// <summary>
+        /// Gets or sets updated at
+        /// </summary>
+        [JsonProperty(PropertyName = "updatedAt")]
+        public long UpdatedAt { get; set; }
     }
 }

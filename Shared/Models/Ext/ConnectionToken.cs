@@ -66,8 +66,30 @@ namespace Authentication.Shared.Models
             var professionalUser = await User.GetByEmail(Email);
             if(professionalUser == null)
             {
-                Logger.Log.LogError($"professional email {Email} not found");
-                return;
+                Logger.Log.LogError($"professional email {Email} not found. Create a new one");
+                // create professional ad user
+                var (_, adUser) = await ADUser.FindOrCreate(Email);
+                // add professional user to new group
+                var newGroup = await ADGroup.FindByName("new");
+                var addResult = await newGroup.AddUser(adUser.ObjectId);
+                if (!addResult)
+                {
+                    Logger.Log.LogError($"can not add user {Email} into new group");
+                    return;
+                }
+
+                // create professional cosmos user
+                professionalUser = new User
+                {
+                    Id = adUser.ObjectId,
+                    Email = Email,
+                    FirstName = FirstName,
+                    LastName = LastName,
+                    Type = "professional",
+                    Partition = adUser.ObjectId
+                };
+
+                await professionalUser.CreateOrUpdate();
             }
 
             switch (State.ToLower())
@@ -194,8 +216,31 @@ namespace Authentication.Shared.Models
             var parentUser = await User.GetByEmail(Email);
             if (parentUser == null)
             {
-                Logger.Log.LogError($"professional email {Email} not found");
-                return;
+                Logger.Log.LogInformation($"parentUser email {Email} not found. Create a new one");
+                // create parent ad user
+                var (_, adUser) = await ADUser.FindOrCreate(Email);
+                // add parent user to new group
+                var newGroup = await ADGroup.FindByName("new");
+                var addResult = await newGroup.AddUser(adUser.ObjectId);
+                if (!addResult)
+                {
+                    Logger.Log.LogError($"can not add user {Email} into new group");
+                    return;
+                }
+
+                // create parent cosmos user
+                parentUser = new User
+                {
+                    Id = adUser.ObjectId,
+                    Email = Email,
+                    FirstName = FirstName,
+                    LastName = LastName,
+                    Type = "parent",
+                    Partition = adUser.ObjectId
+                };
+
+                await parentUser.CreateOrUpdate();
+
             }
 
             if (FromEmail == null)
