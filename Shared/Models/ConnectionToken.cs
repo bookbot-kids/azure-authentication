@@ -23,6 +23,18 @@ namespace Authentication.Shared.Models
         public string FromEmail { get; set; }
 
         /// <summary>
+        /// Gets or sets from first name
+        /// </summary>
+        [JsonProperty(PropertyName = "fromFirstName")]
+        public string FromFirstName { get; set; }
+
+        /// <summary>
+        /// Gets or sets from last name
+        /// </summary>
+        [JsonProperty(PropertyName = "fromLastName")]
+        public string FromLastName { get; set; }
+
+        /// <summary>
         /// Gets or sets email
         /// </summary>
         [JsonProperty(PropertyName = "email")]

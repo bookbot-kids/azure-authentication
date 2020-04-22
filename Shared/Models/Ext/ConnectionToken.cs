@@ -172,6 +172,8 @@ namespace Authentication.Shared.Models
                     FromEmail = professionalUser.Email,
                     FromId = professionalUser.Id,
                     Type = "professional",
+                    FromFirstName = FromFirstName,
+                    FromLastName = FromLastName
                 };
 
                 await newConnectionToken.CreateOrUpdate();
@@ -265,16 +267,12 @@ namespace Authentication.Shared.Models
             }
 
             //create connection token for parent
-            var connectionToken = await GetFrom(parentUser.Id, Email);
+            var connectionToken = await GetFrom(parentUser.Id, FromEmail);
             var canUpdateParent = true;
             if (connectionToken == null)
             {
                 connectionToken = new ConnectionToken();
-            } else if(connectionToken.State == "unshared")
-            {
-                // do not update in case parent is unshared
-                canUpdateParent = false;
-            }
+            } 
 
             // Create or update parent token with information
             if(canUpdateParent)
@@ -289,6 +287,8 @@ namespace Authentication.Shared.Models
                 connectionToken.ChildLastName = ChildLastName;
                 connectionToken.Permission = Permission;
                 connectionToken.State = "pending";
+                connectionToken.FromFirstName = FromFirstName;
+                connectionToken.FromLastName = FromLastName;
                 await connectionToken.CreateOrUpdate();
             }           
 
@@ -309,22 +309,22 @@ namespace Authentication.Shared.Models
 
                 await newConnection.CreateOrUpdate();
             }
-            else
-            {
-                if (connection.Permission == null)
-                {
-                    connection.Permission = "read";
-                }
+            //else
+            //{
+            //    if (connection.Permission == null)
+            //    {
+            //        connection.Permission = "read";
+            //    }
 
-                if (connection.Table == null)
-                {
-                    connection.Table = "Report";
-                }
+            //    if (connection.Table == null)
+            //    {
+            //        connection.Table = "Report";
+            //    }
 
-                connection.Partition = FromId;
-                connection.Status = "accepted";
-                await connection.CreateOrUpdate();
-            }
+            //    connection.Partition = FromId;
+            //    connection.Status = "accepted";
+            //    await connection.CreateOrUpdate();
+            //}
         }
 
         private async Task ProfessionalUnshare(User parentUser)
