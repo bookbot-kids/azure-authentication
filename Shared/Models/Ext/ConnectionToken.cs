@@ -204,9 +204,9 @@ namespace Authentication.Shared.Models
         #region professional
         public async Task ProfessionalProcess()
         {
-            // only process state invited
+            // only process state invited, unshared
             // ignore null
-            string[] acceptedStates = { "invited"};
+            string[] acceptedStates = { "invited", "unshared"};
             if (State == null || !acceptedStates.Contains(State, StringComparer.OrdinalIgnoreCase))
             {
                 Logger.Log?.LogWarning($"invalid state {State}");
@@ -243,6 +243,21 @@ namespace Authentication.Shared.Models
 
             }
 
+            switch (State.ToLower())
+            {
+                // parent invite same as parent accept professional invitation
+                case "invited":
+                    await ProfessionalInvite(parentUser);
+                    break;
+                case "unshared":
+                    await ProfessionalUnshare(parentUser);
+                    break;
+            }
+
+        }
+
+        private async Task ProfessionalInvite(User parentUser)
+        {
             if (FromEmail == null)
             {
                 Logger.Log.LogError($"from email is missing");
@@ -251,26 +266,31 @@ namespace Authentication.Shared.Models
 
             //create connection token for parent
             var connectionToken = await GetFrom(parentUser.Id, Email);
-            if(connectionToken == null)
+            var canUpdateParent = true;
+            if (connectionToken == null)
             {
-                var newConnectionToken = new ConnectionToken()
-                {
-                    FromId = parentUser.Id,
-                    Email = FromEmail,
-                    FromEmail = Email,
-                    FirstName = FirstName,
-                    LastName = LastName,
-                    Type = "parent",
-                    Partition = parentUser.Id,
-                    ChildFirstName = ChildFirstName,
-                    ChildLastName = ChildLastName,
-                    Permission = Permission,
-                    State = "pending"
-                };
-
-                await newConnectionToken.CreateOrUpdate();
+                connectionToken = new ConnectionToken();
+            } else if(connectionToken.State == "unshared")
+            {
+                // do not update in case parent is unshared
+                canUpdateParent = false;
             }
 
+            // Create or update parent token with information
+            if(canUpdateParent)
+            {
+                connectionToken.FromId = parentUser.Id;
+                connectionToken.Email = FromEmail;
+                connectionToken.FromEmail = Email;
+                connectionToken.FirstName = FirstName;
+                connectionToken.LastName = LastName;
+                connectionToken.Type = "parent";
+                connectionToken.ChildFirstName = ChildFirstName;
+                connectionToken.ChildLastName = ChildLastName;
+                connectionToken.Permission = Permission;
+                connectionToken.State = "pending";
+                await connectionToken.CreateOrUpdate();
+            }           
 
             // create connection
             var connection = await Connection.QueryBy2Users(parentUser.Id, FromId);
@@ -284,7 +304,7 @@ namespace Authentication.Shared.Models
                     Status = "pending",
                     Partition = FromId,
                     Table = "Report",
-                    Profiles = {}
+                    Profiles = { }
                 };
 
                 await newConnection.CreateOrUpdate();
@@ -305,9 +325,28 @@ namespace Authentication.Shared.Models
                 connection.Status = "accepted";
                 await connection.CreateOrUpdate();
             }
-
         }
 
-        #endregion
-    }
+        private async Task ProfessionalUnshare(User parentUser)
+        {
+            Logger.Log?.LogInformation($"unshare professional {FromEmail} and parent {parentUser.Email}");
+            var connection = await Connection.QueryBy2Users(parentUser.Id, FromId);
+            if (connection != null)
+            {
+                connection.Status = "cancelled";
+                connection.Partition = FromId;
+                await connection.CreateOrUpdate();
+            }
+
+            // update connection token of parent to deny
+            var connectionToken = await GetFrom(parentUser.Id, FromEmail);
+            if (connectionToken != null)
+            {
+                connectionToken.State = "deny";
+                await connectionToken.CreateOrUpdate();
+            }
+        }
+
+            #endregion
+        }
 }
