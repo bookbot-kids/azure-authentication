@@ -65,7 +65,7 @@ namespace Authentication.Shared.Models
         /// <returns>Permission class</returns>
         public Task<PermissionProperties> GetPermission()
         {
-            return DataService.Instance.GetPermission(User2, Table + "-shared");
+            return DataService.Instance.GetPermission(User2, Table + "-shared-" + User1);
         }
 
         /// <summary>
@@ -74,7 +74,7 @@ namespace Authentication.Shared.Models
         /// <returns>Permission class</returns>
         public Task<PermissionProperties> CreatePermission()
         {
-            return DataService.Instance.CreatePermission(User2, Table + "-shared", IsReadOnly, Table, User1);
+            return DataService.Instance.CreatePermission(User2, Table + "-shared-" + User1, IsReadOnly, Table, User1);
         }
 
         /// <summary>
@@ -83,7 +83,7 @@ namespace Authentication.Shared.Models
         /// <returns>Permission class</returns>
         public Task<PermissionProperties> UpdatePermission()
         {
-            return DataService.Instance.ReplacePermission(User2, Table + "-shared", IsReadOnly, Table, User1);
+            return DataService.Instance.ReplacePermission(User2, Table + "-shared-" + User1, IsReadOnly, Table, User1);
         }
 
         /// <summary>
@@ -92,7 +92,7 @@ namespace Authentication.Shared.Models
         /// <returns>Permission class</returns>
         public Task<PermissionProperties> GetProfilePermission()
         {
-            return DataService.Instance.GetPermission(User2, "Profile-shared");
+            return DataService.Instance.GetPermission(User2, "Profile-shared-" + User1);
         }
 
         /// <summary>
@@ -101,7 +101,7 @@ namespace Authentication.Shared.Models
         /// <returns>Permission class</returns>
         public Task<PermissionProperties> CreateProfilePermission()
         {
-            return DataService.Instance.CreatePermission(User2, "Profile-shared", IsReadOnly, "Profile", User1);
+            return DataService.Instance.CreatePermission(User2, "Profile-shared-" + User1, IsReadOnly, "Profile", User1);
         }
 
         /// <summary>
@@ -110,7 +110,7 @@ namespace Authentication.Shared.Models
         /// <returns>Permission class</returns>
         public Task<PermissionProperties> UpdateProfilePermission()
         {
-            return DataService.Instance.ReplacePermission(User2, "Profile-shared", IsReadOnly, "Profile", User1);
+            return DataService.Instance.ReplacePermission(User2, "Profile-shared-" + User1, IsReadOnly, "Profile", User1);
         }
 
     }
