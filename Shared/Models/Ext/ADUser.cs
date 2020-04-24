@@ -94,31 +94,36 @@ namespace Authentication.Shared.Models
         {
             var group = await ADGroup.FindByName(newGroupName);
             var groupdIds = await GroupIds();
-            if (groupdIds?.Count > 0)
+            if(groupdIds != null)
             {
-                // remove user from all other groups
-                foreach (var id in groupdIds)
+                if (groupdIds.Count > 0)
                 {
-                    if (id != group.Id)
+                    // remove user from all other groups
+                    foreach (var id in groupdIds)
                     {
-                        var oldGroup = await ADGroup.FindById(id);
-                        if (oldGroup != null)
+                        if (id != group.Id)
                         {
-                            var removeResult = await oldGroup.RemoveUser(ObjectId);
-                            if (!removeResult)
+                            var oldGroup = await ADGroup.FindById(id);
+                            if (oldGroup != null)
                             {
-                                return false;
+                                var removeResult = await oldGroup.RemoveUser(ObjectId);
+                                if (!removeResult)
+                                {
+                                    Logger.Log?.LogError($"can not remove user {ObjectId} from group {oldGroup.Id}");
+                                    return false;
+                                }
                             }
                         }
                     }
-                }
 
-                // if user already in given group, then return success
-                if (groupdIds.FirstOrDefault(s => s == group.Id) != null)
-                {
-                    return true;
+                    // if user already in given group, then return success
+                    if (groupdIds.FirstOrDefault(s => s == group.Id) != null)
+                    {
+                        return true;
+                    }
                 }
             }
+            
 
             // otherwise, add user into new group
             var addResult = await group.AddUser(ObjectId);
