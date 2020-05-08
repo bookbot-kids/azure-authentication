@@ -1,7 +1,9 @@
+using System.Net.Mail;
 using System.Threading.Tasks;
 using Authentication.Shared;
 using Authentication.Shared.Models;
 using Authentication.Shared.Utils;
+using Extensions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
@@ -37,7 +39,7 @@ namespace Authentication
         {
             Logger.Log = log;
 
-            if(!string.IsNullOrWhiteSpace(req.Query["refresh_token"]))
+            if (!string.IsNullOrWhiteSpace(req.Query["refresh_token"]))
             {
                 // get access token by refresh token
                 var adToken = await ADAccess.Instance.RefreshToken(req.Query["refresh_token"]);
@@ -52,7 +54,8 @@ namespace Authentication
                 {
                     return actionResult;
                 }
-            } else
+            }
+            else
             {
                 // validate auth token
                 var actionResult = await HttpHelper.VerifyAdminToken(req.Query["auth_token"]);
@@ -63,17 +66,12 @@ namespace Authentication
             }
 
             // validate user email
-            var email = req.Query["email"];
-            if (string.IsNullOrWhiteSpace(email))
-            {
-                return HttpHelper.CreateErrorResponse("email is missing");
-            }
+            string email = req.Query["email"];
 
-            // get user by email
-            var user = await ADUser.FindByEmail(email);
-            if (user == null)
+            // validate email address
+            if (string.IsNullOrWhiteSpace(email) || !email.IsValidEmailAddress())
             {
-                return HttpHelper.CreateErrorResponse("email not exist");
+                return HttpHelper.CreateErrorResponse("Email is invalid");
             }
 
             // validate role parameter
@@ -81,6 +79,19 @@ namespace Authentication
             if (group == null)
             {
                 return HttpHelper.CreateErrorResponse("Role is invalid");
+            }
+
+            // replace space by + to correct because email contains "+" will be encoded by space, like "a+1@gmail.com" -> "a 1@gmail.com"
+            email = email.Trim().Replace(" ", "+");
+
+            var name = new MailAddress(email).User;
+
+            // create user if need
+            var (_, user) = await ADUser.FindOrCreate(email, name);
+            // there is an error when creating user
+            if (user == null)
+            {
+                return HttpHelper.CreateErrorResponse($"can not create user {email}", StatusCodes.Status500InternalServerError);
             }
 
             var result = await user.UpdateGroup(group.Name);
