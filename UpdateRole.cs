@@ -1,6 +1,5 @@
-using System;
-using System.Linq;
 using System.Threading.Tasks;
+using Authentication.Shared;
 using Authentication.Shared.Models;
 using Authentication.Shared.Utils;
 using Microsoft.AspNetCore.Http;
@@ -15,7 +14,6 @@ namespace Authentication
     /// Update user role (group) azure function
     /// This function uses to update user role. It also removes all the existing roles of user before assign to new role
     /// </summary>
-    [Obsolete("This Azure function is deprecated. Will remove later")]
     public static class UpdateRole
     {
         /// <summary>
@@ -39,11 +37,29 @@ namespace Authentication
         {
             Logger.Log = log;
 
-            // validate auth token
-            var actionResult = await HttpHelper.VerifyAdminToken(req.Query["auth_token"]);
-            if (actionResult != null)
+            if(!string.IsNullOrWhiteSpace(req.Query["refresh_token"]))
             {
-                return actionResult;
+                // get access token by refresh token
+                var adToken = await ADAccess.Instance.RefreshToken(req.Query["refresh_token"]);
+                if (adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
+                {
+                    return HttpHelper.CreateErrorResponse("refresh token is invalid", StatusCodes.Status401Unauthorized);
+                }
+
+                // validate admin token
+                var actionResult = await HttpHelper.VerifyAdminToken(adToken.AccessToken);
+                if (actionResult != null)
+                {
+                    return actionResult;
+                }
+            } else
+            {
+                // validate auth token
+                var actionResult = await HttpHelper.VerifyAdminToken(req.Query["auth_token"]);
+                if (actionResult != null)
+                {
+                    return actionResult;
+                }
             }
 
             // validate user email
@@ -67,44 +83,13 @@ namespace Authentication
                 return HttpHelper.CreateErrorResponse("Role is invalid");
             }
 
-            // get all roles (groups) of user
-            var groupdIds = await user.GroupIds();
-            if (groupdIds?.Count > 0)
+            var result = await user.UpdateGroup(group.Name);
+            if(result)
             {
-                // remove user from all other groups
-                foreach (var id in groupdIds)
-                {
-                    if (id != group.Id)
-                    {
-                        var oldGroup = await ADGroup.FindById(id);
-                        if (oldGroup != null)
-                        {
-                            var removeResult = await oldGroup.RemoveUser(user.ObjectId);
-                            if (!removeResult)
-                            {
-                                return HttpHelper.CreateErrorResponse($"can not remove user from group {id}");
-                            }
-                        }                        
-                    }
-                }
-
-                // if user already in given group, then return success
-                if (groupdIds.FirstOrDefault(s => s == group.Id) != null)
-                {
-                    return HttpHelper.CreateSuccessResponse();
-                }
+                return HttpHelper.CreateSuccessResponse();
             }
 
-            // otherwise, add user into new group
-            var addResult = await group.AddUser(user.ObjectId);
-
-            if (!addResult)
-            {
-                return HttpHelper.CreateErrorResponse("can not add user into group");
-            }
-
-            // return success
-            return HttpHelper.CreateSuccessResponse();
+            return HttpHelper.CreateErrorResponse("can not add user into group");
         }
     }
 }
