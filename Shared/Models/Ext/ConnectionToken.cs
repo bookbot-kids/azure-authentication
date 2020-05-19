@@ -160,6 +160,7 @@ namespace Authentication.Shared.Models
             {
                 connectionToken.ToId = FromId;
                 connectionToken.State = "accepted";
+                connectionToken.IsFromParent = IsFromParent;
                 await connectionToken.CreateOrUpdate();
             } else
             {
@@ -178,7 +179,8 @@ namespace Authentication.Shared.Models
                     FromId = professionalUser.Id,
                     Type = "professional",
                     FromFirstName = FromFirstName,
-                    FromLastName = FromLastName
+                    FromLastName = FromLastName,
+                    IsFromParent = IsFromParent
                 };
 
                 await newConnectionToken.CreateOrUpdate();
@@ -299,6 +301,7 @@ namespace Authentication.Shared.Models
                 connectionToken.State = "pending";
                 connectionToken.FromFirstName = FromFirstName;
                 connectionToken.FromLastName = FromLastName;
+                connectionToken.IsFromParent = IsFromParent;
                 await connectionToken.CreateOrUpdate();
             }           
 

@@ -114,6 +114,12 @@ namespace Authentication.Shared.Models
         public long UpdatedAt { get; set; }
 
         /// <summary>
+        /// Gets or sets isFromParent
+        /// </summary>
+        [JsonProperty(PropertyName = "isFromParent")]
+        public bool? IsFromParent { get; set; }
+
+        /// <summary>
         /// Gets or sets partition
         /// </summary>
         [JsonProperty(PropertyName = "partition")]
