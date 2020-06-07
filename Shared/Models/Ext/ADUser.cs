@@ -141,12 +141,13 @@ namespace Authentication.Shared.Models
             await DataService.Instance.CreateUser(ObjectId);
 
             var rolePermissions = await CosmosRolePermission.QueryByIdPermissions();
+            List<Task<PermissionProperties>> tasks = new List<Task<PermissionProperties>>();
             foreach (var rolePermission in rolePermissions)
             {
                 // admin will have id-read-write permission for all tables
                 if("admin".EqualsIgnoreCase(groupName))
                 {
-                    await AddAdminPermissions(result, rolePermission);
+                    tasks.Add(GetOrCreateAdminPermissions(rolePermission));
                     continue;
                 }
 
@@ -156,108 +157,46 @@ namespace Authentication.Shared.Models
                     continue;
                 }
 
-                var permission = await DataService.Instance.GetPermission(ObjectId, rolePermission.Table);
-                if(permission == null)
-                {
-                    // create permission if not exist
-                    var newPermission = await rolePermission.CreateCosmosPermission(ObjectId, rolePermission.Table, ObjectId);
-                    if (newPermission != null)
-                    {
-                        result.Add(newPermission);
-                    }
-                    else
-                    {
-                        Logger.Log?.LogError($"error create permission ${ObjectId} ${rolePermission.Table}");
-                    }
-                } else
-                {
-                    if ((rolePermission.Permission.EqualsIgnoreCase("id-read") && permission.PermissionMode == PermissionMode.All)
-                        || (rolePermission.Permission.EqualsIgnoreCase("id-read-write") && permission.PermissionMode == PermissionMode.Read))
-                    {
-                        // rolePermission is changed, need to update in cosmos
-                        var updatedPermission = await DataService.Instance.ReplacePermission(ObjectId, rolePermission.Table,
-                            rolePermission.Permission.EqualsIgnoreCase("id-read"), rolePermission.Table, partition: ObjectId);
-                        if (updatedPermission != null)
-                        {
-                            result.Add(updatedPermission);
-                        }
-                        else
-                        {
-                            Logger.Log?.LogError($"error update permission ${ObjectId} ${rolePermission.Table}");
-                        }
-                    }
-                    else
-                    {
-                        // prevent duplicate
-                        if (!result.Any(e => e.Id == permission.Id && e.ResourceUri == permission.ResourceUri
-                         && e.ETag == permission.ETag && e.LastModified == permission.LastModified
-                         && e.PermissionMode == permission.PermissionMode))
-                        {
-                            result.Add(permission);
-                        }
-                    }
-                }
+                tasks.Add(GetOrCreateUserPermissions(rolePermission));
             }
 
-            await AddSharePermissions(result);
-            return result;
-        }
-
-        private async Task AddSharePermissions(List<PermissionProperties> result)
-        {
+            // add shared permission
             var connections = await Connection.QueryByShareUser(ObjectId);
             foreach (var connection in connections)
             {
                 // only process the accepted connection
-                if(!"accepted".EqualsIgnoreCase(connection.Status))
+                if (!"accepted".EqualsIgnoreCase(connection.Status))
                 {
                     continue;
                 }
 
-                var permission = await connection.GetPermission();
-                if (permission == null)
-                {
-                    // create permission if not exist
-                    var newPermission = await connection.CreatePermission();
-                    if (newPermission != null)
-                    {
-                        result.Add(newPermission);
-                    }
-                    else
-                    {
-                        Logger.Log?.LogError($"error create permission ${ObjectId} ${connection.Table}");
-                    }
-                }
-                else
-                {
-                    if ((connection.Permission.EqualsIgnoreCase("read") && permission.PermissionMode == PermissionMode.All)
-                        || (connection.Permission.EqualsIgnoreCase("write") && permission.PermissionMode == PermissionMode.Read))
-                    {
-                        // rolePermission is changed, need to update in cosmos
-                        var updatedPermission = await connection.UpdatePermission();
-                        if (updatedPermission != null)
-                        {
-                            result.Add(updatedPermission);
-                        }
-                        else
-                        {
-                            Logger.Log?.LogError($"error update permission ${ObjectId} ${connection.Table}");
-                        }
-                    }
-                    else
-                    {
-                        result.Add(permission);
-                    }
-                }
+                tasks.Add(GetOrCreateSharePermissions(connection));
 
+                // add shared profile permission
                 if (connection.Profiles != null && connection.Profiles.Count > 0)
                 {
-                    await AddProfilePermission(result, connection);
+                    tasks.Add(GetOrCreateShareProfilePermissions(connection));
                 }
             }
+
+            await Task.WhenAll(tasks);
+            foreach (var task in tasks)
+            {
+                if (task.Result != null)
+                {
+                    var data = task.Result;
+                    result.Add(data);
+                }
+            }
+
+            // remove duplicated
+            result = result.GroupBy(p => new { p.ETag, p.Id, p.ResourceUri, p.LastModified, p.PermissionMode, p.SelfLink })
+                        .Select(g => g.First()).ToList();
+
+            return result;
         }
 
-        private async Task AddProfilePermission(List<PermissionProperties> result, Connection connection)
+        private async Task<PermissionProperties> GetOrCreateShareProfilePermissions(Connection connection)
         {
             var permission = await connection.GetProfilePermission();
             if (permission == null)
@@ -266,7 +205,7 @@ namespace Authentication.Shared.Models
                 var newPermission = await connection.CreateProfilePermission();
                 if (newPermission != null)
                 {
-                    result.Add(newPermission);
+                    return newPermission;
                 }
                 else
                 {
@@ -282,7 +221,7 @@ namespace Authentication.Shared.Models
                     var updatedPermission = await connection.UpdateProfilePermission();
                     if (updatedPermission != null)
                     {
-                        result.Add(updatedPermission);
+                        return updatedPermission;
                     }
                     else
                     {
@@ -291,12 +230,56 @@ namespace Authentication.Shared.Models
                 }
                 else
                 {
-                    result.Add(permission);
+                    return permission;
                 }
             }
+
+            return null;
         }
 
-        private async Task AddAdminPermissions(List<PermissionProperties> result, CosmosRolePermission rolePermission)
+        private async Task<PermissionProperties> GetOrCreateUserPermissions(CosmosRolePermission rolePermission)
+        {
+            var permission = await DataService.Instance.GetPermission(ObjectId, rolePermission.Table);
+            if (permission == null)
+            {
+                // create permission if not exist
+                var newPermission = await rolePermission.CreateCosmosPermission(ObjectId, rolePermission.Table, ObjectId);
+                if (newPermission != null)
+                {
+                    return newPermission;
+                }
+                else
+                {
+                    Logger.Log?.LogError($"error create permission ${ObjectId} ${rolePermission.Table}");
+                }
+            }
+            else
+            {
+                if ((rolePermission.Permission.EqualsIgnoreCase("id-read") && permission.PermissionMode == PermissionMode.All)
+                    || (rolePermission.Permission.EqualsIgnoreCase("id-read-write") && permission.PermissionMode == PermissionMode.Read))
+                {
+                    // rolePermission is changed, need to update in cosmos
+                    var updatedPermission = await DataService.Instance.ReplacePermission(ObjectId, rolePermission.Table,
+                        rolePermission.Permission.EqualsIgnoreCase("id-read"), rolePermission.Table, partition: ObjectId);
+                    if (updatedPermission != null)
+                    {
+                        return updatedPermission;
+                    }
+                    else
+                    {
+                        Logger.Log?.LogError($"error update permission ${ObjectId} ${rolePermission.Table}");
+                    }
+                }
+                else
+                {
+                    return permission;
+                }
+            }
+
+            return null;
+        }
+
+        private async Task<PermissionProperties> GetOrCreateAdminPermissions(CosmosRolePermission rolePermission)
         {
             var adminPermission = await DataService.Instance.GetPermission(ObjectId, rolePermission.Table);
             if (adminPermission == null)
@@ -305,24 +288,56 @@ namespace Authentication.Shared.Models
                 var newPermission = await DataService.Instance.CreatePermission(ObjectId, rolePermission.Table, false, rolePermission.Table, ObjectId);
                 if (newPermission != null)
                 {
-                    result.Add(newPermission);
+                    return newPermission;
                 }
                 else
                 {
                     Logger.Log?.LogWarning($"error create admin permission ${ObjectId} ${rolePermission.Table}");
                 }
             }
+
+            return adminPermission;
+        }
+
+        private async Task<PermissionProperties> GetOrCreateSharePermissions(Connection connection)
+        {
+            var permission = await connection.GetPermission();
+            if (permission == null)
+            {
+                // create permission if not exist
+                var newPermission = await connection.CreatePermission();
+                if (newPermission != null)
+                {
+                    return newPermission;
+                }
+                else
+                {
+                    Logger.Log?.LogError($"error create permission ${ObjectId} ${connection.Table}");
+                }
+            }
             else
             {
-                // prevent duplicate
-                if (!result.Any(e => e.Id == adminPermission.Id && e.ResourceUri == adminPermission.ResourceUri
-                 && e.ETag == adminPermission.ETag && e.LastModified == adminPermission.LastModified
-                 && e.PermissionMode == adminPermission.PermissionMode))
+                if ((connection.Permission.EqualsIgnoreCase("read") && permission.PermissionMode == PermissionMode.All)
+                    || (connection.Permission.EqualsIgnoreCase("write") && permission.PermissionMode == PermissionMode.Read))
                 {
-                    result.Add(adminPermission);
+                    // rolePermission is changed, need to update in cosmos
+                    var updatedPermission = await connection.UpdatePermission();
+                    if (updatedPermission != null)
+                    {
+                        return updatedPermission;
+                    }
+                    else
+                    {
+                        Logger.Log?.LogError($"error update permission ${ObjectId} ${connection.Table}");
+                    }
                 }
-
+                else
+                {
+                    return permission;
+                }
             }
+
+            return null;
         }
     }
 }

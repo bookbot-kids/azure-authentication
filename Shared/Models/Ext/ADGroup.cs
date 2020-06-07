@@ -77,7 +77,7 @@ namespace Authentication.Shared.Models
             var cacheItem = cache.GetCacheItem("groups");
             if (cacheItem != null)
             {
-                return (List<ADGroup>) cacheItem.Value;
+                return (List<ADGroup>)cacheItem.Value;
             }
 
             // get latest list if there is no cache value
@@ -144,44 +144,42 @@ namespace Authentication.Shared.Models
             await DataService.Instance.CreateUser(Name);
 
             // admin should have read-write permission for all except tables that have id-read or id-read-write
-            if(Name.EqualsIgnoreCase("admin"))
+            if (Name.EqualsIgnoreCase("admin"))
             {
+                List<Task<PermissionProperties>> adminTasks = new List<Task<PermissionProperties>>();
                 var tables = await CosmosRolePermission.GetAllTables();
-                foreach(var table in tables)
+                foreach (var table in tables)
                 {
                     var rolePermisisons = await CosmosRolePermission.QueryByTable(table);
-                    if(rolePermisisons != null)
+                    if (rolePermisisons != null)
                     {
                         var containsIdPermission = rolePermisisons.Exists(e => e.Permission.EqualsIgnoreCase("id-read")
                         || e.Permission.EqualsIgnoreCase("id-read-write"));
-                        if(containsIdPermission)
+                        if (containsIdPermission)
                         {
                             continue;
                         }
                     }
 
-                    var permission = await DataService.Instance.GetPermission("admin", table);
-                    if(permission == null)
+                    adminTasks.Add(GetOrCreateAdminPermission(table));
+                }
+
+                await Task.WhenAll(adminTasks);
+                foreach (var task in adminTasks)
+                {
+                    if (task.Result != null)
                     {
-                        // create permission if not exist
-                        var newPermission = await DataService.Instance.CreatePermission("admin", table, false, table);
-                        if (newPermission != null)
-                        {
-                            result.Add(newPermission);
-                        }
-                        else
-                        {
-                            Logger.Log?.LogWarning($"error create permission admin - ${table}");
-                        }
-                    } else
-                    {
-                        result.Add(permission);
+                        var data = task.Result;
+                        result.Add(data);
                     }
+
                 }
 
                 return result;
             }
 
+
+            List<Task<PermissionProperties>> tasks = new List<Task<PermissionProperties>>();
             var rolePermissions = await CosmosRolePermission.QueryByRole(Name);
             foreach (var rolePermission in rolePermissions)
             {
@@ -193,46 +191,89 @@ namespace Authentication.Shared.Models
                     continue;
                 }
 
-                // get cosmos permission by id: role_name/table_name
-                var permission = await DataService.Instance.GetPermission(Name, rolePermission.Table);
-                if (permission == null)
+                tasks.Add(GetOrCreatePermission(rolePermission));
+            }
+
+            await Task.WhenAll(tasks);
+            foreach (var task in tasks)
+            {
+                if (task.Result != null)
                 {
-                    // create permission if not exist
-                    var newPermission = await rolePermission.CreateCosmosPermission(Name, rolePermission.Table);
-                    if(newPermission != null)
-                    {
-                        result.Add(newPermission);
-                    } else
-                    {
-                        Logger.Log?.LogWarning($"error create permission ${Name} ${rolePermission.Table}");
-                    }
-                   
+                    var data = task.Result;
+                    result.Add(data);
                 }
-                else
-                {
-                    if ((rolePermission.Permission.EqualsIgnoreCase("read") && permission.PermissionMode != PermissionMode.Read)
-                        || (rolePermission.Permission.EqualsIgnoreCase("read-write") && permission.PermissionMode != PermissionMode.All))
-                    {
-                        // rolePermission is changed, need to update in cosmos
-                        var updatedPermission = await DataService.Instance.ReplacePermission(Name, rolePermission.Table,
-                            rolePermission.Permission.EqualsIgnoreCase("read"), rolePermission.Table);
-                        if (updatedPermission != null)
-                        {
-                            result.Add(updatedPermission);
-                        }
-                        else
-                        {
-                            Logger.Log?.LogWarning($"error update permission ${Name} ${rolePermission.Table}");
-                        }
-                    }
-                    else
-                    {
-                        result.Add(permission);
-                    }
-                }
+
             }
 
             return result;
+        }
+
+        private async Task<PermissionProperties> GetOrCreateAdminPermission(string table)
+        {
+            var permission = await DataService.Instance.GetPermission("admin", table);
+            if (permission == null)
+            {
+                // create permission if not exist
+                var newPermission = await DataService.Instance.CreatePermission("admin", table, false, table);
+                if (newPermission != null)
+                {
+                    return newPermission;
+                }
+                else
+                {
+                    Logger.Log?.LogWarning($"error create permission admin - ${table}");
+                }
+            }
+            else
+            {
+                return permission;
+            }
+
+            return null;
+        }
+
+        private async Task<PermissionProperties> GetOrCreatePermission(CosmosRolePermission rolePermission)
+        {
+            // get cosmos permission by id: role_name/table_name
+            var permission = await DataService.Instance.GetPermission(Name, rolePermission.Table);
+            if (permission == null)
+            {
+                // create permission if not exist
+                var newPermission = await rolePermission.CreateCosmosPermission(Name, rolePermission.Table);
+                if (newPermission != null)
+                {
+                    return newPermission;
+                }
+                else
+                {
+                    Logger.Log?.LogWarning($"error create permission ${Name} ${rolePermission.Table}");
+                }
+
+            }
+            else
+            {
+                if ((rolePermission.Permission.EqualsIgnoreCase("read") && permission.PermissionMode != PermissionMode.Read)
+                    || (rolePermission.Permission.EqualsIgnoreCase("read-write") && permission.PermissionMode != PermissionMode.All))
+                {
+                    // rolePermission is changed, need to update in cosmos
+                    var updatedPermission = await DataService.Instance.ReplacePermission(Name, rolePermission.Table,
+                        rolePermission.Permission.EqualsIgnoreCase("read"), rolePermission.Table);
+                    if (updatedPermission != null)
+                    {
+                        return updatedPermission;
+                    }
+                    else
+                    {
+                        Logger.Log?.LogWarning($"error update permission ${Name} ${rolePermission.Table}");
+                    }
+                }
+                else
+                {
+                    return permission;
+                }
+            }
+
+            return null;
         }
     }
 }
