@@ -66,7 +66,7 @@ namespace Authentication
             var (result, message, id) = await ADAccess.Instance.ValidateAccessToken(adToken.AccessToken);
             if (!result)
             {
-                return HttpHelper.CreateErrorResponse(message, StatusCodes.Status401Unauthorized);
+                return HttpHelper.CreateErrorResponse(message, StatusCodes.Status403Forbidden);
             }
 
             // find ad user by its email
