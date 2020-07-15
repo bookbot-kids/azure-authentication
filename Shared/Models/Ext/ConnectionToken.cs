@@ -8,8 +8,17 @@ using Microsoft.Extensions.Logging;
 
 namespace Authentication.Shared.Models
 {
+    /// <summary>
+    /// Cosmos ConnectionToken
+    /// It contains all the methods to manages ConnectionToken
+    /// </summary>
     public partial class ConnectionToken
     {
+        /// <summary>
+        /// Get record by id
+        /// </summary>
+        /// <param name="id">record id</param>
+        /// <returns>ConnectionToken or null</returns>
         public static async Task<ConnectionToken> GetById(string id)
         {
             var query = new QueryDefinition("select * from c where c.id = @id").WithParameter("@id", id);
@@ -17,6 +26,12 @@ namespace Authentication.Shared.Models
             return result.Count == 0 ? null : result[0];
         }
 
+        /// <summary>
+        /// Get record from user & email
+        /// </summary>
+        /// <param name="fromId">From user id</param>
+        /// <param name="email">user email</param>
+        /// <returns>ConnectionToken or null</returns>
         public static async Task<ConnectionToken> GetFrom(string fromId, string email)
         {
             var query = new QueryDefinition("select * from c where c.fromId = @id and c.email = @email")
@@ -52,6 +67,11 @@ namespace Authentication.Shared.Models
         }
 
         #region parents
+        /// <summary>
+        /// This function can handle the changes from ConnectionToken of parent
+        /// It only accepts invited, shared, unshared states
+        /// </summary>
+        /// <returns>Nothing</returns>
         public async Task ParentProcess()
         {
             // only process state invited, shared, unshared
@@ -110,6 +130,12 @@ namespace Authentication.Shared.Models
             }
         }
 
+        /// <summary>
+        /// Process when parent accepts the invitation
+        /// It creates new Connection record for sharing a table
+        /// </summary>
+        /// <param name="professionalUser"></param>
+        /// <returns>Nothing</returns>
         private async Task ParentAccepted(User professionalUser)
         {
             var profiles = await Profile.GetByUserId(FromId);
@@ -188,6 +214,12 @@ namespace Authentication.Shared.Models
 
         }
 
+        /// <summary>
+        /// Process when parent denies the invitation
+        /// It will change the Connection record into cancelled or deny state
+        /// </summary>
+        /// <param name="professionalUser"></param>
+        /// <returns>Nothing</returns>
         private async Task ParentDeny(User professionalUser)
         {
             var connection = await Connection.QueryBy2Users(FromId, professionalUser.Id);
@@ -211,6 +243,11 @@ namespace Authentication.Shared.Models
         #endregion
 
         #region professional
+        /// <summary>
+        /// This function can handle the changes from ConnectionToken of professional
+        /// It only accepts invited, unshared states
+        /// </summary>
+        /// <returns>Nothing</returns>
         public async Task ProfessionalProcess()
         {
             // only process state invited, unshared
@@ -270,6 +307,11 @@ namespace Authentication.Shared.Models
 
         }
 
+        /// <summary>
+        /// Process when professional invites a parent
+        /// </summary>
+        /// <param name="parentUser">Parent user</param>
+        /// <returns>Nothing</returns>
         private async Task ProfessionalInvite(User parentUser)
         {
             if (FromEmail == null)
@@ -340,6 +382,11 @@ namespace Authentication.Shared.Models
             //}
         }
 
+        /// <summary>
+        /// Process when professional unshared the sharing connection with parent
+        /// </summary>
+        /// <param name="parentUser">Parent user</param>
+        /// <returns>Nothing</returns>
         private async Task ProfessionalUnshare(User parentUser)
         {
             Logger.Log?.LogInformation($"unshare professional {FromEmail} and parent {parentUser.Email}");

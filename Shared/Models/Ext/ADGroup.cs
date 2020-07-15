@@ -208,6 +208,12 @@ namespace Authentication.Shared.Models
             return result;
         }
 
+        /// <summary>
+        /// Get or create Cosmos permission (resource tokens) for admin role.
+        /// It will create Cosmos permision if does not exist
+        /// </summary>
+        /// <param name="table">The cosmos table</param>
+        /// <returns>A permission class or null</returns>
         private async Task<PermissionProperties> GetOrCreateAdminPermission(string table)
         {
             var permission = await DataService.Instance.GetPermission("admin", table);
@@ -232,6 +238,12 @@ namespace Authentication.Shared.Models
             return null;
         }
 
+        /// <summary>
+        /// Get or create Cosmos permission (resource tokens) base on role (AD group)
+        /// It will create Cosmos permision if does not exist
+        /// </summary>
+        /// <param name="rolePermission">The role permission record</param>
+        /// <returns>A permission class or null</returns>
         private async Task<PermissionProperties> GetOrCreatePermission(CosmosRolePermission rolePermission)
         {
             // get cosmos permission by id: role_name/table_name

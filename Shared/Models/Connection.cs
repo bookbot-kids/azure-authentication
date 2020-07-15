@@ -4,6 +4,10 @@ using Newtonsoft.Json;
 
 namespace Authentication.Shared.Models
 {
+    /// <summary>
+    /// Cosmos connection modal
+    /// Contains all the properties
+    /// </summary>
     public partial class Connection
     {
         /// <summary>

@@ -2,6 +2,10 @@
 
 namespace Authentication.Shared.Models
 {
+    /// <summary>
+    /// Cosmos ConnectionToken modal
+    /// Contains all the properties
+    /// </summary>
     public partial class ConnectionToken
     {
         /// <summary>

@@ -196,6 +196,11 @@ namespace Authentication.Shared.Models
             return result;
         }
 
+        /// <summary>
+        /// Get or create cosmos permission for shared Profile table
+        /// </summary>
+        /// <param name="connection">The connection record</param>
+        /// <returns>A permission class or null</returns>
         private async Task<PermissionProperties> GetOrCreateShareProfilePermissions(Connection connection)
         {
             var permission = await connection.GetProfilePermission();
@@ -237,6 +242,11 @@ namespace Authentication.Shared.Models
             return null;
         }
 
+        /// <summary>
+        /// Get or create Cosmos permission for a user
+        /// </summary>
+        /// <param name="rolePermission">The role permission record</param>
+        /// <returns>A permission class or null</returns>
         private async Task<PermissionProperties> GetOrCreateUserPermissions(CosmosRolePermission rolePermission)
         {
             var permission = await DataService.Instance.GetPermission(ObjectId, rolePermission.Table);
@@ -279,6 +289,11 @@ namespace Authentication.Shared.Models
             return null;
         }
 
+        /// <summary>
+        /// Get or create Cosmos permission for an admin user
+        /// </summary>
+        /// <param name="rolePermission">The role permission record</param>
+        /// <returns>A permission class or null</returns>
         private async Task<PermissionProperties> GetOrCreateAdminPermissions(CosmosRolePermission rolePermission)
         {
             var adminPermission = await DataService.Instance.GetPermission(ObjectId, rolePermission.Table);
@@ -299,6 +314,11 @@ namespace Authentication.Shared.Models
             return adminPermission;
         }
 
+        /// <summary>
+        /// Get or create shared cosmos permission base on Connection record
+        /// </summary>
+        /// <param name="connection">The role permission record</param>
+        /// <returns>A permission class or null</returns>
         private async Task<PermissionProperties> GetOrCreateSharePermissions(Connection connection)
         {
             var permission = await connection.GetPermission();

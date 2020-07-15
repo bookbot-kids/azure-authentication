@@ -5,8 +5,17 @@ using Microsoft.Azure.Cosmos;
 
 namespace Authentication.Shared.Models
 {
+    /// <summary>
+    /// Profile cosmos modal
+    /// </summary>
     public partial class Profile
     {
+        /// <summary>
+        /// Get a profile by id
+        /// </summary>
+        /// <param name="userId">User id</param>
+        /// <param name="profileId">Profile id</param>
+        /// <returns>Profile record or null</returns>
         public static async Task<Profile> GetById(string userId, string profileId)
         {
             var query = new QueryDefinition("select * from c where c.id = @id").WithParameter("@id", profileId);
@@ -14,6 +23,11 @@ namespace Authentication.Shared.Models
             return result.Count == 0 ? null : result[0];
         }
 
+        /// <summary>
+        /// Get list of profile by user id
+        /// </summary>
+        /// <param name="userId">User id</param>
+        /// <returns>List of profiles</returns>
         public static async Task<List<Profile>> GetByUserId(string userId)
         {
             var query = new QueryDefinition("select * from c where c.userId = @userId").WithParameter("@userId", userId);

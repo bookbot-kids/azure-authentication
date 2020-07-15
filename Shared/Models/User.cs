@@ -2,6 +2,9 @@
 
 namespace Authentication.Shared.Models
 {
+    /// <summary>
+    /// Cosmos user modal
+    /// </summary>
     public partial class User
     {
         /// <summary>

@@ -11,8 +11,23 @@ using Authentication.Shared.Models;
 
 namespace Authentication
 {
+    /// <summary>
+    /// Get user info azure function
+    /// This function uses to get user info (User table) from cosmos
+    /// </summary>
     public static class GetUserInfo
     {
+        /// <summary>
+        /// A http (Get, Post) method to get cosmos user record <br/>
+        /// Parameters:<br/>
+        /// <list type="bullet">
+        /// <item><description>"client_token": The client token to prevent spamming server. This token is generated from client by JWT</description></item>
+        /// <item><description>"email": User email</description></item>
+        /// </list> 
+        /// </summary>
+        /// <param name="req">HttpRequest type. It does contains parameters, headers...</param>
+        /// <param name="log">The logger instance</param>
+        /// <returns>A cosmos User record</returns>
         [FunctionName("GetUserInfo")]
         public static async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,

@@ -2,6 +2,9 @@
 
 namespace Authentication.Shared.Models
 {
+    /// <summary>
+    /// Cosmos profile model
+    /// </summary>
     public partial class Profile
     {
         /// <summary>

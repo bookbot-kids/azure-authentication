@@ -5,8 +5,16 @@ using Microsoft.Azure.Cosmos;
 
 namespace Authentication.Shared.Models
 {
+    /// <summary>
+    /// Cosmos user modal
+    /// </summary>
     public partial class User
     {
+        /// <summary>
+        /// Get a user by id
+        /// </summary>
+        /// <param name="id">user id</param>
+        /// <returns>User record or null</returns>
         public static async Task<User> GetById(string id)
         {
             var query = new QueryDefinition("select * from c where c.id = @id").WithParameter("@id", id);
@@ -14,6 +22,11 @@ namespace Authentication.Shared.Models
             return result.Count == 0 ? null : result[0];
         }
 
+        /// <summary>
+        /// Search user by email
+        /// </summary>
+        /// <param name="email">User email</param>
+        /// <returns>User record or null</returns>
         public static async Task<User> GetByEmail(string email)
         {
             if(email != null)
@@ -26,6 +39,10 @@ namespace Authentication.Shared.Models
             return result.Count == 0 ? null : result[0];
         }
 
+        /// <summary>
+        /// Create or update a user record
+        /// </summary>
+        /// <returns>User record</returns>
         public async Task<User> CreateOrUpdate()
         {
             if (Id == null)
