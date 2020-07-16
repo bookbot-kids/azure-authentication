@@ -9,6 +9,8 @@ namespace Authentication.Shared.Utils
     /// </summary>
     public class TimeTracking
     {
+        private readonly bool enableTracking = true;
+
         /// <summary>
         /// Stopwatch to count time
         /// </summary>
@@ -22,9 +24,13 @@ namespace Authentication.Shared.Utils
         /// <summary>
         /// Initialize stopwatch for the whole function
         /// </summary>
-        public TimeTracking()
+        public TimeTracking(bool enableTracking = true)
         {
-            rootStopwatch = Stopwatch.StartNew();
+            this.enableTracking = enableTracking;
+            if(enableTracking)
+            {
+                rootStopwatch = Stopwatch.StartNew();
+            }
         }
 
         /// <summary>
@@ -32,6 +38,11 @@ namespace Authentication.Shared.Utils
         /// </summary>
         public void BeginTracking()
         {
+            if(!enableTracking)
+            {
+                return;
+            }
+
             try
             {
                 stopwatch.Start();
@@ -48,6 +59,11 @@ namespace Authentication.Shared.Utils
         /// <param name="message">Log message</param>
         public void EndTracking(string message)
         {
+            if (!enableTracking)
+            {
+                return;
+            }
+
             try
             {
                 stopwatch.Stop();
@@ -64,15 +80,18 @@ namespace Authentication.Shared.Utils
         /// </summary>
         ~TimeTracking()  // finalizer
         {
-            try
+            if (enableTracking)
             {
-                rootStopwatch.Stop();
-                Logger.Log?.LogInformation($"Function executed in {rootStopwatch.ElapsedMilliseconds} ms");
-                rootStopwatch.Reset();
-            }
-            catch (Exception ex)
-            {
-                Logger.Log?.LogError($"EndTracking error {ex.Message}");
+                try
+                {
+                    rootStopwatch.Stop();
+                    Logger.Log?.LogInformation($"Function executed in {rootStopwatch.ElapsedMilliseconds} ms");
+                    rootStopwatch.Reset();
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log?.LogError($"EndTracking error {ex.Message}");
+                }
             }
         }
 
