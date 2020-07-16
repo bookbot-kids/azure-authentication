@@ -38,13 +38,6 @@ namespace Authentication
 
             // validate client token to prevent spamming
             var tracking = new TimeTracking();
-            tracking.BeginTracking();
-            var (clientResult, clientMessage, _) = ADAccess.Instance.ValidateClientToken(req.Query["client_token"]);
-            tracking.EndTracking($"ValidateClientToken");
-            if (!clientResult)
-            {
-                return HttpHelper.CreateErrorResponse(clientMessage);
-            }
 
             // validate b2c refresh token
             string refreshToken = req.Query["refresh_token"];

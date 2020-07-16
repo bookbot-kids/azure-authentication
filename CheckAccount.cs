@@ -40,15 +40,6 @@ namespace Authentication
             Logger.Log = log;
             var tracking = new TimeTracking();
 
-            // validate client token by issuer & subject. Return error if token is invalid
-            tracking.BeginTracking();
-            var (result, message, _) = ADAccess.Instance.ValidateClientToken(req.Query["client_token"]);
-            tracking.EndTracking("ValidateClientToken");
-            if (!result)
-            {
-                return HttpHelper.CreateErrorResponse(message);
-            }
-
             string email = req.Query["email"];
 
             // validate email address
