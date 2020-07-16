@@ -36,8 +36,11 @@ namespace Authentication
         {
             Logger.Log = log;
 
-            // validate client token to prevent spamming 
+            // validate client token to prevent spamming
+            var tracking = new TimeTracking();
+            tracking.BeginTracking();
             var (clientResult, clientMessage, _) = ADAccess.Instance.ValidateClientToken(req.Query["client_token"]);
+            tracking.EndTracking($"ValidateClientToken");
             if (!clientResult)
             {
                 return HttpHelper.CreateErrorResponse(clientMessage);
@@ -56,27 +59,36 @@ namespace Authentication
             }
 
             // get access token by refresh token
+            tracking.BeginTracking();
             var adToken = await ADAccess.Instance.RefreshToken(refreshToken);
             if(adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
             {
                 return HttpHelper.CreateErrorResponse("refresh token is invalid", StatusCodes.Status401Unauthorized);
             }
 
+            tracking.EndTracking("get access token by refresh token");
+
+            tracking.BeginTracking();
             // Validate the access token, then get id
             var (result, message, id) = await ADAccess.Instance.ValidateAccessToken(adToken.AccessToken);
+            tracking.EndTracking($"Validate the access token, then get id");
+
             if (!result)
             {
                 return HttpHelper.CreateErrorResponse(message, StatusCodes.Status403Forbidden);
             }
 
+            tracking.BeginTracking();
             // find ad user by its email
             var user = await ADUser.FindById(id);
+            tracking.EndTracking($"find ad user by its email");
             if (user == null)
             {
                 return HttpHelper.CreateErrorResponse("user not exist");
             }
 
             // check role of user
+            tracking.BeginTracking();
             ADGroup userGroup = null;
             var groupIds = await user.GroupIds();
             if (groupIds != null && groupIds.Count > 0)
@@ -88,16 +100,25 @@ namespace Authentication
                 }
             }
 
-            if(userGroup == null)
+            tracking.EndTracking($"get role of user");
+
+            if (userGroup == null)
             {
+                tracking.BeginTracking();
                 userGroup = await ADGroup.FindByName(Configurations.AzureB2C.GuestGroup);
+                tracking.EndTracking($"Find group by name");
             }
 
             // get group permissions
+            tracking.BeginTracking();
             var permissions = await userGroup.GetPermissions();
+            tracking.EndTracking($"Get permission of group");
 
             // get user permissions
+            tracking.BeginTracking();
             var userPermissions = await user.GetPermissions(userGroup.Name);
+            tracking.EndTracking($"Get permission of user");
+
             permissions.AddRange(userPermissions);
 
             // return list of permissions

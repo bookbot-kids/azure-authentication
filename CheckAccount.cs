@@ -38,9 +38,12 @@ namespace Authentication
         {
             // Set the logger instance
             Logger.Log = log;
+            var tracking = new TimeTracking();
 
             // validate client token by issuer & subject. Return error if token is invalid
+            tracking.BeginTracking();
             var (result, message, _) = ADAccess.Instance.ValidateClientToken(req.Query["client_token"]);
+            tracking.EndTracking("ValidateClientToken");
             if (!result)
             {
                 return HttpHelper.CreateErrorResponse(message);
@@ -60,7 +63,8 @@ namespace Authentication
             var name = new MailAddress(email).User;
 
             // check if email is existed in b2c. If it is, return that user
-            var(exist, user) = await ADUser.FindOrCreate(email, name);
+            tracking.BeginTracking();
+            var (exist, user) = await ADUser.FindOrCreate(email, name);
             if (exist)
             {
                 // Get group of exist user
@@ -75,8 +79,11 @@ namespace Authentication
                     }   
                 }
 
+                tracking.EndTracking($"Validate existing email");
                 return new JsonResult(new { success = true, exist, user, group = userGroupName }) { StatusCode = StatusCodes.Status200OK };
             }
+
+            tracking.EndTracking($"Validate new email");
 
             // there is an error when creating user
             if (user == null)
@@ -85,8 +92,10 @@ namespace Authentication
             }
 
             // add user to new group
+            tracking.BeginTracking();
             var newGroup = await ADGroup.FindByName("new");
             var addResult = await newGroup.AddUser(user.ObjectId);
+            tracking.EndTracking($"add user to new group");
 
             // there is an error when add user into new group
             if (!addResult)

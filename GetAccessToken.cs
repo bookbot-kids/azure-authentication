@@ -54,8 +54,11 @@ namespace Authentication
         /// <returns>Access token result with http code 200 if no error, otherwise return http error</returns>
         private static async Task<IActionResult> GetAccessTokenFromIdToken(string idToken)
         {
+            var tracking = new TimeTracking();
             // validate id token and get the email
-            var(result, message, email) = await ADAccess.Instance.ValidateIdToken(idToken);
+            tracking.BeginTracking();
+            var (result, message, email) = await ADAccess.Instance.ValidateIdToken(idToken);
+            tracking.EndTracking($"validate id token and get the email");
             if (!result)
             {
                 return HttpHelper.CreateErrorResponse(message);
@@ -64,12 +67,15 @@ namespace Authentication
             try
             {
                 // using email (and generated password) to get access token
+                tracking.BeginTracking();
                 var token = await ADAccess.Instance.GetAccessToken(email);
-                if(token == null)
+                tracking.EndTracking($"get access token from email");
+                if (token == null)
                 {
                     return HttpHelper.CreateErrorResponse("Can not get access token. The username or password provided in the request are invalid");
                 }
 
+                tracking.BeginTracking();
                 var user = await ADUser.FindByEmail(email);
                 var group = "new";
                 if (user != null)
@@ -85,7 +91,9 @@ namespace Authentication
                         }
                     }
                 }
-                
+
+                tracking.EndTracking($"find user and group");
+
 
                 // return access token result
                 return new JsonResult(new { success = true, token, group }) { StatusCode = StatusCodes.Status200OK };
