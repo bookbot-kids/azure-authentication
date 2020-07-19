@@ -1,6 +1,5 @@
 using System.Net.Mail;
 using System.Threading.Tasks;
-using Authentication.Shared;
 using Authentication.Shared.Models;
 using Authentication.Shared.Utils;
 using Extensions;
@@ -70,7 +69,12 @@ namespace Authentication
                     }   
                 }
 
-                tracking.EndTracking($"Validate existing email");
+                tracking.EndTracking($"Validate existing email {email} with id {user.ObjectId ?? ""}");
+                if(string.IsNullOrWhiteSpace(user.ObjectId))
+                {
+                    return HttpHelper.CreateErrorResponse($"user {email} does not have ObjectId", StatusCodes.Status500InternalServerError);
+                }
+              
                 return new JsonResult(new { success = true, exist, user, group = userGroupName }) { StatusCode = StatusCodes.Status200OK };
             }
 
@@ -82,11 +86,16 @@ namespace Authentication
                 return HttpHelper.CreateErrorResponse($"can not create user {email}", StatusCodes.Status500InternalServerError);
             }
 
+            if (string.IsNullOrWhiteSpace(user.ObjectId))
+            {
+                return HttpHelper.CreateErrorResponse($"user {email} does not have ObjectId", StatusCodes.Status500InternalServerError);
+            }
+
             // add user to new group
             tracking.BeginTracking();
             var newGroup = await ADGroup.FindByName("new");
             var addResult = await newGroup.AddUser(user.ObjectId);
-            tracking.EndTracking($"add user to new group");
+            tracking.EndTracking($"add user {email} with id {user.ObjectId} to new group");
 
             // there is an error when add user into new group
             if (!addResult)
@@ -94,7 +103,7 @@ namespace Authentication
                 return HttpHelper.CreateErrorResponse($"can not add user {email} into new group", StatusCodes.Status500InternalServerError);
             }
 
-            // Success, retunr user info
+            // Success, return user info
             return new JsonResult(new { success = true, exist, user, group = "new" }) { StatusCode = StatusCodes.Status200OK };
         }
     }
