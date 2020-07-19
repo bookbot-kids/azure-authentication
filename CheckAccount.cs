@@ -45,7 +45,7 @@ namespace Authentication
             // validate email address
             if (string.IsNullOrWhiteSpace(email) || !email.IsValidEmailAddress())
             {
-                return HttpHelper.CreateErrorResponse("Email is invalid");
+                return HttpHelper.CreateErrorResponse($"Email {email ?? ""} is invalid");
             }
 
             // replace space by + to correct because email contains "+" will be encoded by space, like "a+1@gmail.com" -> "a 1@gmail.com"

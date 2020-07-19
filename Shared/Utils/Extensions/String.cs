@@ -38,8 +38,8 @@ namespace Extensions
         {
             try
             {
-                MailAddress m = new MailAddress(address);
-                return true;
+                MailAddress mail = new MailAddress(address);
+                return mail.Address == address;
             }
             catch (FormatException)
             {
