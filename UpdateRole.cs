@@ -1,4 +1,3 @@
-using System.Net.Mail;
 using System.Threading.Tasks;
 using Authentication.Shared;
 using Authentication.Shared.Models;
@@ -84,7 +83,7 @@ namespace Authentication
             // replace space by + to correct because email contains "+" will be encoded by space, like "a+1@gmail.com" -> "a 1@gmail.com"
             email = email.Trim().Replace(" ", "+");
 
-            var name = new MailAddress(email).User;
+            string name = email.GetNameFromEmail();
 
             // create user if need
             var (_, user) = await ADUser.FindOrCreate(email, name);

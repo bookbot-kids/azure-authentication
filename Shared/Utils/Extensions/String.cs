@@ -32,18 +32,35 @@ namespace Extensions
         /// <summary>
         /// Check is email is valid
         /// </summary>
-        /// <param name="address">email address</param>
+        /// <param name="email">email address</param>
         /// <returns>true if email is valid</returns>
-        public static bool IsValidEmailAddress(this string address)
+        public static bool IsValidEmailAddress(this string email)
         {
             try
             {
-                MailAddress mail = new MailAddress(address);
-                return mail.Address == address;
+                new MailAddress(email);
+                return true;
             }
-            catch (FormatException)
+            catch (Exception)
             {
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Get name from an email
+        /// </summary>
+        /// <param name="email">email address</param>
+        /// <returns>name or null</returns>
+        public static string GetNameFromEmail(this string email)
+        {
+            try
+            {
+                return new MailAddress(email).User;
+            }
+            catch (Exception)
+            {
+                return null;
             }
         }
 

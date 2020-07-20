@@ -1,4 +1,3 @@
-using System.Net.Mail;
 using System.Threading.Tasks;
 using Authentication.Shared.Models;
 using Authentication.Shared.Utils;
@@ -42,15 +41,20 @@ namespace Authentication
             string email = req.Query["email"];
 
             // validate email address
-            if (string.IsNullOrWhiteSpace(email) || !email.IsValidEmailAddress())
+            if (string.IsNullOrWhiteSpace(email))
             {
-                return HttpHelper.CreateErrorResponse($"Email {email ?? ""} is invalid");
+                return HttpHelper.CreateErrorResponse($"Email is empty");
+            }
+
+            if (!email.IsValidEmailAddress())
+            {
+                return HttpHelper.CreateErrorResponse($"Email {email} is invalid");
             }
 
             // replace space by + to correct because email contains "+" will be encoded by space, like "a+1@gmail.com" -> "a 1@gmail.com"
             email = email.Trim().Replace(" ", "+");
 
-            var name = new MailAddress(email).User;
+            string name = email.GetNameFromEmail();
 
             // check if email is existed in b2c. If it is, return that user
             tracking.BeginTracking();
