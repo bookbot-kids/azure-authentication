@@ -12,14 +12,14 @@ namespace Authentication.Shared.Utils
         private readonly bool enableTracking = true;
 
         /// <summary>
-        /// Stopwatch to count time
+        /// Stopwatch to count time of each part
         /// </summary>
         private readonly Stopwatch stopwatch = new Stopwatch();
 
         /// <summary>
         /// The stopwatch to count the whole execution time
         /// </summary>
-        private Stopwatch rootStopwatch;
+        private readonly Stopwatch rootStopwatch;
 
         /// <summary>
         /// Initialize stopwatch for the whole function
@@ -76,17 +76,45 @@ namespace Authentication.Shared.Utils
         }
 
         /// <summary>
-        /// Deconstructor to log the execute time
+        /// Stop the whole counter to log the execute time
         /// </summary>
-        ~TimeTracking()  // finalizer
+        public void Stop(string message)
         {
             if (enableTracking)
             {
                 try
                 {
                     rootStopwatch.Stop();
-                    Logger.Log?.LogInformation($"Function executed in {rootStopwatch.ElapsedMilliseconds} ms");
+                    Logger.Log?.LogInformation($"{message} executed in {rootStopwatch.ElapsedMilliseconds} ms");
                     rootStopwatch.Reset();
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log?.LogError($"EndTracking error {ex.Message}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Deconstructor, stop the watch if it doesn't stop
+        /// </summary>
+        ~TimeTracking()
+        {
+            if (enableTracking)
+            {
+                try
+                {
+                    if(rootStopwatch.IsRunning)
+                    {
+                        rootStopwatch.Stop();
+                        rootStopwatch.Reset();
+                    }
+
+                    if(stopwatch.IsRunning)
+                    {
+                        stopwatch.Stop();
+                        stopwatch.Reset();
+                    }
                 }
                 catch (Exception ex)
                 {

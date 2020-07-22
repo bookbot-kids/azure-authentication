@@ -134,6 +134,7 @@ namespace Authentication.Shared.Models
         /// <returns>List of permissions</returns>
         public async Task<List<PermissionProperties>> GetPermissions()
         {
+            var tracking = new TimeTracking();
             var result = new List<PermissionProperties>();
             if (string.IsNullOrWhiteSpace(Name))
             {
@@ -141,13 +142,18 @@ namespace Authentication.Shared.Models
             }
 
             // create user if needed
+            tracking.BeginTracking();
             await DataService.Instance.CreateUser(Name);
+            tracking.EndTracking($"Create user {Name}");
 
             // admin should have read-write permission for all except tables that have id-read or id-read-write
             if (Name.EqualsIgnoreCase("admin"))
             {
                 List<Task<PermissionProperties>> adminTasks = new List<Task<PermissionProperties>>();
+                tracking.BeginTracking();
                 var tables = await CosmosRolePermission.GetAllTables();
+                tracking.EndTracking($"Query all RolePermissions records for admin");
+                tracking.BeginTracking();
                 foreach (var table in tables)
                 {
                     var rolePermisisons = await CosmosRolePermission.QueryByTable(table);
@@ -163,8 +169,9 @@ namespace Authentication.Shared.Models
 
                     adminTasks.Add(GetOrCreateAdminPermission(table));
                 }
-
+               
                 await Task.WhenAll(adminTasks);
+                tracking.EndTracking($"Executed admin group permissions tasks");
                 foreach (var task in adminTasks)
                 {
                     if (task.Result != null)
@@ -180,7 +187,10 @@ namespace Authentication.Shared.Models
 
 
             List<Task<PermissionProperties>> tasks = new List<Task<PermissionProperties>>();
+            tracking.BeginTracking();
             var rolePermissions = await CosmosRolePermission.QueryByRole(Name);
+            tracking.EndTracking($"Query all RolePermissions records for {Name}");
+            tracking.BeginTracking();
             foreach (var rolePermission in rolePermissions)
             {
                 // don't return none, id-read, id-read-write permission in that group
@@ -194,7 +204,10 @@ namespace Authentication.Shared.Models
                 tasks.Add(GetOrCreatePermission(rolePermission));
             }
 
+          
             await Task.WhenAll(tasks);
+            tracking.EndTracking($"All group permissions tasks");
+
             foreach (var task in tasks)
             {
                 if (task.Result != null)
@@ -216,11 +229,16 @@ namespace Authentication.Shared.Models
         /// <returns>A permission class or null</returns>
         private async Task<PermissionProperties> GetOrCreateAdminPermission(string table)
         {
+            var tracking = new TimeTracking();
+            tracking.BeginTracking();
             var permission = await DataService.Instance.GetPermission("admin", table);
+            tracking.EndTracking($"GetAddPermission for {table}");
             if (permission == null)
             {
                 // create permission if not exist
+                tracking.BeginTracking();
                 var newPermission = await DataService.Instance.CreatePermission("admin", table, false, table);
+                tracking.EndTracking($"Create new permission for {table}");
                 if (newPermission != null)
                 {
                     return newPermission;
@@ -246,12 +264,17 @@ namespace Authentication.Shared.Models
         /// <returns>A permission class or null</returns>
         private async Task<PermissionProperties> GetOrCreatePermission(CosmosRolePermission rolePermission)
         {
+            var tracking = new TimeTracking();
             // get cosmos permission by id: role_name/table_name
+            tracking.BeginTracking();
             var permission = await DataService.Instance.GetPermission(Name, rolePermission.Table);
+            tracking.EndTracking($"GetPermission {rolePermission.Table} for {Name}");
             if (permission == null)
             {
                 // create permission if not exist
+                tracking.BeginTracking();
                 var newPermission = await rolePermission.CreateCosmosPermission(Name, rolePermission.Table);
+                tracking.EndTracking($"Create new permission {rolePermission.Table} for {Name}");
                 if (newPermission != null)
                 {
                     return newPermission;
@@ -267,9 +290,11 @@ namespace Authentication.Shared.Models
                 if ((rolePermission.Permission.EqualsIgnoreCase("read") && permission.PermissionMode != PermissionMode.Read)
                     || (rolePermission.Permission.EqualsIgnoreCase("read-write") && permission.PermissionMode != PermissionMode.All))
                 {
+                    tracking.BeginTracking();
                     // rolePermission is changed, need to update in cosmos
                     var updatedPermission = await DataService.Instance.ReplacePermission(Name, rolePermission.Table,
                         rolePermission.Permission.EqualsIgnoreCase("read"), rolePermission.Table);
+                    tracking.EndTracking($"Update permission {rolePermission.Table} for {Name}");
                     if (updatedPermission != null)
                     {
                         return updatedPermission;

@@ -48,6 +48,7 @@ namespace Authentication
 
                 // If the refresh token is missing, then return permissions for guest
                 var guestPermissions = await guestGroup.GetPermissions();
+                tracking.Stop("Function GetResourceTokens for guest");
                 return new JsonResult(new { success = true, permissions = guestPermissions, group = guestGroup.Name }) { StatusCode = StatusCodes.Status200OK };
             }
 
@@ -93,13 +94,13 @@ namespace Authentication
                 }
             }
 
-            tracking.EndTracking($"get role of user");
+            tracking.EndTracking($"get role {userGroup?.Name ?? ""} of user");
 
             if (userGroup == null)
             {
                 tracking.BeginTracking();
                 userGroup = await ADGroup.FindByName(Configurations.AzureB2C.GuestGroup);
-                tracking.EndTracking($"Find group by name");
+                tracking.EndTracking($"Find guest group by name");
             }
 
             // get group permissions
@@ -115,6 +116,7 @@ namespace Authentication
             permissions.AddRange(userPermissions);
 
             // return list of permissions
+            tracking.Stop("Function GetResourceTokens");
             return new JsonResult(new { success = true, permissions, group = userGroup.Name, refreshToken = adToken.RefreshToken }) { StatusCode = StatusCodes.Status200OK };
         }
     }
