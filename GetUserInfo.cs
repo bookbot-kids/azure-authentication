@@ -5,7 +5,6 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Authentication.Shared.Utils;
-using Authentication.Shared;
 using Extensions;
 using Authentication.Shared.Models;
 
@@ -35,13 +34,6 @@ namespace Authentication
         {
             // Set the logger instance
             Logger.Log = log;
-
-            // validate client token by issuer & subject. Return error if token is invalid
-            var (result, message, _) = ADAccess.Instance.ValidateClientToken(req.Query["client_token"]);
-            if (!result)
-            {
-                return HttpHelper.CreateErrorResponse(message);
-            }
 
             string email = req.Query["email"];
 

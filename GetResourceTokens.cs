@@ -65,7 +65,7 @@ namespace Authentication
             tracking.BeginTracking();
             // Validate the access token, then get id
             var (result, message, id) = await ADAccess.Instance.ValidateAccessToken(adToken.AccessToken);
-            tracking.EndTracking($"Validate the access token, then get id");
+            tracking.EndTracking($"Validate the access token, then get user id {id}");
 
             if (!result)
             {
@@ -75,7 +75,7 @@ namespace Authentication
             tracking.BeginTracking();
             // find ad user by its email
             var user = await ADUser.FindById(id);
-            tracking.EndTracking($"find ad user by its email");
+            tracking.EndTracking($"find ad user by its id");
             if (user == null)
             {
                 return HttpHelper.CreateErrorResponse("user not exist");
