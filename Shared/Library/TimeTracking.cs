@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
-namespace Authentication.Shared.Utils
+namespace Authentication.Shared.Library
 {
     /// <summary>
     /// Tracking execute time of function

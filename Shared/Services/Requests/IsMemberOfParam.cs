@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace Authentication.Shared.Requests
+namespace Authentication.Shared.Services
 {
     /// <summary>
     /// Is member of parameter

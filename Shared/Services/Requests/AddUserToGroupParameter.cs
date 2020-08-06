@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace Authentication.Shared.Requests
+namespace Authentication.Shared.Services
 {
     /// <summary>
     /// Add an user into group param

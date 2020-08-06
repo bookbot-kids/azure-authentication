@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Authentication.Shared.Models;
-using Authentication.Shared.Utils;
+using Authentication.Shared.Library;
 using Refit;
 
 namespace Authentication.Shared.Services

@@ -11,7 +11,7 @@ using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 
-namespace Authentication.Shared.Utils
+namespace Authentication.Shared.Library
 {
     /// <summary>
     /// Token helper

@@ -1,13 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using Authentication.Shared.Models;
+using Authentication.Shared.Services;
 using Extensions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
-namespace Authentication.Shared.Utils
+namespace Authentication.Shared.Library
 {
     /// <summary>
     /// Http helper util class

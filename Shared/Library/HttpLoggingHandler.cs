@@ -7,7 +7,7 @@ using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Authentication.Shared.Utils
+namespace Authentication.Shared.Library
 {
     /// <summary>
     /// Logging handler class

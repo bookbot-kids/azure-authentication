@@ -4,7 +4,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Authentication.Shared.Utils;
+using Authentication.Shared.Library;
 using Extensions;
 using Authentication.Shared.Models;
 

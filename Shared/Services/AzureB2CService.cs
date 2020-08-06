@@ -3,9 +3,7 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Authentication.Shared.Models;
-using Authentication.Shared.Requests;
-using Authentication.Shared.Responses;
-using Authentication.Shared.Utils;
+using Authentication.Shared.Library;
 using Microsoft.Extensions.Logging;
 using Refit;
 

@@ -2,7 +2,7 @@
 using Authentication.Shared.Models;
 using Newtonsoft.Json;
 
-namespace Authentication.Shared.Responses
+namespace Authentication.Shared.Services
 {
     /// <summary>
     /// B2c Group list response 

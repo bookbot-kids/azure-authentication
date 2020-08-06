@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 
-namespace Authentication.Shared.Utils
+namespace Authentication.Shared.Library
 {
     /// <summary>
     /// Logger class

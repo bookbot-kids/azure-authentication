@@ -1,9 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Authentication.Shared.Requests;
 using Authentication.Shared.Services;
-using Authentication.Shared.Utils;
+using Authentication.Shared.Library;
 using Extensions;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Logging;

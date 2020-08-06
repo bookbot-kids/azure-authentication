@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using Newtonsoft.Json;
 
-namespace Authentication.Shared.Requests
+namespace Authentication.Shared.Services
 {
     /// <summary>
     /// Create AD User parameters

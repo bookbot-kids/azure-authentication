@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace Authentication.Shared.Responses
+namespace Authentication.Shared.Services
 {
     /// <summary>
     /// API result

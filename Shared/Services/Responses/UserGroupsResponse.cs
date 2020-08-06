@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using Newtonsoft.Json;
 
-namespace Authentication.Shared.Responses
+namespace Authentication.Shared.Services
 {
     /// <summary>
     /// User group response

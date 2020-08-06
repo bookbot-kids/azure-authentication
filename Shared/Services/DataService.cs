@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
-using Authentication.Shared.Utils;
+using Authentication.Shared.Library;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Logging;
 

@@ -3,7 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Authentication.Shared;
 using Authentication.Shared.Models;
-using Authentication.Shared.Utils;
+using Authentication.Shared.Library;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
