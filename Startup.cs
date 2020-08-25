@@ -10,7 +10,8 @@ namespace Authentication
 {
     /// <summary>
     /// App function starting up class
-    /// This is the first point before all the functions start
+    /// This is the first point before all the functions start.
+    /// This function will load configurations from local.settings.json on debug and system environment on release on azure
     /// </summary>
     public class Startup : FunctionsStartup
     {

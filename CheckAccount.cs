@@ -51,7 +51,10 @@ namespace Authentication
                 return HttpHelper.CreateErrorResponse($"Email {email} is invalid");
             }
 
-            // replace space by + to correct because email contains "+" will be encoded by space, like "a+1@gmail.com" -> "a 1@gmail.com"
+            // Fix the encode issue because email parameter that contains "+" will be encoded by space
+            // e.g. client sends "a+1@gmail.com" => Azure function read: "a 1@gmail.com" (= req.Query["email"])
+            // We need to replace space by "+" when reading the parameter req.Query["email"]
+            // Then the result is correct "a+1@gmail.com"
             email = email.Trim().Replace(" ", "+");
 
             string name = email.GetNameFromEmail();
