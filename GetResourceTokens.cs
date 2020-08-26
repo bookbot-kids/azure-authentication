@@ -1,7 +1,6 @@
 using System.Threading.Tasks;
 using Authentication.Shared;
 using Authentication.Shared.Models;
-using Authentication.Shared.Services;
 using Authentication.Shared.Library;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

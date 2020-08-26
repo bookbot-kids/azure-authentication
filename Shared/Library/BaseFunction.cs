@@ -4,7 +4,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Authentication.Shared.Models;
-using Authentication.Shared.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -44,7 +43,7 @@ namespace Authentication.Shared.Library
         /// </summary>
         /// <param name="authToken">Authencation token</param>
         /// <returns>IActionResult if it has error. Otherwise return null</returns>
-        public static async System.Threading.Tasks.Task<IActionResult> VerifyAdminToken(string authToken)
+        public static async Task<IActionResult> VerifyAdminToken(string authToken)
         {
             // validate auth token
             if (string.IsNullOrWhiteSpace(authToken))
