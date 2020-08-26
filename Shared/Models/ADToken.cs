@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using System;
 
 namespace Authentication.Shared.Models
 {
@@ -6,7 +7,7 @@ namespace Authentication.Shared.Models
     /// AD User Token
     /// This token uses to access b2c api
     /// </summary>
-    public partial class ADToken
+    public class ADToken
     {
         /// <summary>
         /// Gets or sets access token
@@ -43,5 +44,25 @@ namespace Authentication.Shared.Models
         /// </summary>
         [JsonProperty(PropertyName = "expires_in")]
         public string ExpiresIn { get; set; }
+
+        /// <summary>
+        /// Gets a value indicating whether this token is expired
+        /// </summary>
+        [JsonIgnore]
+        public bool IsExpired
+        {
+            get
+            {
+                try
+                {
+                    var expiration = DateTimeOffset.FromUnixTimeSeconds(long.Parse(ExpiresOn)).UtcDateTime;
+                    return expiration <= DateTime.UtcNow;
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+            }
+        }
     }
 }

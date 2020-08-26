@@ -28,7 +28,6 @@
     <Folder Include="Shared\Models\" />
     <Folder Include="Shared\Library\" />
     <Folder Include="Shared\Services\" />
-    <Folder Include="Shared\Models\Ext\" />
     <Folder Include="Shared\Services\Requests\" />
     <Folder Include="Shared\Services\Responses\" />
     <Folder Include="Shared\Extensions\" />
