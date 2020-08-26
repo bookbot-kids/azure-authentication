@@ -39,7 +39,8 @@
 ### Admin functions
 - [CreateRolePermission](#CreateRolePermission)
 - [UpdateRole](#UpdateRole)
-#### CheckAccount (GET, POST)
+#### CheckAccount 
+- Http GET
 - Check whether user account is exist. If a user with that email exist, then return that user, otherwise create a new user and add it into "New" group in b2c and return it
 - Parameters:
 	+ email: user email to check 
@@ -58,6 +59,7 @@
 
 #### GetRefreshAndAccessToken
 - This function uses to get a b2c access token and refresh token from email/password or id token (from b2c login). See [tokens document](https://docs.microsoft.com/en-us/azure/active-directory-b2c/tokens-overview) 
+- Http GET
 - Parameters:
 	+ id_token: the id token from b2c authentication
 	+ email: user email
@@ -85,6 +87,7 @@
 	  
 #### GetResourceTokens
 - This function uses to get the cosmos [resource token](https://docs.microsoft.com/en-us/azure/cosmos-db/secure-access-to-data#resource-tokens-) permissions
+- Http GET
 - Parameters:
 	+ refresh_token: The B2C refresh token from [GetRefreshAndAccessToken](#GetRefreshAndAccessToken)
 -  Response:
@@ -103,6 +106,7 @@
 		
 #### GetUserInfo
 - Uses to get info from cosmos `User` collection
+- Http GET
 - Parameters
 	+ email: user email
 - Response
@@ -127,6 +131,7 @@
 
 #### RefreshToken
 - Refresh (renew) the b2c access token and refresh token by current refresh token
+- Http GET
 - Parameters
 	+ refresh_token: current refresh token
 - Response:
@@ -147,7 +152,8 @@
 	+ `curl baseUrl/RefreshToken?refresh_token=abc&code=123`
 	
 #### CreateRolePermission
-- Create Cosmos RolePermission table, use to manage the permission of all other tables in Cosmos. Only role or table parameter can be included in request at a time. And only admin can use this function
+- Create Cosmos RolePermission table, use to manage the permission of all other tables in Cosmos. Only role or table parameter can be included in request at a time. And only admin can use this function.
+- Http POST
 - Parameters:
 	+ auth_token: the admin access token 
 	+ role: cosmos role (it can be: `read`, `write`, `id-read`, `id-write`)
@@ -164,11 +170,12 @@
 		+ Both role and table are missing
 		+ Both role and table are available in request
 - Example:
-	+ `curl baseUrl/CreateRolePermission?auth_token=abc&role=editor&code=123`
-	+ `curl baseUrl/CreateRolePermission?auth_token=abc&table=Profile&code=123`
+	+ `curl POST baseUrl/CreateRolePermission?auth_token=abc&role=editor&code=123`
+	+ `curl POST baseUrl/CreateRolePermission?auth_token=abc&table=Profile&code=123`
 	 
 #### UpdateRole
-- Update user role (group) in B2C. It also removes all the existing roles of user before assign to new role. Only admin can use this function
+- Update user role (group) in B2C. It also removes all the existing roles of user before assign to new role. Only admin can use this function.
+- Http POST
 - Parameters:
 	+ auth_token: the admin access token
 	+ refresh_token: the admin refresh_token
@@ -188,5 +195,5 @@
 		 + refresh_token is invalid
 		 + auth_token is invalid 
 - Example:
-	+ `curl baseUrl/UpdateRole?auth_token=abc&email=test@test.com&role=editor&code=123`
-	+  `curl baseUrl/UpdateRole?refresh_token=abc&email=test@test.com&role=editor&code=123`
+	+ `curl POST baseUrl/UpdateRole?auth_token=abc&email=test@test.com&role=editor&code=123`
+	+  `curl POST baseUrl/UpdateRole?refresh_token=abc&email=test@test.com&role=editor&code=123`
