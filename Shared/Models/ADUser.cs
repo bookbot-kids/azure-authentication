@@ -100,7 +100,7 @@ namespace Authentication.Shared.Models
         {
             // find user by email
             email = email.ToLower();
-            var user = await AzureB2CService.Instance.GetADUserByEmail(email);
+            var user = await FindByEmail(email);
 
             // user already exist
             if (user != null)

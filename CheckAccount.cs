@@ -65,11 +65,6 @@ namespace Authentication
             if (exist)
             {
                 tracking.EndTracking($"Validate existing email {email} with id {user.ObjectId ?? ""}");
-                if(string.IsNullOrWhiteSpace(user.ObjectId))
-                {
-                    return HttpHelper.CreateErrorResponse($"user {email} does not have ObjectId", StatusCodes.Status500InternalServerError);
-                }
-              
                 return new JsonResult(new { success = true, exist, user }) { StatusCode = StatusCodes.Status200OK };
             }
 
@@ -79,11 +74,6 @@ namespace Authentication
             if (user == null)
             {
                 return HttpHelper.CreateErrorResponse($"can not create user {email}", StatusCodes.Status500InternalServerError);
-            }
-
-            if (string.IsNullOrWhiteSpace(user.ObjectId))
-            {
-                return HttpHelper.CreateErrorResponse($"user {email} does not have ObjectId", StatusCodes.Status500InternalServerError);
             }
 
             // add user to new group

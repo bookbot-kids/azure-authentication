@@ -10,7 +10,8 @@ using Microsoft.Extensions.Logging;
 namespace Authentication.Shared.Models
 {
     /// <summary>
-    /// Cosmos ConnectionToken model, uses to share records between 2 users
+    /// Cosmos ConnectionToken model, uses to share records between 2 users.
+    /// To share records, it needs get the partition key of the shared record and set the permission via <see href="https://docs.microsoft.com/en-us/azure/cosmos-db/secure-access-to-data">resource token</see> 
     /// Contains all the model properties and support to query, CRUD the ConnectionToken model by calling cosmos service
     /// </summary>
     public class ConnectionToken
