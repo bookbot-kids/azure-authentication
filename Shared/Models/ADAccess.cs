@@ -2,11 +2,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Authentication.Shared.Models;
 using Authentication.Shared.Library;
+using Authentication.Shared.Services;
 using Extensions;
 
-namespace Authentication.Shared.Services
+namespace Authentication.Shared.Models
 {
     /// <summary>
     /// Azure directory access helper class.
