@@ -1,4 +1,10 @@
 # azure-authentication
+- A backend framework to setup authentication in [Azure B2C Active Directory] (https://docs.microsoft.com/en-us/azure/active-directory-b2c/overview) and sharing cosmos database 
+- Features:
+    + Support to authenticate B2c users, allow to custom authenticate flow and ui.
+    + Sign in passwordless. User only needs email for authentication, an OTP will be sent to user's email
+    + Manage B2C users and groups
+    + Manage query, access and share [Cosmos] (https://docs.microsoft.com/en-us/azure/cosmos-db/) data table for B2C users
 
 ## Setup
 - Create a file `local.settings.json` in the root project, copy from `sample_local.settings.json` file
