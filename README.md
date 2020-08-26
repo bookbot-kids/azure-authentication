@@ -39,6 +39,7 @@
 ### Admin functions
 - [CreateRolePermission](#CreateRolePermission)
 - [UpdateRole](#UpdateRole)
+___ 
 #### CheckAccount 
 - Http GET
 - Check whether user account is exist. If a user with that email exist, then return that user, otherwise create a new user and add it into "New" group in b2c and return it
