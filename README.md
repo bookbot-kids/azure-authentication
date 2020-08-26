@@ -53,7 +53,8 @@
 		"user": {} // ADUser object
 	}
 	```  
-	+ Error 400: email is missing or invalid	
+	+ Error 400: 
+		+ email is missing or invalid	
 - Example:
   + `curl "baseUrl/CheckAccount?email=test@test.com&code=123"` 
 
@@ -78,9 +79,9 @@
 	    "group": "new" // B2C user group
 	}
     ```
- + Error 400: 
-	 + id_token is invalid or expired
-	 + missing email or password
+	 + Error 400: 
+		 + id_token is invalid or expired
+		 + missing email or password
 - Example:
 	 + `curl "baseUrl/GetRefreshAndAccessToken?email=test@test.com&password=abc`
 	 + `curl "baseUrl/GetRefreshAndAccessToken?id_token=123&code=123`	   
@@ -100,7 +101,8 @@
 		"refreshToken": "" // the new refresh_token
 	 }
 	```
-    + Error 400: refresh_token is invalid
+    + Error 400: 
+	    + refresh_token is invalid
 - Example:
 	+ `curl baseUrl/GetResourceTokens?refresh_token=abc&code=123`
 		
@@ -125,7 +127,8 @@
 		}
 		```		
 	
-   + Error 400: email is missing or invalid 
+   + Error 400: 
+	   + email is missing or invalid 
 - Example
 	+ `curl baseUrl/GetUserInfo?email=test@test.com&code=123`
 
@@ -147,7 +150,8 @@
 	    }
 	}
 	```
-	+ Error 400: refresh_token is missing or invalid
+	+ Error 400: 
+		+ refresh_token is missing or invalid
 - Example:
 	+ `curl baseUrl/RefreshToken?refresh_token=abc&code=123`
 	
