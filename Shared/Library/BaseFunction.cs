@@ -2,7 +2,6 @@
 using System.Linq;
 using Authentication.Shared.Models;
 using Authentication.Shared.Services;
-using Extensions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -10,9 +9,9 @@ using Microsoft.Extensions.Logging;
 namespace Authentication.Shared.Library
 {
     /// <summary>
-    /// Http helper util class
+    /// Base function class, has many util methods
     /// </summary>
-    public static class HttpHelper
+    public abstract class BaseFunction
     {
         /// <summary>
         /// Create error json response
@@ -67,18 +66,7 @@ namespace Authentication.Shared.Library
             }
 
             return null;
-        }
-
-        /// <summary>
-        /// Generate password from email + secret.
-        /// Need to add a prefix to by pass the password complexity requirements
-        /// </summary>
-        /// <param name="email">email adress</param>
-        /// <returns>password hash</returns>
-        public static string GeneratePassword(string email)
-        {
-            return Configurations.AzureB2C.PasswordPrefix + (email.ToLower() + Configurations.AzureB2C.PasswordSecretKey).MD5();
-        }
+        }       
 
         /// <summary>
         /// Get bearer authorization

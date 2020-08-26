@@ -15,7 +15,7 @@ namespace Authentication
     /// This function uses to check whether user email exist in b2c.
     /// If it does, return that user info, otherwise create a new account with that email then add user into "New" group in b2c and return it
     /// </summary>
-    public static class CheckAccount
+    public class CheckAccount: BaseFunction
     {
         /// <summary>
         /// A http (Get, Post) method to check whether user account is exist.<br/>
@@ -43,12 +43,12 @@ namespace Authentication
             // validate email address
             if (string.IsNullOrWhiteSpace(email))
             {
-                return HttpHelper.CreateErrorResponse($"Email is empty");
+                return CreateErrorResponse($"Email is empty");
             }
 
             if (!email.IsValidEmailAddress())
             {
-                return HttpHelper.CreateErrorResponse($"Email {email} is invalid");
+                return CreateErrorResponse($"Email {email} is invalid");
             }
 
             // Fix the encode issue because email parameter that contains "+" will be encoded by space
@@ -73,7 +73,7 @@ namespace Authentication
             // there is an error when creating user
             if (user == null)
             {
-                return HttpHelper.CreateErrorResponse($"can not create user {email}", StatusCodes.Status500InternalServerError);
+                return CreateErrorResponse($"can not create user {email}", StatusCodes.Status500InternalServerError);
             }
 
             // add user to new group
@@ -85,7 +85,7 @@ namespace Authentication
             // there is an error when add user into new group
             if (!addResult)
             {
-                return HttpHelper.CreateErrorResponse($"can not add user {email} into new group", StatusCodes.Status500InternalServerError);
+                return CreateErrorResponse($"can not add user {email} into new group", StatusCodes.Status500InternalServerError);
             }
 
             // Success, return user info

@@ -55,7 +55,7 @@ namespace Authentication.Shared.Services
         {
             if (password == null)
             {
-                password = HttpHelper.GeneratePassword(email);
+                password = TokenHelper.GeneratePassword(email);
             }
 
             try

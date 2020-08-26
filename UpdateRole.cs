@@ -15,7 +15,7 @@ namespace Authentication
     /// Update user role (group) azure function
     /// This function uses to update user role. It also removes all the existing roles of user before assign to new role
     /// </summary>
-    public static class UpdateRole
+    public class UpdateRole: BaseFunction
     {
         /// <summary>
         /// A http (Get, Post) method to update user role<br/>
@@ -44,11 +44,11 @@ namespace Authentication
                 var adToken = await ADAccess.Instance.RefreshToken(req.Query["refresh_token"]);
                 if (adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
                 {
-                    return HttpHelper.CreateErrorResponse("refresh token is invalid", StatusCodes.Status401Unauthorized);
+                    return CreateErrorResponse("refresh token is invalid", StatusCodes.Status401Unauthorized);
                 }
 
                 // validate admin token
-                var actionResult = await HttpHelper.VerifyAdminToken(adToken.AccessToken);
+                var actionResult = await VerifyAdminToken(adToken.AccessToken);
                 if (actionResult != null)
                 {
                     return actionResult;
@@ -57,7 +57,7 @@ namespace Authentication
             else
             {
                 // validate auth token
-                var actionResult = await HttpHelper.VerifyAdminToken(req.Query["auth_token"]);
+                var actionResult = await VerifyAdminToken(req.Query["auth_token"]);
                 if (actionResult != null)
                 {
                     return actionResult;
@@ -70,14 +70,14 @@ namespace Authentication
             // validate email address
             if (string.IsNullOrWhiteSpace(email) || !email.IsValidEmailAddress())
             {
-                return HttpHelper.CreateErrorResponse("Email is invalid");
+                return CreateErrorResponse("Email is invalid");
             }
 
             // validate role parameter
             var group = await ADGroup.FindByName(req.Query["role"]);
             if (group == null)
             {
-                return HttpHelper.CreateErrorResponse("Role is invalid");
+                return CreateErrorResponse("Role is invalid");
             }
 
             // replace space by + to correct because email contains "+" will be encoded by space, like "a+1@gmail.com" -> "a 1@gmail.com"
@@ -90,16 +90,16 @@ namespace Authentication
             // there is an error when creating user
             if (user == null)
             {
-                return HttpHelper.CreateErrorResponse($"can not create user {email}", StatusCodes.Status500InternalServerError);
+                return CreateErrorResponse($"can not create user {email}", StatusCodes.Status500InternalServerError);
             }
 
             var result = await user.UpdateGroup(group.Name);
             if(result)
             {
-                return HttpHelper.CreateSuccessResponse();
+                return CreateSuccessResponse();
             }
 
-            return HttpHelper.CreateErrorResponse("can not add user into group");
+            return CreateErrorResponse("can not add user into group");
         }
     }
 }

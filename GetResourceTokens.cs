@@ -15,7 +15,7 @@ namespace Authentication
     /// Get resource tokens azure function
     /// This function uses to get the cosmos resource token permissions
     /// </summary>
-    public static class GetResourceTokens
+    public class GetResourceTokens: BaseFunction
     {
         /// <summary>
         /// A http (Get, Post) method to get cosmos resource token permissions<br/>
@@ -58,7 +58,7 @@ namespace Authentication
             var adToken = await ADAccess.Instance.RefreshToken(refreshToken);
             if(adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
             {
-                return HttpHelper.CreateErrorResponse("refresh token is invalid", StatusCodes.Status401Unauthorized);
+                return CreateErrorResponse("refresh token is invalid", StatusCodes.Status401Unauthorized);
             }
 
             tracking.EndTracking("get access token by refresh token");
@@ -70,7 +70,7 @@ namespace Authentication
 
             if (!result)
             {
-                return HttpHelper.CreateErrorResponse(message, StatusCodes.Status403Forbidden);
+                return CreateErrorResponse(message, StatusCodes.Status403Forbidden);
             }
 
             tracking.BeginTracking();
@@ -79,7 +79,7 @@ namespace Authentication
             tracking.EndTracking($"find ad user by its id");
             if (user == null)
             {
-                return HttpHelper.CreateErrorResponse("user not exist");
+                return CreateErrorResponse("user not exist");
             }
 
             // check role of user

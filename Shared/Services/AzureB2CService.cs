@@ -184,7 +184,7 @@ namespace Authentication.Shared.Services
             try
             {
                 var masterToken = await ADAccess.Instance.GetMasterKey();
-                return await azureGraphRestApi.GetUserById(Configurations.AzureB2C.TenantId, id, HttpHelper.GetBearerAuthorization(masterToken));
+                return await azureGraphRestApi.GetUserById(Configurations.AzureB2C.TenantId, id, BaseFunction.GetBearerAuthorization(masterToken));
             }
             catch
             {
@@ -209,7 +209,7 @@ namespace Authentication.Shared.Services
             try
             {
                 var masterToken = await ADAccess.Instance.GetMasterKey();
-                var result = await azureGraphRestApi.IsMemberOf(Configurations.AzureB2C.TenantId, HttpHelper.GetBearerAuthorization(masterToken), param);
+                var result = await azureGraphRestApi.IsMemberOf(Configurations.AzureB2C.TenantId, BaseFunction.GetBearerAuthorization(masterToken), param);
                 return result?.Value ?? false;
             }
             catch (ApiException)
@@ -228,7 +228,7 @@ namespace Authentication.Shared.Services
             try
             {
                 var masterToken = await ADAccess.Instance.GetMasterKey();
-                return await azureGraphRestApi.CreateUser(Configurations.AzureB2C.TenantId, HttpHelper.GetBearerAuthorization(masterToken), parameters);
+                return await azureGraphRestApi.CreateUser(Configurations.AzureB2C.TenantId, BaseFunction.GetBearerAuthorization(masterToken), parameters);
             }
             catch (ApiException ex)
             {
@@ -255,7 +255,7 @@ namespace Authentication.Shared.Services
             try
             {
                 var masterToken = await ADAccess.Instance.GetMasterKey();
-                await azureGraphRestApi.AddUserToGroup(Configurations.AzureB2C.TenantId, groupId, HttpHelper.GetBearerAuthorization(masterToken), new AddUserToGroupParameter { Url = url });
+                await azureGraphRestApi.AddUserToGroup(Configurations.AzureB2C.TenantId, groupId, BaseFunction.GetBearerAuthorization(masterToken), new AddUserToGroupParameter { Url = url });
                 return true;
             }
             catch (ApiException ex)
@@ -282,7 +282,7 @@ namespace Authentication.Shared.Services
             {
                 var masterToken = await ADAccess.Instance.GetMasterKey();
                 var query = $"signInNames/any(x:x/value eq '{email.ToLower()}')";
-                var results = await azureGraphRestApi.SearchUser(Configurations.AzureB2C.TenantId, HttpHelper.GetBearerAuthorization(masterToken), query);
+                var results = await azureGraphRestApi.SearchUser(Configurations.AzureB2C.TenantId, BaseFunction.GetBearerAuthorization(masterToken), query);
                 if (results.Values?.Count > 0)
                 {
                     return results.Values[0];
@@ -311,7 +311,7 @@ namespace Authentication.Shared.Services
             try
             {
                 var masterToken = await ADAccess.Instance.GetMasterKey();
-                var groups = await azureGraphRestApi.GetUserGroups(Configurations.AzureB2C.TenantId, userId, HttpHelper.GetBearerAuthorization(masterToken), param);
+                var groups = await azureGraphRestApi.GetUserGroups(Configurations.AzureB2C.TenantId, userId, BaseFunction.GetBearerAuthorization(masterToken), param);
                 return groups?.GroupIds;
             }
             catch (ApiException)
@@ -331,7 +331,7 @@ namespace Authentication.Shared.Services
             try
             {
                 var masterToken = await ADAccess.Instance.GetMasterKey();
-                var groups = await azureGraphRestApi.RemoveUserFromGroup(Configurations.AzureB2C.TenantId, userId, groupId, HttpHelper.GetBearerAuthorization(masterToken));
+                var groups = await azureGraphRestApi.RemoveUserFromGroup(Configurations.AzureB2C.TenantId, userId, groupId, BaseFunction.GetBearerAuthorization(masterToken));
                 return true;
             }
             catch (ApiException ex)
@@ -397,7 +397,7 @@ namespace Authentication.Shared.Services
             try
             {
                 var masterToken = await ADAccess.Instance.GetMasterKey();
-                var groups = await azureGraphRestApi.GetAllGroups(Configurations.AzureB2C.TenantId, HttpHelper.GetBearerAuthorization(masterToken));
+                var groups = await azureGraphRestApi.GetAllGroups(Configurations.AzureB2C.TenantId, BaseFunction.GetBearerAuthorization(masterToken));
                 return groups;
             }
             catch (ApiException ex)

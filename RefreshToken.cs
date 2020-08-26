@@ -13,7 +13,7 @@ namespace Authentication
     /// Refresh token azure function
     /// This function uses to refresh the b2c access token by refresh token
     /// </summary>
-    public static class RefreshToken
+    public class RefreshToken: BaseFunction
     {
         /// <summary>
         /// A http (Get, Post) method to refresh token<br/>
@@ -38,14 +38,14 @@ namespace Authentication
             string refreshToken = req.Query["refresh_token"];
             if (string.IsNullOrWhiteSpace(refreshToken))
             {
-                return HttpHelper.CreateErrorResponse("refresh_token is missing");
+                return CreateErrorResponse("refresh_token is missing");
             }
 
             // get access token from refresh token
             var token = await ADAccess.Instance.RefreshToken(refreshToken);
             if (token == null)
             {
-                return HttpHelper.CreateErrorResponse("Can not refresh token", StatusCodes.Status500InternalServerError);
+                return CreateErrorResponse("Can not refresh token", StatusCodes.Status500InternalServerError);
             }
 
             // return access token

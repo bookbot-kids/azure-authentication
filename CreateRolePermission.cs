@@ -17,7 +17,7 @@ namespace Authentication
     /// This function uses to create cosmos user and permission
     /// It return http success if there is no error, otherwise return http error
     /// </summary>
-    public static class CreateRolePermission
+    public class CreateRolePermission: BaseFunction
     {
         /// <summary>
         /// A http (Get, Post) method to create role and permission in cosmos.<br/>
@@ -43,7 +43,7 @@ namespace Authentication
             Logger.Log = log;
 
             // validate auth token, make sure only admin can call this function
-            var actionResult = await HttpHelper.VerifyAdminToken(req.Query["auth_token"]);
+            var actionResult = await VerifyAdminToken(req.Query["auth_token"]);
             if (actionResult != null)
             {
                 return actionResult;
@@ -56,13 +56,13 @@ namespace Authentication
             // Role or table must be existed
             if (string.IsNullOrWhiteSpace(table) && string.IsNullOrWhiteSpace(role))
             {
-                return HttpHelper.CreateErrorResponse("must enter table or role");
+                return CreateErrorResponse("must enter table or role");
             }
 
             // Only role or table exist at a time
             if (!string.IsNullOrWhiteSpace(table) && !string.IsNullOrWhiteSpace(role))
             {
-                return HttpHelper.CreateErrorResponse("only enter table or role");
+                return CreateErrorResponse("only enter table or role");
             }
 
             // create role & permission by role
@@ -82,11 +82,11 @@ namespace Authentication
                 }
                 else
                 {
-                    return HttpHelper.CreateErrorResponse($"Invalid table {table}");
+                    return CreateErrorResponse($"Invalid table {table}");
                 }
             }
 
-            return HttpHelper.CreateSuccessResponse();
+            return CreateSuccessResponse();
         }
 
         /// <summary>

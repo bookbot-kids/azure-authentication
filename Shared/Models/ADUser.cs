@@ -114,7 +114,7 @@ namespace Authentication.Shared.Models
                 DisplayName = string.IsNullOrWhiteSpace(name) ? email : name,
                 Profile = new CreateADUserParameters.PasswordProfile
                 {
-                    Password = HttpHelper.GeneratePassword(email)
+                    Password = TokenHelper.GeneratePassword(email)
                 },
                 SignInNames = new List<CreateADUserParameters.SignInName>
                 {

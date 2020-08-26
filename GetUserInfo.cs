@@ -14,7 +14,7 @@ namespace Authentication
     /// Get user info azure function
     /// This function uses to get user info (User table) from cosmos
     /// </summary>
-    public static class GetUserInfo
+    public class GetUserInfo: BaseFunction
     {
         /// <summary>
         /// A http (Get, Post) method to get cosmos user record <br/>
@@ -40,7 +40,7 @@ namespace Authentication
             // validate email address
             if (string.IsNullOrWhiteSpace(email) || !email.IsValidEmailAddress())
             {
-                return HttpHelper.CreateErrorResponse("Email is invalid");
+                return CreateErrorResponse("Email is invalid");
             }
 
             // replace space by + to correct because email contains "+" will be encoded by space, like "a+1@gmail.com" -> "a 1@gmail.com"

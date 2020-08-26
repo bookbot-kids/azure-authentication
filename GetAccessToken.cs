@@ -15,7 +15,7 @@ namespace Authentication
     /// Get b2c access token azure function
     /// This function uses to get a b2c access token from email/password or id token (from b2c login)
     /// </summary>
-    public static class GetAccessToken
+    public class GetAccessToken: BaseFunction
     {
         /// <summary>
         /// A http (Get, Post) method to get user access token by email and password or id token (from b2c login).<br/>
@@ -61,7 +61,7 @@ namespace Authentication
             tracking.EndTracking($"validate id token and get the email");
             if (!result)
             {
-                return HttpHelper.CreateErrorResponse(message);
+                return CreateErrorResponse(message);
             }
 
             try
@@ -72,7 +72,7 @@ namespace Authentication
                 tracking.EndTracking($"get access token from email");
                 if (token == null)
                 {
-                    return HttpHelper.CreateErrorResponse("Can not get access token. The username or password provided in the request are invalid");
+                    return CreateErrorResponse("Can not get access token. The username or password provided in the request are invalid");
                 }
 
                 tracking.BeginTracking();
@@ -100,7 +100,7 @@ namespace Authentication
             }
             catch (Exception)
             {
-                return HttpHelper.CreateErrorResponse("Can not generate access token", StatusCodes.Status500InternalServerError);
+                return CreateErrorResponse("Can not generate access token", StatusCodes.Status500InternalServerError);
             }
         }
 
@@ -115,14 +115,14 @@ namespace Authentication
             // validate email and password
             if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
             {
-                return HttpHelper.CreateErrorResponse("email & password are required");
+                return CreateErrorResponse("email & password are required");
             }
 
             // get b2c access token by using email and password
             var token = await ADAccess.Instance.GetAccessToken(email, password);
             if (token == null)
             {
-                return HttpHelper.CreateErrorResponse("Cannot get access token. Make sure email and password are correct", StatusCodes.Status500InternalServerError);
+                return CreateErrorResponse("Cannot get access token. Make sure email and password are correct", StatusCodes.Status500InternalServerError);
             }
 
             // return access token result

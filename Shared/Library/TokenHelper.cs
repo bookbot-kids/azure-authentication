@@ -4,6 +4,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
+using Extensions;
 using JWT;
 using JWT.Builder;
 using Microsoft.Extensions.Logging;
@@ -133,6 +134,17 @@ namespace Authentication.Shared.Library
                 Logger.Log?.LogError(e.Message);
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Generate password from email + secret.
+        /// Need to add a prefix to by pass the password complexity requirements
+        /// </summary>
+        /// <param name="email">email adress</param>
+        /// <returns>password hash</returns>
+        public static string GeneratePassword(string email)
+        {
+            return Configurations.AzureB2C.PasswordPrefix + (email.ToLower() + Configurations.AzureB2C.PasswordSecretKey).MD5();
         }
     }
 }
