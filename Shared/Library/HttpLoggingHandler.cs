@@ -11,7 +11,8 @@ namespace Authentication.Shared.Library
 {
     /// <summary>
     /// Logging handler class
-    /// This is the custom logging for Refit library
+    /// This is the custom logging for Refit library <see cref="https://github.com/reactiveui/refit"/> <br/>
+    /// Copy from https://github.com/reactiveui/refit/issues/258
     /// </summary>
     public class HttpLoggingHandler : DelegatingHandler
     {
