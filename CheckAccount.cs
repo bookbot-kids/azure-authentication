@@ -64,25 +64,13 @@ namespace Authentication
             var (exist, user) = await ADUser.FindOrCreate(email, name);
             if (exist)
             {
-                // Get group of exist user
-                var groupdIds = await user.GroupIds();
-                string userGroupName = null;
-                if (groupdIds != null && groupdIds.Count > 0)
-                {
-                    var userGroup = await ADGroup.FindById(groupdIds[0]);
-                    if (userGroup != null)
-                    {
-                        userGroupName = userGroup.Name;
-                    }   
-                }
-
                 tracking.EndTracking($"Validate existing email {email} with id {user.ObjectId ?? ""}");
                 if(string.IsNullOrWhiteSpace(user.ObjectId))
                 {
                     return HttpHelper.CreateErrorResponse($"user {email} does not have ObjectId", StatusCodes.Status500InternalServerError);
                 }
               
-                return new JsonResult(new { success = true, exist, user, group = userGroupName }) { StatusCode = StatusCodes.Status200OK };
+                return new JsonResult(new { success = true, exist, user }) { StatusCode = StatusCodes.Status200OK };
             }
 
             tracking.EndTracking($"Validate new email");
@@ -111,7 +99,7 @@ namespace Authentication
             }
 
             // Success, return user info
-            return new JsonResult(new { success = true, exist, user, group = "new" }) { StatusCode = StatusCodes.Status200OK };
+            return new JsonResult(new { success = true, exist, user}) { StatusCode = StatusCodes.Status200OK };
         }
     }
 }
