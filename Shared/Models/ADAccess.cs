@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Authentication.Shared.Library;
 using Authentication.Shared.Services;
 using Extensions;
 
@@ -55,7 +54,7 @@ namespace Authentication.Shared.Models
         {
             if (password == null)
             {
-                password = TokenHelper.GeneratePassword(email);
+                password = TokenService.GeneratePassword(email);
             }
 
             try
@@ -97,7 +96,7 @@ namespace Authentication.Shared.Models
                 return (false, "token is missing", null);        
             }
 
-            return TokenHelper.ValidateClientToken(token, Configurations.JWTToken.TokenClientSecret.ToBase64(), Configurations.JWTToken.TokenIssuer, Configurations.JWTToken.TokenSubject);
+            return TokenService.ValidateClientToken(token, Configurations.JWTToken.TokenClientSecret.ToBase64(), Configurations.JWTToken.TokenIssuer, Configurations.JWTToken.TokenSubject);
         }
 
         /// <summary>
@@ -112,7 +111,7 @@ namespace Authentication.Shared.Models
                 return (false, "token is missing", null);
             }
 
-            var claimsIdentity = await TokenHelper.ValidateB2CToken(token, Configurations.AzureB2C.SignInSignUpPolicy);
+            var claimsIdentity = await TokenService.ValidateB2CToken(token, Configurations.AzureB2C.SignInSignUpPolicy);
             if (claimsIdentity != null)
             {
                 var emailClaim = claimsIdentity.Claims.FirstOrDefault(c => c.Type.Contains("email"));
@@ -139,7 +138,7 @@ namespace Authentication.Shared.Models
                 return (false, "token is missing", null);
             }
 
-            var claimsIdentity = await TokenHelper.ValidateB2CToken(token, Configurations.AzureB2C.AuthPolicy);
+            var claimsIdentity = await TokenService.ValidateB2CToken(token, Configurations.AzureB2C.AuthPolicy);
             if (claimsIdentity != null)
             {
                 var idClaim = claimsIdentity.Claims.FirstOrDefault(c => c.Type.Contains("oid") || c.Type.Contains("objectidentifier"));

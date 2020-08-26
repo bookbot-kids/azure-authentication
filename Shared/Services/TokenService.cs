@@ -4,6 +4,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
+using Authentication.Shared.Library;
 using Extensions;
 using JWT;
 using JWT.Builder;
@@ -12,13 +13,13 @@ using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 
-namespace Authentication.Shared.Library
+namespace Authentication.Shared.Services
 {
     /// <summary>
     /// Token helper
     /// This class uses to validate the tokens
     /// </summary>
-    public static class TokenHelper
+    public static class TokenService
     {
         /// <summary>
         /// Azure B2C Issuer
