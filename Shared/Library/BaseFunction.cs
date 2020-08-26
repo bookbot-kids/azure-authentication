@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
 using Authentication.Shared.Models;
 using Authentication.Shared.Services;
 using Microsoft.AspNetCore.Http;
@@ -92,6 +95,35 @@ namespace Authentication.Shared.Library
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Run simple get request
+        /// </summary>
+        /// <param name="url">url</param>
+        /// <param name="parameters">Get parameters</param>
+        /// <returns>String response or null</returns>
+        public static async Task<string> ExecuteGetRequest(string url, Dictionary<string, string> parameters)
+        {
+            string query;
+            try
+            {
+                using (var content = new FormUrlEncodedContent(parameters))
+                {
+                    query = content.ReadAsStringAsync().Result;
+                }
+
+                var client = new HttpClient
+                {
+                    BaseAddress = new Uri(url)
+                };
+
+                HttpResponseMessage response = await client.GetAsync($"?{query}");
+                return response.Content.ReadAsStringAsync().Result;
+            }catch(Exception)
+            {
+                return null;
+            }
         }
     }
 }
