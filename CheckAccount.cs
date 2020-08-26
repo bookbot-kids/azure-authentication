@@ -36,7 +36,6 @@ namespace Authentication
         {
             // Set the logger instance
             Logger.Log = log;
-            var tracking = new TimeTracking();
 
             string email = req.Query["email"];
 
@@ -60,15 +59,12 @@ namespace Authentication
             string name = email.GetNameFromEmail();
 
             // check if email is existed in b2c. If it is, return that user
-            tracking.BeginTracking();
             var (exist, user) = await ADUser.FindOrCreate(email, name);
             if (exist)
             {
-                tracking.EndTracking($"Validate existing email {email} with id {user.ObjectId ?? ""}");
                 return new JsonResult(new { success = true, exist, user }) { StatusCode = StatusCodes.Status200OK };
             }
 
-            tracking.EndTracking($"Validate new email");
 
             // there is an error when creating user
             if (user == null)
@@ -77,10 +73,8 @@ namespace Authentication
             }
 
             // add user to new group
-            tracking.BeginTracking();
             var newGroup = await ADGroup.FindByName("new");
             var addResult = await newGroup.AddUser(user.ObjectId);
-            tracking.EndTracking($"add user {email} with id {user.ObjectId} to new group");
 
             // there is an error when add user into new group
             if (!addResult)

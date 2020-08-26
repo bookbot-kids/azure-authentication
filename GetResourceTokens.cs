@@ -37,9 +37,6 @@ namespace Authentication
         {
             Logger.Log = log;
 
-            // validate client token to prevent spamming
-            var tracking = new TimeTracking();
-
             // validate b2c refresh token
             string refreshToken = req.Query["refresh_token"];
             if (string.IsNullOrWhiteSpace(refreshToken))
@@ -49,41 +46,31 @@ namespace Authentication
 
                 // If the refresh token is missing, then return permissions for guest
                 var guestPermissions = await guestGroup.GetPermissions();
-                tracking.Stop("Function GetResourceTokens for guest");
                 return new JsonResult(new { success = true, permissions = guestPermissions, group = guestGroup.Name }) { StatusCode = StatusCodes.Status200OK };
             }
 
             // get access token by refresh token
-            tracking.BeginTracking();
             var adToken = await ADAccess.Instance.RefreshToken(refreshToken);
             if(adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
             {
                 return CreateErrorResponse("refresh token is invalid", StatusCodes.Status401Unauthorized);
             }
 
-            tracking.EndTracking("get access token by refresh token");
-
-            tracking.BeginTracking();
             // Validate the access token, then get id
             var (result, message, id) = await ADAccess.Instance.ValidateAccessToken(adToken.AccessToken);
-            tracking.EndTracking($"Validate the access token, then get user id {id}");
-
             if (!result)
             {
                 return CreateErrorResponse(message, StatusCodes.Status403Forbidden);
             }
 
-            tracking.BeginTracking();
             // find ad user by its email
             var user = await ADUser.FindById(id);
-            tracking.EndTracking($"find ad user by its id");
             if (user == null)
             {
                 return CreateErrorResponse("user not exist");
             }
 
             // check role of user
-            tracking.BeginTracking();
             ADGroup userGroup = null;
             var groupIds = await user.GroupIds();
             if (groupIds != null && groupIds.Count > 0)
@@ -95,29 +82,19 @@ namespace Authentication
                 }
             }
 
-            tracking.EndTracking($"get role {userGroup?.Name ?? ""} of user");
-
             if (userGroup == null)
             {
-                tracking.BeginTracking();
                 userGroup = await ADGroup.FindByName(Configurations.AzureB2C.GuestGroup);
-                tracking.EndTracking($"Find guest group by name");
             }
 
             // get group permissions
-            tracking.BeginTracking();
             var permissions = await userGroup.GetPermissions();
-            tracking.EndTracking($"Get permission of group");
 
             // get user permissions
-            tracking.BeginTracking();
             var userPermissions = await user.GetPermissions(userGroup.Name);
-            tracking.EndTracking($"Get permission of user");
-
             permissions.AddRange(userPermissions);
 
             // return list of permissions
-            tracking.Stop("Function GetResourceTokens");
             return new JsonResult(new { success = true, permissions, group = userGroup.Name, refreshToken = adToken.RefreshToken }) { StatusCode = StatusCodes.Status200OK };
         }
     }
