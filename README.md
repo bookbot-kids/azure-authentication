@@ -22,25 +22,24 @@
 - Go to function manages to set code for all functions, we will use param code=[function_key] to call APIs https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-http-webhook?tabs=csharp#obtaining-keys
 
 ## Documentation
-### Client flow
-- Call [CheckAccount] (#CheckAccount) to check if user exist (and create if not exist)
-- Authenticate with azure b2c to get the id token. See [document](https://docs.microsoft.com/en-us/azure/active-directory-b2c/quickstart-web-app-dotnet) 
-- Use id token to call [GetRefreshAndAccessToken] (#GetRefreshAndAccessToken) and save the refresh token to access other APIs later
-- Use refresh token to call [GetUserInfo] (#GetUserInfo) to get User info in cosmos, or call [RefreshToken] (#RefreshToken) to get a new refresh token
 ### Notices
 - All azure functions must be secured by [API key](https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-http-webhook-trigger?tabs=csharp#api-key-authorization), so all functions must include `code` parameter
 - Read about [Azure B2C token](https://docs.microsoft.com/en-us/azure/active-directory-b2c/tokens-overview)
+### Client flow
+- Call [CheckAccount](#CheckAccount) to check if user exist (and create if not exist)
+- Authenticate with azure b2c to get the id token. See [document](https://docs.microsoft.com/en-us/azure/active-directory-b2c/quickstart-web-app-dotnet) 
+- Use id token to call [GetRefreshAndAccessToken](#GetRefreshAndAccessToken) and save the refresh token to access other APIs later
+- Use refresh token to call [GetUserInfo](#GetUserInfo) to get User info in cosmos, or call [RefreshToken](#RefreshToken) to get a new refresh token
 ### User authentication functions
- [CheckAccount] (#CheckAccount)
- [GetRefreshAndAccessToken] (#GetRefreshAndAccessToken)
- [GetResourceTokens] (#GetResourceTokens)
- [GetUserInfo] (#GetUserInfo)
-[RefreshToken] (#RefreshToken)
+ - [CheckAccount](#CheckAccount)
+ - [GetRefreshAndAccessToken](#GetRefreshAndAccessToken)
+ - [GetResourceTokens](#GetResourceTokens)
+ - [GetUserInfo](#GetUserInfo)
+- [RefreshToken](#RefreshToken)
 ### Admin functions
-[CreateRolePermission] (#CreateRolePermission)
-[UpdateRole] (#UpdateRole)
-
-#CheckAccount (GET, POST)
+- [CreateRolePermission](#CreateRolePermission)
+- [UpdateRole](#UpdateRole)
+#### CheckAccount (GET, POST)
 - Check whether user account is exist. If a user with that email exist, then return that user, otherwise create a new user and add it into "New" group in b2c and return it
 - Parameters:
 	+ email: user email to check 
@@ -57,7 +56,7 @@
 - Example:
   + `curl "baseUrl/CheckAccount?email=test@test.com&code=123"` 
 
-#GetRefreshAndAccessToken
+#### GetRefreshAndAccessToken
 - This function uses to get a b2c access token and refresh token from email/password or id token (from b2c login). See [tokens document](https://docs.microsoft.com/en-us/azure/active-directory-b2c/tokens-overview) 
 - Parameters:
 	+ id_token: the id token from b2c authentication
@@ -84,10 +83,10 @@
 	 + `curl "baseUrl/GetRefreshAndAccessToken?email=test@test.com&password=abc`
 	 + `curl "baseUrl/GetRefreshAndAccessToken?id_token=123&code=123`	   
 	  
-#GetResourceTokens
+#### GetResourceTokens
 - This function uses to get the cosmos [resource token](https://docs.microsoft.com/en-us/azure/cosmos-db/secure-access-to-data#resource-tokens-) permissions
 - Parameters:
-	+ refresh_token: The B2C refresh token from [GetRefreshAndAccessToken] (#GetRefreshAndAccessToken)
+	+ refresh_token: The B2C refresh token from [GetRefreshAndAccessToken](#GetRefreshAndAccessToken)
 -  Response:
 	+ Success (200)	 
 	```
@@ -102,7 +101,7 @@
 - Example:
 	+ `curl baseUrl/GetResourceTokens?refresh_token=abc&code=123`
 		
-#GetUserInfo
+#### GetUserInfo
 - Uses to get info from cosmos `User` collection
 - Parameters
 	+ email: user email
@@ -126,7 +125,7 @@
 - Example
 	+ `curl baseUrl/GetUserInfo?email=test@test.com&code=123`
 
-#RefreshToken
+#### RefreshToken
 - Refresh (renew) the b2c access token and refresh token by current refresh token
 - Parameters
 	+ refresh_token: current refresh token
@@ -147,7 +146,7 @@
 - Example:
 	+ `curl baseUrl/RefreshToken?refresh_token=abc&code=123`
 	
-#CreateRolePermission
+#### CreateRolePermission
 - Create Cosmos RolePermission table, use to manage the permission of all other tables in Cosmos. Only role or table parameter can be included in request at a time. And only admin can use this function
 - Parameters:
 	+ auth_token: the admin access token 
@@ -168,7 +167,7 @@
 	+ `curl baseUrl/CreateRolePermission?auth_token=abc&role=editor&code=123`
 	+ `curl baseUrl/CreateRolePermission?auth_token=abc&table=Profile&code=123`
 	 
-#UpdateRole
+#### UpdateRole
 - Update user role (group) in B2C. It also removes all the existing roles of user before assign to new role. Only admin can use this function
 - Parameters:
 	+ auth_token: the admin access token
