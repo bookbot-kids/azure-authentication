@@ -10,7 +10,8 @@ namespace Authentication.Shared.Services
 {
     /// <summary>
     /// Microsoft Service
-    /// A singleton class that accesses the Microsoft APIs
+    /// A singleton class that accesses the Microsoft APIs, uses to get or refresh admin token to run operations (CRUD ADUser) without user authenticate <br/>
+    /// Ref: <see cref="https://docs.microsoft.com/en-us/graph/auth-v2-service#authentication-and-authorization-steps"/>
     /// </summary>
     public class MicrosoftService
     {
