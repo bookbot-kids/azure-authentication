@@ -8,8 +8,9 @@ using Microsoft.Azure.Cosmos;
 namespace Authentication.Shared.Models
 {
     /// <summary>
-    /// Cosmos role and permission model
-    /// Uses to set permission (read, write, id-read, id-write) for other tables
+    /// Cosmos role and permission model <br/>
+    /// Uses to set permission (read, write, id-read, id-write) for other tables by using resource tokens
+    /// See <see cref="https://docs.microsoft.com/en-us/azure/cosmos-db/secure-access-to-data#resource-tokens-"/>
     /// </summary>
     public class CosmosRolePermission
     {
@@ -53,7 +54,7 @@ namespace Authentication.Shared.Models
         /// <returns>User class</returns>
         public static Task<Microsoft.Azure.Cosmos.User> CreateCosmosUser(string userId)
         {
-            return DataService.Instance.CreateUser(userId);
+            return CosmosService.Instance.CreateUser(userId);
         }
 
         /// <summary>
@@ -64,7 +65,7 @@ namespace Authentication.Shared.Models
         public static Task<List<CosmosRolePermission>> QueryByTable(string table)
         {
             var query = new QueryDefinition("select * from c where c.table = @table").WithParameter("@table", table);
-            return DataService.Instance.QueryDocuments<CosmosRolePermission>("RolePermissions", query);
+            return CosmosService.Instance.QueryDocuments<CosmosRolePermission>("RolePermissions", query);
         }
 
         /// <summary>
@@ -75,14 +76,14 @@ namespace Authentication.Shared.Models
         public static Task<List<CosmosRolePermission>> QueryByRole(string role)
         {
             var query = new QueryDefinition("select * from c where c.role = @role").WithParameter("@role", role);
-            return DataService.Instance.QueryDocuments<CosmosRolePermission>("RolePermissions", query);
+            return CosmosService.Instance.QueryDocuments<CosmosRolePermission>("RolePermissions", query);
         }
 
         public static Task<List<CosmosRolePermission>> QueryByIdPermissions()
         {
             var query = new QueryDefinition("select * from c where c.permission = @p1 or c.permission = @p2")
                 .WithParameter("@p1", "id-read").WithParameter("@p2", "id-read-write");
-            return DataService.Instance.QueryDocuments<CosmosRolePermission>("RolePermissions", query);
+            return CosmosService.Instance.QueryDocuments<CosmosRolePermission>("RolePermissions", query);
         }
 
         /// <summary>
@@ -91,7 +92,7 @@ namespace Authentication.Shared.Models
         /// <returns>List of table names</returns>
         public static Task<List<string>> GetAllTables()
         {
-            return DataService.Instance.GetAllTables();
+            return CosmosService.Instance.GetAllTables();
         }
 
         /// <summary>
@@ -103,7 +104,7 @@ namespace Authentication.Shared.Models
         /// <returns>Permission class</returns>
         public Task<PermissionProperties> CreateCosmosPermission(string userId, string permissionId, string partition = null)
         {
-            return DataService.Instance.CreatePermission(userId, permissionId, IsReadOnly, Table, partition);
+            return CosmosService.Instance.CreatePermission(userId, permissionId, IsReadOnly, Table, partition);
         }
         #endregion
     }

@@ -172,7 +172,7 @@ namespace Authentication.Shared.Models
 
             // create user if needed
             tracking.BeginTracking();
-            await DataService.Instance.CreateUser(Name);
+            await CosmosService.Instance.CreateUser(Name);
             tracking.EndTracking($"Create user {Name}");
 
             // admin should have read-write permission for all except tables that have id-read or id-read-write
@@ -260,13 +260,13 @@ namespace Authentication.Shared.Models
         {
             var tracking = new TimeTracking();
             tracking.BeginTracking();
-            var permission = await DataService.Instance.GetPermission("admin", table);
+            var permission = await CosmosService.Instance.GetPermission("admin", table);
             tracking.EndTracking($"GetAddPermission for {table}");
             if (permission == null)
             {
                 // create permission if not exist
                 tracking.BeginTracking();
-                var newPermission = await DataService.Instance.CreatePermission("admin", table, false, table);
+                var newPermission = await CosmosService.Instance.CreatePermission("admin", table, false, table);
                 tracking.EndTracking($"Create new permission for {table}");
                 if (newPermission != null)
                 {
@@ -296,7 +296,7 @@ namespace Authentication.Shared.Models
             var tracking = new TimeTracking();
             // get cosmos permission by id: role_name/table_name
             tracking.BeginTracking();
-            var permission = await DataService.Instance.GetPermission(Name, rolePermission.Table);
+            var permission = await CosmosService.Instance.GetPermission(Name, rolePermission.Table);
             tracking.EndTracking($"GetPermission {rolePermission.Table} for {Name}");
             if (permission == null)
             {
@@ -321,7 +321,7 @@ namespace Authentication.Shared.Models
                 {
                     tracking.BeginTracking();
                     // rolePermission is changed, need to update in cosmos
-                    var updatedPermission = await DataService.Instance.ReplacePermission(Name, rolePermission.Table,
+                    var updatedPermission = await CosmosService.Instance.ReplacePermission(Name, rolePermission.Table,
                         rolePermission.Permission.EqualsIgnoreCase("read"), rolePermission.Table);
                     tracking.EndTracking($"Update permission {rolePermission.Table} for {Name}");
                     if (updatedPermission != null)

@@ -12,7 +12,7 @@ namespace Authentication.Shared.Services
     /// Cosmos database service
     /// A singleton class that manages cosmos database
     /// </summary>
-    public class DataService
+    public class CosmosService
     {
         /// <summary>
         /// Cosmos document client
@@ -20,9 +20,9 @@ namespace Authentication.Shared.Services
         private readonly CosmosClient client;
 
         /// <summary>
-        /// Prevents a default instance of the <see cref="DataService"/> class from being created
+        /// Prevents a default instance of the <see cref="CosmosService"/> class from being created
         /// </summary>
-        private DataService()
+        private CosmosService()
         {
             client = new CosmosClient(Configurations.Cosmos.DatabaseUrl, Configurations.Cosmos.DatabaseMasterKey);
         }
@@ -30,7 +30,7 @@ namespace Authentication.Shared.Services
         /// <summary>
         /// Gets singleton instance
         /// </summary>
-        public static DataService Instance { get; } = new DataService();
+        public static CosmosService Instance { get; } = new CosmosService();
 
         /// <summary>
         /// Query documents from a collection

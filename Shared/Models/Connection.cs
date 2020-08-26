@@ -96,7 +96,7 @@ namespace Authentication.Shared.Models
         public static Task<List<Connection>> QueryByShareUser(string userId)
         {
             var query = new QueryDefinition("select * from c where c.user2 = @userId").WithParameter("@userId", userId);
-            return DataService.Instance.QueryDocuments<Connection>("Connection", query, partition: userId);
+            return CosmosService.Instance.QueryDocuments<Connection>("Connection", query, partition: userId);
         }
 
         /// <summary>
@@ -109,7 +109,7 @@ namespace Authentication.Shared.Models
         {
             var query = new QueryDefinition("select * from c where c.user1 = @user1 and c.user2 = @user2")
                 .WithParameter("@user1", user1).WithParameter("@user2", user2);
-            var result = await DataService.Instance.QueryDocuments<Connection>("Connection", query, partition: user2);
+            var result = await CosmosService.Instance.QueryDocuments<Connection>("Connection", query, partition: user2);
             return result.Count > 0 ? result[0] : null;
         }
 
@@ -136,7 +136,7 @@ namespace Authentication.Shared.Models
 
             UpdatedAt = ((DateTimeOffset)DateTime.UtcNow).ToUnixTimeMilliseconds();
 
-            return DataService.Instance.CreateOrUpdateDocument("Connection", Id, this, Partition);
+            return CosmosService.Instance.CreateOrUpdateDocument("Connection", Id, this, Partition);
         }
 
         /// <summary>
@@ -145,7 +145,7 @@ namespace Authentication.Shared.Models
         /// <returns>Permission class</returns>
         public Task<PermissionProperties> GetPermission()
         {
-            return DataService.Instance.GetPermission(User2, Table + "-shared-" + User1);
+            return CosmosService.Instance.GetPermission(User2, Table + "-shared-" + User1);
         }
 
         /// <summary>
@@ -154,7 +154,7 @@ namespace Authentication.Shared.Models
         /// <returns>Permission class</returns>
         public Task<PermissionProperties> CreatePermission()
         {
-            return DataService.Instance.CreatePermission(User2, Table + "-shared-" + User1, IsReadOnly, Table, User1);
+            return CosmosService.Instance.CreatePermission(User2, Table + "-shared-" + User1, IsReadOnly, Table, User1);
         }
 
         /// <summary>
@@ -163,7 +163,7 @@ namespace Authentication.Shared.Models
         /// <returns>Permission class</returns>
         public Task<PermissionProperties> UpdatePermission()
         {
-            return DataService.Instance.ReplacePermission(User2, Table + "-shared-" + User1, IsReadOnly, Table, User1);
+            return CosmosService.Instance.ReplacePermission(User2, Table + "-shared-" + User1, IsReadOnly, Table, User1);
         }
 
         /// <summary>
@@ -172,7 +172,7 @@ namespace Authentication.Shared.Models
         /// <returns>Permission class</returns>
         public Task<PermissionProperties> GetProfilePermission()
         {
-            return DataService.Instance.GetPermission(User2, "Profile-shared-" + User1);
+            return CosmosService.Instance.GetPermission(User2, "Profile-shared-" + User1);
         }
 
         /// <summary>
@@ -181,7 +181,7 @@ namespace Authentication.Shared.Models
         /// <returns>Permission class</returns>
         public Task<PermissionProperties> CreateProfilePermission()
         {
-            return DataService.Instance.CreatePermission(User2, "Profile-shared-" + User1, IsReadOnly, "Profile", User1);
+            return CosmosService.Instance.CreatePermission(User2, "Profile-shared-" + User1, IsReadOnly, "Profile", User1);
         }
 
         /// <summary>
@@ -190,7 +190,7 @@ namespace Authentication.Shared.Models
         /// <returns>Permission class</returns>
         public Task<PermissionProperties> UpdateProfilePermission()
         {
-            return DataService.Instance.ReplacePermission(User2, "Profile-shared-" + User1, IsReadOnly, "Profile", User1);
+            return CosmosService.Instance.ReplacePermission(User2, "Profile-shared-" + User1, IsReadOnly, "Profile", User1);
         }
         #endregion
     }

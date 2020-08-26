@@ -150,7 +150,7 @@ namespace Authentication.Shared.Models
         public static async Task<ConnectionToken> GetById(string id)
         {
             var query = new QueryDefinition("select * from c where c.id = @id").WithParameter("@id", id);
-            var result = await DataService.Instance.QueryDocuments<ConnectionToken>("ConnectionToken", query, crossPartition: true);
+            var result = await CosmosService.Instance.QueryDocuments<ConnectionToken>("ConnectionToken", query, crossPartition: true);
             return result.Count == 0 ? null : result[0];
         }
 
@@ -164,7 +164,7 @@ namespace Authentication.Shared.Models
         {
             var query = new QueryDefinition("select * from c where c.fromId = @id and c.email = @email")
                 .WithParameter("@id", fromId).WithParameter("@email", email);
-            var result = await DataService.Instance.QueryDocuments<ConnectionToken>("ConnectionToken", query, partition: fromId);
+            var result = await CosmosService.Instance.QueryDocuments<ConnectionToken>("ConnectionToken", query, partition: fromId);
             return result.Count == 0 ? null : result[0];
         }
 
@@ -191,7 +191,7 @@ namespace Authentication.Shared.Models
 
             UpdatedAt = ((DateTimeOffset)DateTime.UtcNow).ToUnixTimeMilliseconds();
 
-            return DataService.Instance.CreateOrUpdateDocument("ConnectionToken", Id, this, Partition);
+            return CosmosService.Instance.CreateOrUpdateDocument("ConnectionToken", Id, this, Partition);
         }
 
         #region parents

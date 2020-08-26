@@ -121,7 +121,7 @@ namespace Authentication.Shared.Models
         public static async Task<User> GetById(string id)
         {
             var query = new QueryDefinition("select * from c where c.id = @id").WithParameter("@id", id);
-            var result = await DataService.Instance.QueryDocuments<User>("User", query, partition: id);
+            var result = await CosmosService.Instance.QueryDocuments<User>("User", query, partition: id);
             return result.Count == 0 ? null : result[0];
         }
 
@@ -138,7 +138,7 @@ namespace Authentication.Shared.Models
             }
 
             var query = new QueryDefinition("select * from c where LOWER(c.email) = @email").WithParameter("@email", email);
-            var result = await DataService.Instance.QueryDocuments<User>("User", query, crossPartition: true);
+            var result = await CosmosService.Instance.QueryDocuments<User>("User", query, crossPartition: true);
             return result.Count == 0 ? null : result[0];
         }
 
@@ -165,7 +165,7 @@ namespace Authentication.Shared.Models
 
             UpdatedAt = ((DateTimeOffset)DateTime.UtcNow).ToUnixTimeMilliseconds();
 
-            return await DataService.Instance.CreateOrUpdateDocument("User", Id, this, Partition);
+            return await CosmosService.Instance.CreateOrUpdateDocument("User", Id, this, Partition);
         }
 
         #endregion

@@ -190,7 +190,7 @@ namespace Authentication.Shared.Models
         {
             var result = new List<PermissionProperties>();
             // create user if needed
-            await DataService.Instance.CreateUser(ObjectId);
+            await CosmosService.Instance.CreateUser(ObjectId);
 
             var rolePermissions = await CosmosRolePermission.QueryByIdPermissions();
             List<Task<PermissionProperties>> tasks = new List<Task<PermissionProperties>>();
@@ -301,7 +301,7 @@ namespace Authentication.Shared.Models
         /// <returns>A permission class or null</returns>
         private async Task<PermissionProperties> GetOrCreateUserPermissions(CosmosRolePermission rolePermission)
         {
-            var permission = await DataService.Instance.GetPermission(ObjectId, rolePermission.Table);
+            var permission = await CosmosService.Instance.GetPermission(ObjectId, rolePermission.Table);
             if (permission == null)
             {
                 // create permission if not exist
@@ -321,7 +321,7 @@ namespace Authentication.Shared.Models
                     || (rolePermission.Permission.EqualsIgnoreCase("id-read-write") && permission.PermissionMode == PermissionMode.Read))
                 {
                     // rolePermission is changed, need to update in cosmos
-                    var updatedPermission = await DataService.Instance.ReplacePermission(ObjectId, rolePermission.Table,
+                    var updatedPermission = await CosmosService.Instance.ReplacePermission(ObjectId, rolePermission.Table,
                         rolePermission.Permission.EqualsIgnoreCase("id-read"), rolePermission.Table, partition: ObjectId);
                     if (updatedPermission != null)
                     {
@@ -348,11 +348,11 @@ namespace Authentication.Shared.Models
         /// <returns>A permission class or null</returns>
         private async Task<PermissionProperties> GetOrCreateAdminPermissions(CosmosRolePermission rolePermission)
         {
-            var adminPermission = await DataService.Instance.GetPermission(ObjectId, rolePermission.Table);
+            var adminPermission = await CosmosService.Instance.GetPermission(ObjectId, rolePermission.Table);
             if (adminPermission == null)
             {
                 // create permission if not exist
-                var newPermission = await DataService.Instance.CreatePermission(ObjectId, rolePermission.Table, false, rolePermission.Table, ObjectId);
+                var newPermission = await CosmosService.Instance.CreatePermission(ObjectId, rolePermission.Table, false, rolePermission.Table, ObjectId);
                 if (newPermission != null)
                 {
                     return newPermission;
