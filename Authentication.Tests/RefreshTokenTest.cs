@@ -7,6 +7,9 @@ using Xunit.Abstractions;
 
 namespace Authentication.Tests
 {
+    /// <summary>
+    /// Test RefreshToken api
+    /// </summary>
     public class RefreshTokenTest: BaseTest
     {
         public RefreshTokenTest(ITestOutputHelper output) : base(output) { }
@@ -49,7 +52,7 @@ namespace Authentication.Tests
         {
             Dictionary<string, StringValues> parameters = new Dictionary<string, StringValues>()
             {
-                { "refresh_token", "valid_refresh_token"}
+                { "refresh_token", TestConfig.RefreshToken}
             };
 
             var request = CreateHttpRequest(parameters);

@@ -7,6 +7,9 @@ using Xunit.Abstractions;
 
 namespace Authentication.Tests
 {
+    /// <summary>
+    /// Test GetRefreshAndAccessToken api
+    /// </summary>
     public class GetRefreshAndAccessTokenTest : BaseTest
     {
         public GetRefreshAndAccessTokenTest(ITestOutputHelper output) : base(output) { }
@@ -50,7 +53,7 @@ namespace Authentication.Tests
         {
             Dictionary<string, StringValues> parameters = new Dictionary<string, StringValues>()
             {
-                { "id_token", "valid_id_token"}
+                { "id_token", TestConfig.IdToken}
             };
 
             var request = CreateHttpRequest(parameters);
@@ -69,7 +72,7 @@ namespace Authentication.Tests
             Dictionary<string, StringValues> parameters = new Dictionary<string, StringValues>()
             {
                 { "email", "fake@bookbotkids.com"},
-                { "password", "valid_password"}
+                { "password", TestConfig.UserPassword}
             };
 
             var request = CreateHttpRequest(parameters);
@@ -87,7 +90,7 @@ namespace Authentication.Tests
             Dictionary<string, StringValues> parameters = new Dictionary<string, StringValues>()
             {
                 { "email", "duc@bookbotkids.com"},
-                { "password", "valid_password"}
+                { "password", TestConfig.UserPassword}
             };
 
             var request = CreateHttpRequest(parameters);
