@@ -1,19 +1,21 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Internal;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Primitives;
+﻿using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 
 namespace Authentication.Tests
 {
+    /// <summary>
+    /// Logger types
+    /// </summary>
     public enum LoggerTypes
     {
         Null,
         List
     }
 
+    /// <summary>
+    /// Mocks a scope for the test cases to pass to the ListLogger class
+    /// </summary>
     public class NullScope : IDisposable
     {
         public static NullScope Instance { get; } = new NullScope();
@@ -23,6 +25,9 @@ namespace Authentication.Tests
         public void Dispose() { }
     }
 
+    /// <summary>
+    /// Custom logger to pass into azure function
+    /// </summary>
     public class ListLogger : ILogger
     {
         public IList<string> Logs;
@@ -44,33 +49,6 @@ namespace Authentication.Tests
         {
             string message = formatter(state, exception);
             Logs.Add(message);
-        }
-    }
-
-    public class TestFactory
-    {
-        public static ILogger CreateLogger(LoggerTypes type = LoggerTypes.Null)
-        {
-            ILogger logger;
-
-            if (type == LoggerTypes.List)
-            {
-                logger = new ListLogger();
-            }
-            else
-            {
-                logger = NullLoggerFactory.Instance.CreateLogger("Null Logger");
-            }
-
-            return logger;
-        }
-
-        public static HttpRequest CreateHttpRequest(Dictionary<string, StringValues> parameters)
-        {
-            var context = new DefaultHttpContext();
-            var request = context.Request;
-            request.Query = new QueryCollection(parameters);
-            return request;
         }
     }
 }
