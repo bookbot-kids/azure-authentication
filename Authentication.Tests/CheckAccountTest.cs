@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -44,15 +45,33 @@ namespace Authentication.Tests
         }
 
         /// <summary>
-        /// Test the api successful with valid email
+        /// Test the api successful with existing email account
         /// </summary>
         /// <returns></returns>
         [Fact]
-        public async Task TestSuccess()
+        public async Task TestExistingUser()
         {
             Dictionary<string, StringValues> parameters = new Dictionary<string, StringValues>()
             {
-                { "email", "jade@bookbotkids.com"}
+                { "email", "duc@bookbotkids.com"}
+            };
+
+            var request = CreateHttpRequest(parameters);
+            var response = (JsonResult)await CheckAccount.Run(request, logger);
+            Assert.Equal(200, response.StatusCode);
+        }
+
+        /// <summary>
+        /// Test the api successful with new email account 
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task TestNewUser()
+        {
+            var randomId = Guid.NewGuid().ToString();
+            Dictionary<string, StringValues> parameters = new Dictionary<string, StringValues>()
+            {
+                { "email", $"{randomId}@bookbotkids.com"}
             };
 
             var request = CreateHttpRequest(parameters);

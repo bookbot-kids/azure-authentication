@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using Authentication.Shared;
 using Microsoft.AspNetCore.Http;
@@ -7,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Primitives;
+using Newtonsoft.Json;
 using Xunit.Abstractions;
 
 namespace Authentication.Tests
@@ -49,12 +51,26 @@ namespace Authentication.Tests
         /// </summary>
         private void SetupEnvironment()
         {
+            // read config file
+            var dir = Directory.GetCurrentDirectory();
+            var settings = JsonConvert.DeserializeObject<LocalSettings>(File.ReadAllText(dir + "/local.settings.json"));
+
+            // then write into system variables
+            foreach (var setting in settings.Values)
+            {
+                Environment.SetEnvironmentVariable(setting.Key, setting.Value);
+            }
+
+            // and load configuration from environment variables
             var configuration = new ConfigurationBuilder()
-             .SetBasePath(Directory.GetCurrentDirectory())
+             .SetBasePath(dir)
              .AddJsonFile("local.settings.json", true, true)
+             .AddEnvironmentVariables()
              .Build();
+
             Configurations.Configuration = configuration;
         }
+
 
         /// <summary>
         /// Create logger instance
@@ -88,6 +104,15 @@ namespace Authentication.Tests
             var request = context.Request;
             request.Query = new QueryCollection(parameters);
             return request;
+        }
+
+        /// <summary>
+        /// The local json settings
+        /// </summary>
+        class LocalSettings
+        {
+            public bool IsEncrypted { get; set; }
+            public Dictionary<string, string> Values { get; set; }
         }
     }
 }
