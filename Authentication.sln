@@ -1,7 +1,9 @@
 
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Authentication", "Authentication.csproj", "{18175679-C65B-47BA-860C-71B53BCD820D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Authentication", "Authentication\Authentication.csproj", "{18175679-C65B-47BA-860C-71B53BCD820D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Authentication.Tests", "Authentication.Tests\Authentication.Tests.csproj", "{10A41A98-22BF-490A-8407-7EE0887A1B14}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,5 +15,9 @@ Global
 		{18175679-C65B-47BA-860C-71B53BCD820D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{18175679-C65B-47BA-860C-71B53BCD820D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{18175679-C65B-47BA-860C-71B53BCD820D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{10A41A98-22BF-490A-8407-7EE0887A1B14}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{10A41A98-22BF-490A-8407-7EE0887A1B14}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{10A41A98-22BF-490A-8407-7EE0887A1B14}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{10A41A98-22BF-490A-8407-7EE0887A1B14}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
