@@ -14,7 +14,7 @@ namespace Authentication.Tests
         /// <summary>
         /// Test the refresh token is invalid. It should response error 400
         /// </summary>
-        /// <returns></returns>
+        /// <returns>Nothing</returns>
         [Fact]
         public async Task TestRefreshTokenInvalid()
         {
@@ -43,7 +43,7 @@ namespace Authentication.Tests
         /// <summary>
         /// Test the api successful with valid refresh token
         /// </summary>
-        /// <returns></returns>
+        /// <returns>Nothing</returns>
         [Fact]
         public async Task TestValidToken()
         {

@@ -59,6 +59,8 @@ namespace Authentication.Tests
             var request = CreateHttpRequest(parameters);
             var response = (JsonResult)await CheckAccount.Run(request, logger);
             Assert.Equal(200, response.StatusCode);
+            var isSuccess = response.Value.GetType().GetProperty("success")?.GetValue(response.Value, null) as bool?;
+            Assert.True(isSuccess);
         }
 
         /// <summary>

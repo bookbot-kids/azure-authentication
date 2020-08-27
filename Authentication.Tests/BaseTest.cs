@@ -107,11 +107,18 @@ namespace Authentication.Tests
         }
 
         /// <summary>
-        /// The local json settings
+        /// The local json settings parsed from local.settings.json file
         /// </summary>
         class LocalSettings
         {
+            /// <summary>
+            /// Is encrypted
+            /// </summary>
             public bool IsEncrypted { get; set; }
+
+            /// <summary>
+            /// Config values
+            /// </summary>
             public Dictionary<string, string> Values { get; set; }
         }
     }
