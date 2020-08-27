@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Authentication.Shared.Services;
-using Extensions;
 
 namespace Authentication.Shared.Models
 {
@@ -82,21 +80,6 @@ namespace Authentication.Shared.Models
             {
                 return null;
             }
-        }
-
-        /// <summary>
-        /// Validate mobile client token
-        /// </summary>
-        /// <param name="token">client token</param>
-        /// <returns>Result, message, payload</returns>
-        public (bool, string, IDictionary<string, object> payload) ValidateClientToken(string token)
-        {
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return (false, "token is missing", null);        
-            }
-
-            return TokenService.ValidateClientToken(token, Configurations.JWTToken.TokenClientSecret.ToBase64(), Configurations.JWTToken.TokenIssuer, Configurations.JWTToken.TokenSubject);
         }
 
         /// <summary>
