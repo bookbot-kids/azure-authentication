@@ -109,6 +109,18 @@ namespace Authentication.Shared.Models
         [JsonProperty(PropertyName = "updatedAt")]
         public long UpdatedAt { get; set; }
 
+        /// <summary>
+        /// Gets or sets customer type
+        /// </summary>
+        [JsonProperty(PropertyName = "customer")]
+        public string Customer { get; set; }
+
+        /// <summary>
+        /// Gets or sets accent
+        /// </summary>
+        [JsonProperty(PropertyName = "accent")]
+        public string Accent { get; set; }
+
         #endregion
 
         #region Methods
