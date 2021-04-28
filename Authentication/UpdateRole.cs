@@ -93,7 +93,31 @@ namespace Authentication
             }
 
             var result = await user.UpdateGroup(group.Name);
-            if(result)
+
+            string language = req.Query["language"];
+            if(!string.IsNullOrWhiteSpace(language))
+            {
+                var cosmosUser = await User.GetById(user.ObjectId);
+                if(cosmosUser == null)
+                {
+                    cosmosUser = new User
+                    {
+                        Id = user.ObjectId,
+                        Email = email,
+                        Language = language,
+                    };
+                    await cosmosUser.CreateOrUpdate();
+                }
+                else if(cosmosUser.Language != language)
+                {
+                    cosmosUser.Language = language;
+                    await cosmosUser.CreateOrUpdate();
+                }             
+               
+            }
+          
+
+            if (result)
             {
                 return CreateSuccessResponse();
             }

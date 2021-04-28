@@ -119,7 +119,19 @@ namespace Authentication.Shared.Models
         /// Gets or sets accent
         /// </summary>
         [JsonProperty(PropertyName = "accent")]
-        public string Accent { get; set; }
+        public string Accent { get; set; } = "i18n";
+
+        /// <summary>
+        /// Gets or sets language
+        /// </summary>
+        [JsonProperty(PropertyName = "language")]
+        public string Language { get; set; } = "en";
+
+        /// <summary>
+        /// Gets or sets language
+        /// </summary>
+        [JsonProperty(PropertyName = "appRating")]
+        public int AppRating { get; set; } = 0;
 
         #endregion
 
