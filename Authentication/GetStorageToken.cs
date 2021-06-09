@@ -30,16 +30,16 @@ namespace Authentication
                 return CreateErrorResponse("refresh_token is invalid", StatusCodes.Status401Unauthorized);
             }
 
-            // Validate the access token, then get id
-            var (result, message, id) = await ADAccess.Instance.ValidateAccessToken(adToken.AccessToken);
+            // Validate the access token
+            var (result, message, _) = await ADAccess.Instance.ValidateAccessToken(adToken.AccessToken);
             if (!result)
             {
                 return CreateErrorResponse(message, StatusCodes.Status403Forbidden);
             }
 
             log.LogInformation("GetStorageToken processed a request.");
-            var (token, uri) = StorageService.Instance.CreateSASToken(id);
-            return new JsonResult ( new { success = true, uri = uri, token = token } );
+            var uri = StorageService.Instance.CreateSASUri();
+            return new JsonResult ( new { success = true, uri } );
         }
     }
 }
