@@ -191,5 +191,15 @@ namespace Authentication.Shared
             /// </summary>
             public static readonly string TokenSubject = Configuration["TokenSubject"];
         }
+
+        public static class Storage
+        {
+            /// <summary>
+            /// Storage connection string
+            /// </summary>
+            public static readonly string UserStorageConnection = Configuration["UserStorageConnection"];
+
+            public static readonly string UserStorageContainerName = Configuration["UserStorageContainerName"];
+        }
     }
 }
