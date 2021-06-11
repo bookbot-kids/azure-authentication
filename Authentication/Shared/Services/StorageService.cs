@@ -23,7 +23,7 @@ namespace Authentication.Shared.Services
                 ExpiresOn = DateTimeOffset.UtcNow.AddDays(1)
             };
 
-            sasBuilder.SetPermissions(BlobContainerSasPermissions.Create);           
+            sasBuilder.SetPermissions(BlobContainerSasPermissions.Create | BlobContainerSasPermissions.Write);           
             return containerClient.GenerateSasUri(sasBuilder);
         }
     }
