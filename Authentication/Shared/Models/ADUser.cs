@@ -138,6 +138,22 @@ namespace Authentication.Shared.Models
         }
 
         /// <summary>
+        /// Get group name of current user. Expect there is only one group
+        /// </summary>
+        /// <returns>Null or group name</returns>
+        public async Task<string> GroupName()
+        {
+            var groupIds = await GroupIds();
+            if(groupIds.Count > 0)
+            {
+                var group = await ADGroup.FindById(groupIds[0]);
+                return group.Name;
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// Change group for current user
         /// </summary>
         /// <param name="newGroupName"></param>
