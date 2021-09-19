@@ -49,6 +49,17 @@ namespace Authentication.Shared.Services
         Task<ADUser> CreateUser([AliasAs("tenantId")] string tenantId, [Header("Authorization")] string accessToken, [Body(BodySerializationMethod.Serialized)] CreateADUserParameters param);
 
         /// <summary>
+        /// Update AD user
+        /// </summary>
+        /// <param name="tenantId">Tenant id</param>
+        /// <param name="accessToken">access token</param>
+        /// <param name="param">parameters value</param>
+        /// <returns>Created ADUser</returns>
+        [Headers("Accept: application/json")]
+        [Patch("/{tenantId}/users/{userId}?api-version=1.6")]
+        Task<ADUser> UpdateUser([AliasAs("tenantId")] string tenantId, [AliasAs("userId")] string userId, [Header("Authorization")] string accessToken, [Body(BodySerializationMethod.Serialized)] Dictionary<string, string> param);
+
+        /// <summary>
         /// Add user into a group
         /// </summary>
         /// <param name="tenantId">Tenant id</param>
@@ -215,7 +226,7 @@ namespace Authentication.Shared.Services
             catch (ApiException)
             {
                 return false;
-            }               
+            }
         }
 
         /// <summary>
@@ -233,13 +244,26 @@ namespace Authentication.Shared.Services
             catch (ApiException ex)
             {
                 // success
-                if (ex.StatusCode == System.Net.HttpStatusCode.Created) 
+                if (ex.StatusCode == System.Net.HttpStatusCode.Created)
                 {
                     return await ex.GetContentAsAsync<ADUser>();
                 }
 
                 Logger.Log?.LogError(ex.Message);
                 return null;
+            }
+        }
+
+        public async Task UpdateADUser(string userId, Dictionary<string, string> param)
+        {
+            try
+            {
+                var masterToken = await ADAccess.Instance.GetMasterKey();
+                await azureGraphRestApi.UpdateUser(Configurations.AzureB2C.TenantId, userId, BaseFunction.GetBearerAuthorization(masterToken), param);
+            }
+            catch (ApiException ex)
+            {
+                Logger.Log?.LogError(ex.Message);
             }
         }
 

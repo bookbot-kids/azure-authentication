@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Extensions
 {
@@ -25,7 +26,7 @@ namespace Extensions
             dictionary.Add(key, value);
         }
 
-        public static TValue GetValueOrDefault<TKey, TValue>(this IDictionary<TKey, TValue> dictionary,
+        public static TValue GetOrDefault<TKey, TValue>(this IDictionary<TKey, TValue> dictionary,
          TKey key,
          TValue defaultValue)
         {
@@ -33,7 +34,7 @@ namespace Extensions
             return dictionary.TryGetValue(key, out value) ? value : defaultValue;
         }
 
-        public static TValue GetValueOrDefault<TKey, TValue>
+        public static TValue GetOrDefault<TKey, TValue>
             (this IDictionary<TKey, TValue> dictionary,
              TKey key,
              Func<TValue> defaultValueProvider)
@@ -41,6 +42,21 @@ namespace Extensions
             TValue value;
             return dictionary.TryGetValue(key, out value) ? value
                  : defaultValueProvider();
+        }
+
+        /// <summary>
+        /// Export to new dictionary without toRemove keys
+        /// </summary>
+        /// <typeparam name="TKey"></typeparam>
+        /// <typeparam name="TValue"></typeparam>
+        /// <param name="dictionary"></param>
+        /// <param name="toRemove"></param>
+        /// <returns></returns>
+        public static Dictionary<TKey, TValue> Export<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, List<TKey> toRemove)
+        {
+            return dictionary.Where(pair => !toRemove.Contains(pair.Key))
+                                 .ToDictionary(pair => pair.Key,
+                                               pair => pair.Value);
         }
 
     }

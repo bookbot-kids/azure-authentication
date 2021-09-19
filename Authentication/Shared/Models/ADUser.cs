@@ -42,6 +42,18 @@ namespace Authentication.Shared.Models
         public List<SignInName> SignInNames { get; set; }
 
         /// <summary>
+        /// Gets or sets country
+        /// </summary>
+        [JsonProperty("country")]
+        public string Country { get; set; }
+
+        /// <summary>
+        /// Gets or sets IPAddress. It's netId in azure AD
+        /// </summary>
+        [JsonProperty("netId")]
+        public string IPAddress { get; set; }
+
+        /// <summary>
         /// Sign in name config
         /// </summary>
         public class SignInName
@@ -96,7 +108,7 @@ namespace Authentication.Shared.Models
         /// <param name="email">user email</param>
         /// <param name="name">user name</param>
         /// <returns>(Result, ADUser). Result is true if user already exist, otherwise is false</returns>
-        public static async Task<(bool result, ADUser user)> FindOrCreate(string email, string name = null)
+        public static async Task<(bool result, ADUser user)> FindOrCreate(string email, string name = null, string country = null, string ipAddress = null)
         {
             // find user by email
             email = email.ToLower();
@@ -125,7 +137,22 @@ namespace Authentication.Shared.Models
                 }
             };
 
+            if(!string.IsNullOrWhiteSpace(country))
+            {
+                param.Country = country;
+            }
+
+            if (!string.IsNullOrWhiteSpace(ipAddress))
+            {
+                param.IPAddress = ipAddress;
+            }
+
             return (false, await AzureB2CService.Instance.CreateADUser(param));
+        }
+
+        public async Task Update(Dictionary<string, string> param)
+        {
+            await AzureB2CService.Instance.UpdateADUser(ObjectId, param);
         }
 
         /// <summary>

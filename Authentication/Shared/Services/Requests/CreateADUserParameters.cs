@@ -40,6 +40,18 @@ namespace Authentication.Shared.Services
         public List<SignInName> SignInNames { get; set; }
 
         /// <summary>
+        /// Gets or sets country
+        /// </summary>
+        [JsonProperty("country")]
+        public string Country { get; set; }
+
+        /// <summary>
+        /// Gets or sets IPAddress. It's netId in azure AD
+        /// </summary>
+        [JsonProperty("netId")]
+        public string IPAddress { get; set; }
+
+        /// <summary>
         /// The password profile config 
         /// </summary>
         public class PasswordProfile

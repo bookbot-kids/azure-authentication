@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
 
 namespace Authentication
 {
@@ -50,6 +51,9 @@ namespace Authentication
                 return CreateErrorResponse($"Email {email} is invalid");
             }
 
+            var ipAddress = HttpHelper.GetIpFromRequestHeaders(req);
+            string country = req.Query["country"];
+
             // Fix the encode issue because email parameter that contains "+" will be encoded by space
             // e.g. client sends "a+1@gmail.com" => Azure function read: "a 1@gmail.com" (= req.Query["email"])
             // We need to replace space by "+" when reading the parameter req.Query["email"]
@@ -59,17 +63,34 @@ namespace Authentication
             string name = email.GetNameFromEmail();
 
             // check if email is existed in b2c. If it is, return that user
-            var (exist, user) = await ADUser.FindOrCreate(email, name);
-            if (exist)
-            {
-                return new JsonResult(new { success = true, exist, user }) { StatusCode = StatusCodes.Status200OK };
-            }
-
+            var (exist, user) = await ADUser.FindOrCreate(email, name, country, ipAddress);
 
             // there is an error when creating user
             if (user == null)
             {
                 return CreateErrorResponse($"can not create user {email}", StatusCodes.Status500InternalServerError);
+            }
+
+            // update country and ipadress if needed
+            var updateParams = new Dictionary<string, string>();
+            if (!string.IsNullOrWhiteSpace(country) && string.IsNullOrWhiteSpace(user.Country))
+            {
+                updateParams["country"] = country;
+            }
+
+            if (!string.IsNullOrWhiteSpace(ipAddress) && string.IsNullOrWhiteSpace(user.IPAddress))
+            {
+                updateParams["netId"] = ipAddress;
+            }
+
+            if (updateParams.Count > 0)
+            {
+                await user.Update(updateParams);
+            }
+
+            if (exist)
+            {
+                return new JsonResult(new { success = true, exist, user }) { StatusCode = StatusCodes.Status200OK };
             }
 
             // add user to new group
