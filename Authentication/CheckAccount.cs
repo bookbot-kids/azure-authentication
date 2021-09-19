@@ -69,27 +69,30 @@ namespace Authentication
             if (user == null)
             {
                 return CreateErrorResponse($"can not create user {email}", StatusCodes.Status500InternalServerError);
-            }
+            }        
 
-            // update country and ipadress if needed
-            var updateParams = new Dictionary<string, string>();
-            if (!string.IsNullOrWhiteSpace(country) && string.IsNullOrWhiteSpace(user.Country))
-            {
-                updateParams["country"] = country;
-            }
-
-            if (!string.IsNullOrWhiteSpace(ipAddress) && string.IsNullOrWhiteSpace(user.IPAddress))
-            {
-                updateParams["netId"] = ipAddress;
-            }
-
-            if (updateParams.Count > 0)
-            {
-                await user.Update(updateParams);
-            }
-
+            // if user already has account
             if (exist)
             {
+                // update country and ipadress if needed
+                var updateParams = new Dictionary<string, string>();
+                if (!string.IsNullOrWhiteSpace(country))
+                {
+                    updateParams["country"] = country;
+                    user.Country = country;
+                }
+
+                if (!string.IsNullOrWhiteSpace(ipAddress))
+                {
+                    updateParams["streetAddress"] = ipAddress;
+                    user.IPAddress = ipAddress;
+                }
+
+                if (updateParams.Count > 0)
+                {
+                    await user.Update(updateParams);
+                }
+
                 return new JsonResult(new { success = true, exist, user }) { StatusCode = StatusCodes.Status200OK };
             }
 

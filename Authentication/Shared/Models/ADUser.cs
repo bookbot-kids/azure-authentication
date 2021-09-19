@@ -48,9 +48,9 @@ namespace Authentication.Shared.Models
         public string Country { get; set; }
 
         /// <summary>
-        /// Gets or sets IPAddress. It's netId in azure AD
+        /// Gets or sets IPAddress. It's streetAddress in azure AD
         /// </summary>
-        [JsonProperty("netId")]
+        [JsonProperty("streetAddress")]
         public string IPAddress { get; set; }
 
         /// <summary>
