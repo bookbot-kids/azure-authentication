@@ -8,6 +8,9 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
+using Authentication.Shared.Services;
+using System;
+using Authentication.Shared;
 
 namespace Authentication
 {
@@ -31,7 +34,7 @@ namespace Authentication
         /// <param name="log">The logger instance</param>
         /// <returns>User result with http code 200 if no error, otherwise return http error</returns>
         [FunctionName("CheckAccount")]
-        public static async Task<IActionResult> Run(
+        public async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
             ILogger log)
         {
@@ -69,7 +72,7 @@ namespace Authentication
             if (user == null)
             {
                 return CreateErrorResponse($"can not create user {email}", StatusCodes.Status500InternalServerError);
-            }        
+            }
 
             // if user already has account
             if (exist)
@@ -95,6 +98,17 @@ namespace Authentication
 
                 return new JsonResult(new { success = true, exist, user }) { StatusCode = StatusCodes.Status200OK };
             }
+            else
+            {
+                try
+                {
+                    await SendAnalytics(email, user.ObjectId, country, ipAddress, name);
+                }
+                catch (Exception ex)
+                {
+                    log.LogError($"Send analytics error {ex.Message}");
+                }
+            }
 
             // add user to new group
             var newGroup = await ADGroup.FindByName("new");
@@ -109,5 +123,46 @@ namespace Authentication
             // Success, return user info
             return new JsonResult(new { success = true, exist, user}) { StatusCode = StatusCodes.Status200OK };
         }
-    }
+
+        private async Task SendAnalytics(string email, string id, string country, string ipAddress, string name)
+        {
+            // log event for new user
+            var body = new Dictionary<string, object>
+                {
+                    {
+                        "googleAnalytics", new Dictionary<string, string>
+                            {
+                                {"country", country },
+                                {"uid", id },
+                                {"eventType", "event" },
+                                {"eventName", "sign_up"},
+                                {"tid", Configurations.Configuration["GATransactionId"] }
+                            }
+                    },
+                    {
+                         "facebookPixel", new Dictionary<string, string>
+                            {
+                                {"em", email },
+                                {"country", country },
+                                {"client_ip_address",  ipAddress},
+                                {"hashFields", "em,country" },
+                                {"eventType", "event" },
+                                {"eventName", "CompleteRegistration"}
+                            }
+                    },
+                    {
+                        "activeCampaign", new Dictionary<string, string>
+                            {
+                                {"country", country },
+                                {"eventType", "user" },
+                                {"tag", "registered" },
+                                {"firstName", name },
+                                {"email", email }
+                            }
+                    },
+                };
+
+            await AnalyticsService.Instance.SendEvent(body);
+        }
+    }    
 }

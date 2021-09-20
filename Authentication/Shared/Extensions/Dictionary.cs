@@ -34,16 +34,6 @@ namespace Extensions
             return dictionary.TryGetValue(key, out value) ? value : defaultValue;
         }
 
-        public static TValue GetOrDefault<TKey, TValue>
-            (this IDictionary<TKey, TValue> dictionary,
-             TKey key,
-             Func<TValue> defaultValueProvider)
-        {
-            TValue value;
-            return dictionary.TryGetValue(key, out value) ? value
-                 : defaultValueProvider();
-        }
-
         /// <summary>
         /// Export to new dictionary without toRemove keys
         /// </summary>

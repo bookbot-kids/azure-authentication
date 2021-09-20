@@ -201,5 +201,15 @@ namespace Authentication.Shared
 
             public static readonly string UserStorageContainerName = Configuration["UserStorageContainerName"];
         }
+
+        public static class Analytics
+        {
+            /// <summary>
+            /// analytics server url
+            /// </summary>
+            public static readonly string AnalyticsUrl = Configuration["AnalyticsUrl"];
+
+            public static readonly string AnalyticsToken = Configuration["AnalyticsToken"];
+        }
     }
 }
