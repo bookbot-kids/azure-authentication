@@ -106,7 +106,10 @@ namespace Authentication
                 }
                 catch (Exception ex)
                 {
-                    log.LogError($"Send analytics error {ex.Message}");
+                    if (!(ex is TimeoutException))
+                    {
+                        log.LogError($"Send analytics error {ex.Message}");
+                    }                    
                 }
             }
 
@@ -132,11 +135,13 @@ namespace Authentication
                     {
                         "googleAnalytics", new Dictionary<string, string>
                             {
-                                {"country", country },
+                                {"p_country", country },
+                                {"p_email", email },
                                 {"uid", id },
                                 {"eventType", "event" },
                                 {"eventName", "sign_up"},
-                                {"tid", Configurations.Configuration["GATransactionId"] }
+                                {"measurement_id", Configurations.Configuration["GAMeasurementId"]},
+                                {"api_secret", Configurations.Configuration["GASecret"]},
                             }
                     },
                     {
@@ -162,7 +167,9 @@ namespace Authentication
                     },
                 };
 
-            await AnalyticsService.Instance.SendEvent(body);
+            // don't need to wait for this event, just make it timeout after few seconds
+            var task = AnalyticsService.Instance.SendEvent(body);
+            await HttpHelper.TimeoutAfter(task, TimeSpan.FromSeconds(5));
         }
     }    
 }
