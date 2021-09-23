@@ -24,6 +24,13 @@ namespace Authentication.Shared.Services
             client = new CosmosClient(Configurations.Cosmos.DatabaseUrl, Configurations.Cosmos.DatabaseMasterKey);
         }
 
+        public async Task<List<JObject>> GetAll(string table)
+        {
+            var container = client.GetDatabase(Configurations.Cosmos.DatabaseId).GetContainer(table);
+            var items = await LoadDocument(container, $"select * from c");
+            return items;
+        }
+
         public async Task<JObject> FindById(string table, string id)
         {
             var container = client.GetDatabase(Configurations.Cosmos.DatabaseId).GetContainer(table);
