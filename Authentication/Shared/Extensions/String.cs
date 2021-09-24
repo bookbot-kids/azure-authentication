@@ -99,5 +99,19 @@ namespace Extensions
         {
             return str.Equals(other, StringComparison.OrdinalIgnoreCase);
         }
+
+
+        /// <summary>
+        /// Fix the encode issue because email parameter that contains "+" will be encoded by space
+        /// e.g. client sends "a+1@gmail.com" => Azure function read: "a 1@gmail.com" (= req.Query["email"])
+        /// We need to replace space by "+" when reading the parameter req.Query["email"]
+        /// Then the result is correct "a+1@gmail.com"
+        /// </summary>
+        /// <param name="email"></param>
+        /// <returns></returns>
+        public static string NormalizeEmail(this string srt)
+        {
+            return srt.Trim().Replace(" ", "+");
+        }
     }
 }
