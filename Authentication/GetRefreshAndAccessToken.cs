@@ -7,6 +7,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
+using Authentication.Shared.Services;
+using System.Collections.Generic;
+using Authentication.Shared;
 
 namespace Authentication
 {
@@ -31,7 +34,7 @@ namespace Authentication
         /// <param name="log">The logger instance</param>
         /// <returns>access token and refresh token result with http code 200 if no error, otherwise return http error</returns> 
         [FunctionName("GetRefreshAndAccessToken")]
-        public static async Task<IActionResult> Run(
+        public async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
             ILogger log)
         {
@@ -51,7 +54,7 @@ namespace Authentication
         /// </summary>
         /// <param name="idToken">id token</param>
         /// <returns>access token and refresh token result with http code 200 if no error, otherwise return http error</returns>
-        private static async Task<IActionResult> GetFromIdToken(string idToken)
+        private async Task<IActionResult> GetFromIdToken(string idToken)
         {
             // validate id token and get the email
             var (result, message, email) = await ADAccess.Instance.ValidateIdToken(idToken);
@@ -70,18 +73,17 @@ namespace Authentication
                 }
 
                 var user = await ADUser.FindByEmail(email);
-                var group = "new";
-                if (user != null)
+                var group = await user.GroupName();
+
+                try
                 {
-                    // Get group of exist user
-                    var groupdIds = await user.GroupIds();
-                    if (groupdIds != null && groupdIds.Count > 0)
+                    await SendAnalytics(email, user.ObjectId);
+                }
+                catch (Exception ex)
+                {
+                    if (!(ex is TimeoutException))
                     {
-                        var userGroup = await ADGroup.FindById(groupdIds[0]);
-                        if (userGroup != null)
-                        {
-                            group = userGroup.Name;
-                        }
+                        Logger.Log?.LogError($"Send analytics error {ex.Message}");
                     }
                 }
 
@@ -117,6 +119,38 @@ namespace Authentication
 
             // return access token and refresh token result
             return new JsonResult(new { success = true, token }) { StatusCode = StatusCodes.Status200OK };
+        }
+
+        private async Task SendAnalytics(string email, string id)
+        {
+            // log event for new user
+            var body = new Dictionary<string, object>
+                {
+                    {
+                        "googleAnalytics", new Dictionary<string, string>
+                            {
+                                {"p_email", email },
+                                {"uid", id },
+                                {"eventType", "event" },
+                                {"eventName", "sign_in"},
+                                {"measurement_id", Configurations.Configuration["GAMeasurementId"]},
+                                {"api_secret", Configurations.Configuration["GASecret"]},
+                            }
+                    },
+                    {
+                        "activeCampaign", new Dictionary<string, string>
+                            {
+                                {"eventType", "event" },
+                                {"eventName", "sign_in"},
+                                {"email", email },
+                                {"eventdata", email }
+                            }
+                    },
+                };
+
+            // don't need to wait for this event, just make it timeout after few seconds
+            var task = AnalyticsService.Instance.SendEvent(body);
+            await HttpHelper.TimeoutAfter(task, TimeSpan.FromSeconds(5));
         }
     }
 }

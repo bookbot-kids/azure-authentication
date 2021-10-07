@@ -174,7 +174,7 @@ namespace Authentication.Shared.Models
             if(groupIds.Count > 0)
             {
                 var group = await ADGroup.FindById(groupIds[0]);
-                return group.Name;
+                return group?.Name;
             }
 
             return null;

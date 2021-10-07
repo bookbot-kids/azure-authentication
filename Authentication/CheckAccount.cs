@@ -142,6 +142,7 @@ namespace Authentication
                                 {"eventName", "sign_up"},
                                 {"measurement_id", Configurations.Configuration["GAMeasurementId"]},
                                 {"api_secret", Configurations.Configuration["GASecret"]},
+                                {"p_role", "new" }
                             }
                     },
                     {
@@ -160,9 +161,9 @@ namespace Authentication
                             {
                                 {"country", country },
                                 {"eventType", "user" },
-                                {"tag", "registered" },
                                 {"firstName", name },
-                                {"email", email }
+                                {"email", email },
+                                {"role", "new" }
                             }
                     },
                 };
