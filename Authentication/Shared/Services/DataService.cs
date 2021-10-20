@@ -14,6 +14,7 @@ namespace Authentication.Shared.Services
     {
         public Task<JObject> FindById(string table, string id);
         public Task SaveDocument(string table, JObject doc);
+        public Task DeleteById(string table, string id, string partition);
     }
 
     public class DataService: IDataService
@@ -34,7 +35,8 @@ namespace Authentication.Shared.Services
         public async Task<JObject> FindById(string table, string id)
         {
             var container = client.GetDatabase(Configurations.Cosmos.DatabaseId).GetContainer(table);
-            var items = await LoadDocument(container, $"select * from c where c.id = {id}");
+            var query = new QueryDefinition("select * from c where c.id = @id").WithParameter("@id", id);
+            var items = await LoadDocument(container, query);
             return items.Count == 0 ? null : items[0];
         }
 
@@ -42,6 +44,19 @@ namespace Authentication.Shared.Services
         {
             var container = client.GetDatabase(Configurations.Cosmos.DatabaseId).GetContainer(table);
             await container.UpsertItemAsync(doc);
+        }
+
+        public async Task DeleteById(string table, string id, string partition)
+        {
+            if (string.IsNullOrWhiteSpace(partition))
+            {
+                partition = Configurations.Cosmos.DefaultPartition;
+            }
+
+            var container = client.GetDatabase(Configurations.Cosmos.DatabaseId).GetContainer(table);
+            await container.DeleteItemAsync<object>(
+                partitionKey: new PartitionKey(partition),
+                id: id);
         }
 
         /// <summary>
@@ -54,6 +69,25 @@ namespace Authentication.Shared.Services
         private async Task<List<JObject>> LoadDocument(Container container, string query)
         {
             QueryDefinition queryDefinition = new QueryDefinition(query);
+            FeedIterator<JObject> queryResultSetIterator = container.GetItemQueryIterator<JObject>(queryDefinition);
+            List<JObject> documents = new List<JObject>();
+            if (queryResultSetIterator.HasMoreResults)
+            {
+                FeedResponse<JObject> currentResultSet = await queryResultSetIterator.ReadNextAsync();
+                documents.AddRange(currentResultSet);
+            }
+            return documents;
+        }
+
+        /// <summary>
+        /// Load document from cosmos
+        /// </summary>
+        /// <param name="container">Container Object</param>
+        /// <param name="query">Query</param>
+        /// <param name="continuationToken">Continuation Token</param>
+        /// <returns></returns>
+        private async Task<List<JObject>> LoadDocument(Container container, QueryDefinition queryDefinition)
+        {
             FeedIterator<JObject> queryResultSetIterator = container.GetItemQueryIterator<JObject>(queryDefinition);
             List<JObject> documents = new List<JObject>();
             if (queryResultSetIterator.HasMoreResults)
