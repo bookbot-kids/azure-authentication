@@ -14,7 +14,8 @@ namespace Authentication.Shared.Services
     {
         public Task<JObject> FindById(string table, string id);
         public Task SaveDocument(string table, JObject doc);
-        public Task DeleteById(string table, string id, string partition);
+        public Task DeleteById(string table, string id, string partition, bool ignoreNotFound = false);
+        public Task<List<JObject>> QueryDocuments(string table, QueryDefinition query);
     }
 
     public class DataService: IDataService
@@ -40,13 +41,20 @@ namespace Authentication.Shared.Services
             return items.Count == 0 ? null : items[0];
         }
 
+        public async Task<List<JObject>> QueryDocuments(string table, QueryDefinition query)
+        {
+            var container = client.GetDatabase(Configurations.Cosmos.DatabaseId).GetContainer(table);
+            var items = await LoadDocument(container, query);
+            return items;
+        }
+
         public async Task SaveDocument(string table, JObject doc)
         {
             var container = client.GetDatabase(Configurations.Cosmos.DatabaseId).GetContainer(table);
             await container.UpsertItemAsync(doc);
         }
 
-        public async Task DeleteById(string table, string id, string partition)
+        public async Task DeleteById(string table, string id, string partition, bool ignoreNotFound = false)
         {
             if (string.IsNullOrWhiteSpace(partition))
             {
@@ -54,9 +62,20 @@ namespace Authentication.Shared.Services
             }
 
             var container = client.GetDatabase(Configurations.Cosmos.DatabaseId).GetContainer(table);
-            await container.DeleteItemAsync<object>(
-                partitionKey: new PartitionKey(partition),
-                id: id);
+
+            try
+            {
+                await container.DeleteItemAsync<object>(
+               partitionKey: new PartitionKey(partition), requestOptions: new ItemRequestOptions(),
+               id: id);
+            }
+            catch (CosmosException ex)
+            {
+                if(!(ex.StatusCode == System.Net.HttpStatusCode.NotFound && ignoreNotFound))
+                {
+                    throw ex;
+                }
+            }           
         }
 
         /// <summary>

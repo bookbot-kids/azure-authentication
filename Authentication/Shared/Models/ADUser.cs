@@ -155,6 +155,11 @@ namespace Authentication.Shared.Models
             await AzureB2CService.Instance.UpdateADUser(ObjectId, param);
         }
 
+        public async Task Delete()
+        {
+            await AzureMSGraphService.Instance.DeleteADUser(ObjectId);
+        }
+
         /// <summary>
         /// Get group id list of current user 
         /// </summary>

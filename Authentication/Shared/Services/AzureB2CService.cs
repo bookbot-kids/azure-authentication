@@ -115,6 +115,17 @@ namespace Authentication.Shared.Services
         [Headers("Accept: application/json")]
         [Get("/{tenantId}/groups?api-version=1.6")]
         Task<GroupsResponse> GetAllGroups([AliasAs("tenantId")] string tenantId, [Header("Authorization")] string accessToken);
+
+        /// <summary>
+        /// Remove user
+        /// </summary>
+        /// <param name="tenantId">Tenant id</param>
+        /// <param name="userId">User id</param>
+        /// <param name="accessToken">access token</param>
+        /// <returns>Api result</returns>
+        [Headers("Accept: application/json")]
+        [Delete("/{tenantId}/users/{userId}/?api-version=1.6")]
+        Task<APIResult> DeleteUser([AliasAs("tenantId")] string tenantId, [AliasAs("userId")] string userId, [Header("Authorization")] string accessToken);
     }
 
     /// <summary>
@@ -264,6 +275,20 @@ namespace Authentication.Shared.Services
             catch (ApiException ex)
             {
                 Logger.Log?.LogError(ex.Message);
+            }
+        }
+
+        public async Task DeleteADUser(string userId)
+        {
+            try
+            {
+                var masterToken = await ADAccess.Instance.GetMasterKey();
+                await azureGraphRestApi.DeleteUser(Configurations.AzureB2C.TenantId, userId, BaseFunction.GetBearerAuthorization(masterToken));
+            }
+            catch (ApiException ex)
+            {
+                Logger.Log?.LogError(ex.Message);
+                throw ex;
             }
         }
 

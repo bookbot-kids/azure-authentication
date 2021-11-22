@@ -169,6 +169,8 @@ namespace Authentication.Shared
             /// B2C client id
             /// </summary>
             public static readonly string B2CClientId = Configuration["B2CClientId"];
+
+            public static readonly string GraphApiUrl = "https://graph.microsoft.com/v1.0";
         }
 
         /// <summary>
