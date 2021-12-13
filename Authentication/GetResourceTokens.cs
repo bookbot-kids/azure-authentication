@@ -52,13 +52,14 @@ namespace Authentication
             var adToken = await ADAccess.Instance.RefreshToken(refreshToken);
             if(adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
             {
-                return CreateErrorResponse("refresh_token is invalid", StatusCodes.Status401Unauthorized);
+                return CreateErrorResponse($"refresh_token is invalid: {refreshToken} ", StatusCodes.Status401Unauthorized);
             }
 
             // Validate the access token, then get id
             var (result, message, id) = await ADAccess.Instance.ValidateAccessToken(adToken.AccessToken);
             if (!result)
             {
+                log.LogError($"can not get access token from refresh token {refreshToken}");
                 return CreateErrorResponse(message, StatusCodes.Status403Forbidden);
             }
 
