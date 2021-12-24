@@ -27,7 +27,7 @@ namespace Authentication.Tests
                 { "id_token", "123"}
             };
             var request = CreateHttpRequest(parameters);
-            var response = (JsonResult)await GetRefreshAndAccessToken.Run(request, logger);
+            var response = (JsonResult)await (new GetRefreshAndAccessToken()).Run(request, logger);
             Assert.Equal(400, response.StatusCode);
         }
 
@@ -40,7 +40,7 @@ namespace Authentication.Tests
         {
             Dictionary<string, StringValues> parameters = new Dictionary<string, StringValues>();
             var request = CreateHttpRequest(parameters);
-            var response = (JsonResult)await GetRefreshAndAccessToken.Run(request, logger);
+            var response = (JsonResult)await (new GetRefreshAndAccessToken()).Run(request, logger);
             Assert.Equal(400, response.StatusCode);
         }
 
@@ -57,7 +57,7 @@ namespace Authentication.Tests
             };
 
             var request = CreateHttpRequest(parameters);
-            var response = (JsonResult)await GetRefreshAndAccessToken.Run(request, logger);
+            var response = (JsonResult)await (new GetRefreshAndAccessToken()).Run(request, logger);
             Assert.Equal(200, response.StatusCode);
             Assert.NotNull(response.Value);
         }
@@ -76,7 +76,7 @@ namespace Authentication.Tests
             };
 
             var request = CreateHttpRequest(parameters);
-            var response = (JsonResult)await GetRefreshAndAccessToken.Run(request, logger);
+            var response = (JsonResult)await (new GetRefreshAndAccessToken()).Run(request, logger);
             Assert.Equal(400, response.StatusCode);
         }
 
@@ -94,7 +94,7 @@ namespace Authentication.Tests
             };
 
             var request = CreateHttpRequest(parameters);
-            var response = (JsonResult)await GetRefreshAndAccessToken.Run(request, logger);
+            var response = (JsonResult)await (new GetRefreshAndAccessToken()).Run(request, logger);
             Assert.Equal(200, response.StatusCode);
             Assert.NotNull(response.Value);
         }

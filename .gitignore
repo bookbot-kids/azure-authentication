@@ -260,7 +260,7 @@ paket-files/
 __pycache__/
 *.pyc
 
-.vscode
 *.Cache
 Properties/PublishProfiles
 local.settings.json
+__*
