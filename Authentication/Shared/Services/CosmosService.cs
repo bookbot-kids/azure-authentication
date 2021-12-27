@@ -219,8 +219,13 @@ namespace Authentication.Shared.Services
                 var permission = client.GetDatabase(Configurations.Cosmos.DatabaseId).GetUser(userId).GetPermission(permissionName);
                 return await permission.ReadAsync(tokenExpiryInSeconds: Configurations.Cosmos.ResourceTokenExpiration);
             }
-            catch (CosmosException)
+            catch (CosmosException ex)
             {
+                Logger.Log?.LogError("GetPermission error " + ex.Message);
+            }
+            catch (NullReferenceException ex) 
+            {
+                Logger.Log?.LogError("GetPermission null error " + ex.Message);
             }
 
             return null;
