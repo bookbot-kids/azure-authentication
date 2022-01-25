@@ -72,11 +72,13 @@ namespace Authentication
                     return CreateErrorResponse("Can not get access token. The username or password provided in the request are invalid");
                 }
 
+                Logger.Log?.LogInformation($"Find user by email {email}");
                 var user = await ADUser.FindByEmail(email);
                 var group = await user.GroupName();
-
+               
                 try
                 {
+                    Logger.Log?.LogInformation($"Found user {user.ObjectId} {email}, group = {group}");
                     await SendAnalytics(email, user.ObjectId);
                 }
                 catch (Exception ex)

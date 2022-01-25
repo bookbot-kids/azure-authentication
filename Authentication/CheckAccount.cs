@@ -65,6 +65,8 @@ namespace Authentication
 
             string name = email.GetNameFromEmail();
 
+            log.LogInformation($"Check account for user ${email}");
+
             // check if email is existed in b2c. If it is, return that user
             var (exist, user) = await ADUser.FindOrCreate(email, name, country, ipAddress);
 
@@ -76,7 +78,7 @@ namespace Authentication
 
             // if user already has account
             if (exist)
-            {
+            {                
                 // update country and ipadress if needed
                 var updateParams = new Dictionary<string, string>();
                 if (!string.IsNullOrWhiteSpace(country))
@@ -96,10 +98,13 @@ namespace Authentication
                     await user.Update(updateParams);
                 }
 
+                log.LogInformation($"User ${email} exists, {ipAddress}, {country}");
+
                 return new JsonResult(new { success = true, exist, user }) { StatusCode = StatusCodes.Status200OK };
             }
             else
             {
+                log.LogInformation($"User ${email} not exists, try to create a new one with {ipAddress}, {country}");
                 try
                 {
                     await SendAnalytics(email, user.ObjectId, country, ipAddress, name);

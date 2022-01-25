@@ -87,6 +87,8 @@ namespace Authentication
                 userGroup = await ADGroup.FindByName(Configurations.AzureB2C.GuestGroup);
             }
 
+            log.LogInformation($"user {user?.ObjectId} has group {userGroup?.Name}");
+
             // get group permissions
             var permissions = await userGroup.GetPermissions();
 
