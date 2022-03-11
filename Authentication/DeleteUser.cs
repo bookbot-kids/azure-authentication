@@ -9,6 +9,7 @@ using Authentication.Shared;
 using Authentication.Shared.Models;
 using Authentication.Shared.Services;
 using Microsoft.Azure.Cosmos;
+using Dasync.Collections;
 
 namespace Authentication
 {
@@ -46,11 +47,26 @@ namespace Authentication
             // delete all profiles of this user
             var query = new QueryDefinition("select * from c where c.partition = @id").WithParameter("@id", userId);
             var profiles = await dataService.QueryDocuments("Profile", query);
-            foreach(var profile in profiles)
-            {
-                string profileId = profile.Value<string>("id");
-                await dataService.DeleteById("Profile", profileId, userId, ignoreNotFound: true);
-            }
+
+            await profiles.ParallelForEachAsync(
+                async profile =>
+                {
+                    string profileId = profile.Value<string>("id");
+                    await dataService.DeleteById("Profile", profileId, userId, ignoreNotFound: true);
+                }, maxDegreeOfParallelism: 64
+             );
+
+            // delete all progress of this user
+            query = new QueryDefinition("select * from c where c.partition = @id").WithParameter("@id", userId);
+            var progresses = await dataService.QueryDocuments("Progress", query);
+
+            await progresses.ParallelForEachAsync(
+                async progress =>
+                {
+                    string progressId = progress.Value<string>("id");
+                    await dataService.DeleteById("Progress", progressId, userId, ignoreNotFound: true);
+                }, maxDegreeOfParallelism: 64
+             );
 
             return CreateSuccessResponse();
         }
