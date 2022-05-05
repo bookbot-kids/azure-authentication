@@ -143,9 +143,9 @@ namespace Authentication
                         "activeCampaign", new Dictionary<string, string>
                             {
                                 {"eventType", "event" },
-                                {"eventName", "sign_in"},
+                                {"eventName", "Sign in"},
                                 {"email", email },
-                                {"eventdata", email }
+                                {"eventdata", "" }
                             }
                     },
                 };
