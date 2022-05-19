@@ -16,6 +16,7 @@
     <PackageReference Include="Microsoft.Azure.Storage.Common" Version="11.2.3" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.9.0" />
     <PackageReference Include="AsyncEnumerator" Version="4.0.2" />
+    <PackageReference Include="JWT" Version="9.0.0" />
   </ItemGroup>
   <ItemGroup>
     <None Remove="AsyncEnumerator" />

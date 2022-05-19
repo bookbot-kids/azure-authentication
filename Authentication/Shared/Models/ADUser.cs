@@ -160,6 +160,13 @@ namespace Authentication.Shared.Models
             await AzureMSGraphService.Instance.DeleteADUser(ObjectId);
         }
 
+        public async Task SetEnable(bool enabled)
+        {
+            await AzureMSGraphService.Instance.UpdateADUser(ObjectId, new Dictionary<string, dynamic> {
+                { "accountEnabled", enabled }           
+            });
+        }
+
         /// <summary>
         /// Get group id list of current user 
         /// </summary>

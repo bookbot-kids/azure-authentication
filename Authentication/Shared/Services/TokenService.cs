@@ -10,6 +10,11 @@ using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
+using JWT;
+using JWT.Builder;
+using JWT.Exceptions;
+using JWT.Algorithms;
+using System.Text;
 
 namespace Authentication.Shared.Services
 {
@@ -24,6 +29,49 @@ namespace Authentication.Shared.Services
         /// </summary>
         private static readonly string ISSUER = $"https://{Configurations.AzureB2C.TenantName}.b2clogin.com/{Configurations.AzureB2C.TenantId}/";
 
+        /// <summary>
+        /// Validate client token from mobile by checking issuer and subject of token
+        /// We use JWT to validate the token
+        /// </summary>
+        /// <param name="token">token id</param>
+        /// <param name="secret">secret key</param>
+        /// <param name="iss">issuer param</param>
+        /// <param name="sub">subject param</param>
+        /// <returns>result, message, payload</returns>      
+        public static (bool result, string errorMessage, IDictionary<string, object> payload) ValidateClientToken(string token, string secret, string iss, string sub)
+        {
+            try
+            {
+                var encodedSecret = Convert.ToBase64String(Encoding.UTF8.GetBytes(secret));
+                var payload = new JwtBuilder()
+                    .WithAlgorithm(new HMACSHA256Algorithm())
+                    .WithSecret(encodedSecret)
+                    .MustVerifySignature()
+                    .WithValidationParameters(ValidationParameters.Default)
+                    .Decode<IDictionary<string, object>>(token);
+
+                if (iss.Equals(payload["iss"]) && sub.Equals(payload["sub"]))
+                {
+                    return (true, "success", payload);
+                }
+
+                return (false, "Invalid payload", null);
+            }
+            catch (TokenExpiredException)
+            {
+                return (false, "Token has expired", null);
+            }
+            catch (SignatureVerificationException e)
+            {
+                Logger.Log?.LogError(e.Message);
+                return (false, "Token has invalid signature", null);
+            }
+            catch (Exception e)
+            {
+                Logger.Log?.LogError(e.Message);
+                return (false, "Can not validate token, unknown error", null);
+            }
+        }
 
         /// <summary>
         /// Validate b2c token by the custom b2c policy

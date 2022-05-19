@@ -58,6 +58,8 @@ namespace Authentication.Shared
             "id-read",
             "id-read-write"
             };
+
+            public static readonly string[] UserTablesToClear = (Configuration["UserTablesToClear"] ?? "").Split(",");
         }
 
         /// <summary>
