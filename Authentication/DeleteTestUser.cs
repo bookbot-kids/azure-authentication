@@ -21,9 +21,20 @@ namespace Authentication
             ILogger log)
         {
             log.LogInformation("C# HTTP trigger function processed a request.");
+             // validate client token
+            string clientToken = req.Query["client_token"];
+            if(string.IsNullOrWhiteSpace(clientToken)) {
+                return CreateErrorResponse("client_token is missing", StatusCodes.Status401Unauthorized);
+            }
+            var (validateResult, clientTokenMessage, payload) = TokenService.ValidateClientToken(clientToken, Configurations.JWTToken.TokenClientSecret,
+                 Configurations.JWTToken.TokenIssuer, Configurations.JWTToken.TokenSubject);
+            if(!validateResult) {
+                return CreateErrorResponse(clientTokenMessage, StatusCodes.Status401Unauthorized);
+            } 
+            
             string email = req.Query["email"];
             // only delete user from special domain
-            if(!email.EndsWith(Configurations.Configuration["EmailTestDomain"]))
+            if(!email.EndsWith(Configurations.AzureB2C.EmailTestDomain))
             {
                 return CreateErrorResponse($"email {email} is invalid");
             }

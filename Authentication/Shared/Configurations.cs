@@ -173,6 +173,11 @@ namespace Authentication.Shared
             public static readonly string B2CClientId = Configuration["B2CClientId"];
 
             public static readonly string GraphApiUrl = "https://graph.microsoft.com/v1.0";
+
+            /// <summary>
+            /// Test email domain
+            /// </summary>
+            public static readonly string EmailTestDomain = Configuration["EmailTestDomain"] ?? "[######]"; // default is invalid domain
         }
 
         /// <summary>

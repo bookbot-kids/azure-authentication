@@ -105,17 +105,22 @@ namespace Authentication
             else
             {
                 log.LogInformation($"User ${email} not exists, try to create a new one with {ipAddress}, {country}");
-                try
-                {
-                    await SendAnalytics(email, user.ObjectId, country, ipAddress, name);
-                }
-                catch (Exception ex)
-                {
-                    if (!(ex is TimeoutException))
+                if(!email.EndsWith(Configurations.AzureB2C.EmailTestDomain)) {
+                    try
                     {
-                        log.LogError($"Send analytics error {ex.Message}");
-                    }                    
+                        await SendAnalytics(email, user.ObjectId, country, ipAddress, name);
+                    }
+                    catch (Exception ex)
+                    {
+                        if (!(ex is TimeoutException))
+                        {
+                            log.LogError($"Send analytics error {ex.Message}");
+                        }                    
+                    }
+                } else {
+                    log.LogInformation($"User ${email} is a test user, skip sending analytics");
                 }
+               
             }
 
             // add user to new group

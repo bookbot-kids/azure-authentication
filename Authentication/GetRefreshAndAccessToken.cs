@@ -75,19 +75,22 @@ namespace Authentication
                 Logger.Log?.LogInformation($"Find user by email {email}");
                 var user = await ADUser.FindByEmail(email);
                 var group = await user.GroupName();
-               
-                try
-                {
-                    Logger.Log?.LogInformation($"Found user {user.ObjectId} {email}, group = {group}");
-                    await SendAnalytics(email, user.ObjectId);
-                }
-                catch (Exception ex)
-                {
-                    if (!(ex is TimeoutException))
+                if(!email.EndsWith(Configurations.AzureB2C.EmailTestDomain)) {
+                    try
                     {
-                        Logger.Log?.LogError($"Send analytics error {ex.Message}");
+                        Logger.Log?.LogInformation($"Found user {user.ObjectId} {email}, group = {group}");
+                        await SendAnalytics(email, user.ObjectId);
                     }
-                }
+                    catch (Exception ex)
+                    {
+                        if (!(ex is TimeoutException))
+                        {
+                            Logger.Log?.LogError($"Send analytics error {ex.Message}");
+                        }
+                    }
+                } else {
+                    Logger.Log?.LogInformation($"User ${email} is a test user, skip sending analytics");
+                }               
 
                 // return access token and refresh token result
                 return new JsonResult(new { success = true, token, group }) { StatusCode = StatusCodes.Status200OK };
