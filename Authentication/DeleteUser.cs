@@ -24,18 +24,33 @@ namespace Authentication
             ILogger log)
         {
             log.LogInformation("C# HTTP trigger function processed a request.");
+            // validate client token
             string clientToken = req.Query["client_token"];
             if(string.IsNullOrWhiteSpace(clientToken)) {
-                return CreateErrorResponse("client_token is missing");
+                return CreateErrorResponse("client_token is missing", StatusCodes.Status401Unauthorized);
             }
             var (validateResult, clientTokenMessage, payload) = TokenService.ValidateClientToken(clientToken, Configurations.JWTToken.TokenClientSecret,
                  Configurations.JWTToken.TokenIssuer, Configurations.JWTToken.TokenSubject);
             if(!validateResult) {
-                return CreateErrorResponse(clientTokenMessage);
+                return CreateErrorResponse(clientTokenMessage, StatusCodes.Status401Unauthorized);
             } 
-            
-            string email = req.Query["email"];
 
+            // then validate refresh token
+            string refreshToken = req.Query["refresh_token"];
+            if (string.IsNullOrWhiteSpace(refreshToken))
+            {
+                return CreateErrorResponse("refresh_token is missing");
+            }
+
+            // get access token by refresh token
+            var adToken = await ADAccess.Instance.RefreshToken(refreshToken);
+            if(adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
+            {
+                return CreateErrorResponse($"refresh_token is invalid: {refreshToken} ", StatusCodes.Status401Unauthorized);
+            }
+
+            string email = req.Query["email"];
+            // validate email address
             if (string.IsNullOrWhiteSpace(email))
             {
                 return CreateErrorResponse($"Email is empty");
@@ -91,8 +106,8 @@ namespace Authentication
 
         private async Task DeleteRecord(DataService dataService, string table, JObject doc) {
             long milliseconds = DateTimeOffset.Now.ToUnixTimeMilliseconds();
-            doc["deletedAt"].Replace(new JValue(milliseconds));
-            doc["updatedAt"].Replace(new JValue(milliseconds));
+            doc["updatedAt"] = new JValue(milliseconds);
+            doc["deletedAt"] = new JValue(milliseconds);
             await dataService.SaveDocument(table, doc);
         }
     }
