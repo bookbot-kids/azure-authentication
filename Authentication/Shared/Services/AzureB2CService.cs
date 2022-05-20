@@ -57,7 +57,7 @@ namespace Authentication.Shared.Services
         /// <returns>Created ADUser</returns>
         [Headers("Accept: application/json")]
         [Patch("/{tenantId}/users/{userId}?api-version=1.6")]
-        Task<ADUser> UpdateUser([AliasAs("tenantId")] string tenantId, [AliasAs("userId")] string userId, [Header("Authorization")] string accessToken, [Body(BodySerializationMethod.Serialized)] Dictionary<string, string> param);
+        Task<ADUser> UpdateUser([AliasAs("tenantId")] string tenantId, [AliasAs("userId")] string userId, [Header("Authorization")] string accessToken, [Body(BodySerializationMethod.Serialized)] Dictionary<string, dynamic> param);
 
         /// <summary>
         /// Add user into a group
@@ -265,7 +265,7 @@ namespace Authentication.Shared.Services
             }
         }
 
-        public async Task UpdateADUser(string userId, Dictionary<string, string> param)
+        public async Task UpdateADUser(string userId, Dictionary<string, dynamic> param)
         {
             try
             {
@@ -275,6 +275,7 @@ namespace Authentication.Shared.Services
             catch (ApiException ex)
             {
                 Logger.Log?.LogError(ex.Message);
+                throw ex;
             }
         }
 

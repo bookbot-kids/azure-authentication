@@ -150,7 +150,7 @@ namespace Authentication.Shared.Models
             return (false, await AzureB2CService.Instance.CreateADUser(param));
         }
 
-        public async Task Update(Dictionary<string, string> param)
+        public async Task Update(Dictionary<string, dynamic> param)
         {
             await AzureB2CService.Instance.UpdateADUser(ObjectId, param);
         }

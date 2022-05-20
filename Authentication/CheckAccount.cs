@@ -80,7 +80,7 @@ namespace Authentication
             if (exist)
             {                
                 // update country and ipadress if needed
-                var updateParams = new Dictionary<string, string>();
+                var updateParams = new Dictionary<string, dynamic>();
                 if (!string.IsNullOrWhiteSpace(country))
                 {
                     updateParams["country"] = country;
@@ -91,6 +91,12 @@ namespace Authentication
                 {
                     updateParams["streetAddress"] = ipAddress;
                     user.IPAddress = ipAddress;
+                }
+
+                // enable account if needed
+                if(!user.AccountEnabled) {
+                    updateParams["accountEnabled"] = true;
+                    user.AccountEnabled = true;
                 }
 
                 if (updateParams.Count > 0)
