@@ -70,6 +70,10 @@ namespace Authentication
                 return CreateErrorResponse("user not exist");
             }
 
+            if(!user.AccountEnabled) {
+                return CreateErrorResponse("user is disabled", statusCode: StatusCodes.Status401Unauthorized);
+            }
+
             // check role of user
             ADGroup userGroup = null;
             var groupIds = await user.GroupIds();
