@@ -27,7 +27,12 @@ namespace Authentication.Shared.Services
         /// <summary>
         /// Azure B2C Issuer
         /// </summary>
-        private static readonly string ISSUER = $"https://{Configurations.AzureB2C.TenantName}.b2clogin.com/{Configurations.AzureB2C.TenantId}/";
+        private static readonly string B2CISSUER = $"https://{Configurations.AzureB2C.TenantName}.b2clogin.com/{Configurations.AzureB2C.TenantId}/";
+
+        /// <summary>
+        /// Cognito Issuer
+        /// </summary>
+        private static readonly string COGNITOISSUER = $"https://cognito-idp.{Configurations.Cognito.CognitoRegion}.amazonaws.com/{Configurations.Cognito.CognitoPoolId}/";
 
         /// <summary>
         /// Validate client token from mobile by checking issuer and subject of token
@@ -73,6 +78,70 @@ namespace Authentication.Shared.Services
             }
         }
 
+        public static async Task<ClaimsPrincipal> ValidateCognitoToken(string idToken)
+        {
+            try
+            {
+                var documentRetriever = new HttpDocumentRetriever { RequireHttps = true };
+
+                // get the custom policy document to validate
+                var configurationManager = new ConfigurationManager<OpenIdConnectConfiguration>(
+                    $"{COGNITOISSUER}/.well-known/openid-configuration",
+                    new OpenIdConnectConfigurationRetriever(),
+                    documentRetriever);
+
+                var config = await configurationManager.GetConfigurationAsync(CancellationToken.None);
+
+                // validate information
+                var validationParameter = new TokenValidationParameters
+                {
+                    RequireSignedTokens = true,
+                    ValidateAudience = false,
+                    ValidIssuers = new List<string> { $"https://cognito-idp.{Configurations.Cognito.CognitoRegion}.amazonaws.com/{Configurations.Cognito.CognitoPoolId}" },
+                    ValidateIssuer = true,
+                    ValidateIssuerSigningKey = false,
+                    ValidateLifetime = true,
+                    IssuerSigningKeys = config.SigningKeys
+                };
+
+                ClaimsPrincipal result = null;
+                var tries = 0;
+
+                // retry in case error
+                while (result == null && tries <= 1)
+                {
+                    try
+                    {
+                        var handler = new JwtSecurityTokenHandler();
+
+                        // validate the token with above parameters
+                        result = handler.ValidateToken(idToken, validationParameter, out var token);
+                    }
+                    catch (SecurityTokenSignatureKeyNotFoundException)
+                    {
+                        // This exception is thrown if the signature key of the JWT could not be found.
+                        // This could be the case when the issuer changed its signing keys, so we trigger a 
+                        // refresh and retry validation.
+                        configurationManager.RequestRefresh();
+                        tries++;
+                    }
+                    catch (SecurityTokenException e)
+                    {
+                        Logger.Log?.LogError(e.Message);
+                        return null;
+                    }
+                }
+
+                // return claim principal result
+                return result;
+            }
+            catch (Exception e)
+            {
+                Logger.Log?.LogError(e.Message);
+                return null;
+            }
+        }
+
         /// <summary>
         /// Validate b2c token by the custom b2c policy
         /// Each policy has its own issuer, signing keys.. so we need to make sure all information is correct
@@ -84,11 +153,11 @@ namespace Authentication.Shared.Services
         {
             try
             {
-                var documentRetriever = new HttpDocumentRetriever { RequireHttps = ISSUER.StartsWith("https://", System.StringComparison.Ordinal) };
+                var documentRetriever = new HttpDocumentRetriever { RequireHttps = B2CISSUER.StartsWith("https://", System.StringComparison.Ordinal) };
 
                 // get the custom policy document to validate
                 var configurationManager = new ConfigurationManager<OpenIdConnectConfiguration>(
-                    $"{ISSUER}/v2.0/.well-known/openid-configuration?p={policy}",
+                    $"{B2CISSUER}/v2.0/.well-known/openid-configuration?p={policy}",
                     new OpenIdConnectConfigurationRetriever(),
                     documentRetriever);
 

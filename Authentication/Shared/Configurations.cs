@@ -220,5 +220,16 @@ namespace Authentication.Shared
 
             public static readonly string AnalyticsToken = Configuration["AnalyticsToken"];
         }
+
+        public static class Cognito
+        {
+            public static readonly string CognitoClientId = Configuration["CognitoClientId"];
+
+            public static readonly string CognitoUrl = Configuration["CognitoUrl"];
+
+            public static readonly string CognitoPoolId = Configuration["CognitoPoolId"];
+
+            public static readonly string CognitoRegion = Configuration["CognitoRegion"];
+        }
     }
 }

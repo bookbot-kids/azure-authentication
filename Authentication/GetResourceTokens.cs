@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
+using Authentication.Shared.Services;
 
 namespace Authentication
 {
@@ -48,48 +49,78 @@ namespace Authentication
                 return new JsonResult(new { success = true, permissions = guestPermissions, group = guestGroup.Name }) { StatusCode = StatusCodes.Status200OK };
             }
 
-            // get access token by refresh token
-            var adToken = await ADAccess.Instance.RefreshToken(refreshToken);
-            if(adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
-            {
-                return CreateErrorResponse($"refresh_token is invalid: {refreshToken} ", StatusCodes.Status401Unauthorized);
-            }
-
-            // Validate the access token, then get id
-            var (result, message, id) = await ADAccess.Instance.ValidateAccessToken(adToken.AccessToken);
-            if (!result)
-            {
-                log.LogError($"can not get access token from refresh token {refreshToken}");
-                return CreateErrorResponse(message, StatusCodes.Status403Forbidden);
-            }
-
-            // find ad user by its email
-            var user = await ADUser.FindById(id);
-            if (user == null)
-            {
-                return CreateErrorResponse("user not exist");
-            }
-
-            if(!user.AccountEnabled) {
-                return CreateErrorResponse("user is disabled", statusCode: StatusCodes.Status401Unauthorized);
-            }
-
-            // check role of user
+            string source = req.Query["source"];
             ADGroup userGroup = null;
-            var groupIds = await user.GroupIds();
-            if (groupIds != null && groupIds.Count > 0)
+            ADUser user;
+            ADToken adToken;
+            // cognito authentication
+            if (source == "cognito")
             {
-                var group = await ADGroup.FindById(groupIds[0]);
-                if (group != null)
+                adToken = await CognitoService.Instance.GetAccessToken(refreshToken);
+                if (adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
                 {
-                    userGroup = group;
+                    return CreateErrorResponse($"refresh_token is invalid: {refreshToken} ", StatusCodes.Status401Unauthorized);
+                }
+
+                // Validate the access token, then get id and group name
+                var (result, message, userId, groupName) = await CognitoService.Instance.ValidateAccessToken(adToken.AccessToken);
+                if (!result)
+                {
+                    log.LogError($"can not get access token from refresh token {refreshToken}");
+                    return CreateErrorResponse(message, StatusCodes.Status403Forbidden);
+                }
+
+                // create fake ADUser and ADGroup from cognito information
+                user = new ADUser { ObjectId = userId };
+                userGroup = new ADGroup { Name = groupName };
+            }
+            else
+            {
+                // azure b2c authentication
+                // get access token by refresh token
+                adToken = await ADAccess.Instance.RefreshToken(refreshToken);
+                if (adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
+                {
+                    return CreateErrorResponse($"refresh_token is invalid: {refreshToken} ", StatusCodes.Status401Unauthorized);
+                }
+
+                // Validate the access token, then get id
+                var (result, message, id) = await ADAccess.Instance.ValidateAccessToken(adToken.AccessToken);
+                if (!result)
+                {
+                    log.LogError($"can not get access token from refresh token {refreshToken}");
+                    return CreateErrorResponse(message, StatusCodes.Status403Forbidden);
+                }
+
+                // find ad user by its email
+                user = await ADUser.FindById(id);
+                if (user == null)
+                {
+                    return CreateErrorResponse("user not exist");
+                }
+
+                if (!user.AccountEnabled)
+                {
+                    return CreateErrorResponse("user is disabled", statusCode: StatusCodes.Status401Unauthorized);
+                }
+
+                // check role of user
+                var groupIds = await user.GroupIds();
+                if (groupIds != null && groupIds.Count > 0)
+                {
+                    var group = await ADGroup.FindById(groupIds[0]);
+                    if (group != null)
+                    {
+                        userGroup = group;
+                    }
+                }
+
+                if (userGroup == null)
+                {
+                    userGroup = await ADGroup.FindByName(Configurations.AzureB2C.GuestGroup);
                 }
             }
 
-            if (userGroup == null)
-            {
-                userGroup = await ADGroup.FindByName(Configurations.AzureB2C.GuestGroup);
-            }
 
             log.LogInformation($"user {user?.ObjectId} has group {userGroup?.Name}");
 
