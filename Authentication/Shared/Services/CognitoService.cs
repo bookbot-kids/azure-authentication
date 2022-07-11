@@ -2,8 +2,12 @@
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Amazon;
+using Amazon.CognitoIdentityProvider;
+using Amazon.CognitoIdentityProvider.Model;
 using Authentication.Shared.Library;
 using Authentication.Shared.Models;
+using Microsoft.Extensions.Logging;
 using Refit;
 
 namespace Authentication.Shared.Services
@@ -20,16 +24,61 @@ namespace Authentication.Shared.Services
         private readonly HttpClient httpClient;
         private ICognitoRestApi cognitoRestApi;
         public static CognitoService Instance { get; } = new CognitoService();
+        private AmazonCognitoIdentityProviderClient provider;
         private CognitoService()
         {
             httpClient = new HttpClient(new HttpLoggingHandler()) { BaseAddress = new Uri(Configurations.Cognito.CognitoUrl) };
             cognitoRestApi = RestService.For<ICognitoRestApi>(httpClient);
+
+            var awsCredentials = new Amazon.Runtime.BasicAWSCredentials(Configurations.Cognito.CognitoKey, Configurations.Cognito.CognitoSecret);
+            provider = new AmazonCognitoIdentityProviderClient(awsCredentials, RegionEndpoint.GetBySystemName(Configurations.Cognito.CognitoRegion));
         }
-        
+
+        public async Task SetAccountEable(string id, bool enabled)
+        {
+            if(enabled)
+            {
+                var request = new AdminEnableUserRequest
+                {
+                    UserPoolId = Configurations.Cognito.CognitoPoolId,
+                    Username = id
+                };
+                await provider.AdminEnableUserAsync(request);
+            } else
+            {
+                var request = new AdminDisableUserRequest
+                {
+                    UserPoolId = Configurations.Cognito.CognitoPoolId,
+                    Username = id
+                };
+
+                await provider.AdminDisableUserAsync(request);
+            }            
+        }
+
+        public async Task<AdminGetUserResponse> GetUserInfo(string id)
+        {
+            var request = new AdminGetUserRequest
+            {
+                UserPoolId = Configurations.Cognito.CognitoPoolId,
+                Username = id
+            };
+
+            return await provider.AdminGetUserAsync(request);
+        }
 
         public async Task<ADToken> GetAccessToken(string refreshToken)
         {
-            return await cognitoRestApi.GetAccessToken(Configurations.Cognito.CognitoClientId, refreshToken);
+            try
+            {
+                return await cognitoRestApi.GetAccessToken(Configurations.Cognito.CognitoClientId, refreshToken);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log?.LogError($"get cognito access token from refresh token {refreshToken} error {ex.Message}");
+                return null;
+            }
+            
         }
 
         public async Task<(bool, string, string, string)> ValidateAccessToken(string token)

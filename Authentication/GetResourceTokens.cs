@@ -70,6 +70,12 @@ namespace Authentication
                     return CreateErrorResponse(message, StatusCodes.Status403Forbidden);
                 }
 
+                var userInfo = await CognitoService.Instance.GetUserInfo(userId);
+                if (!userInfo.Enabled)
+                {
+                    return CreateErrorResponse("user is disabled", statusCode: StatusCodes.Status401Unauthorized);
+                }
+
                 // create fake ADUser and ADGroup from cognito information
                 user = new ADUser { ObjectId = userId };
                 userGroup = new ADGroup { Name = groupName };

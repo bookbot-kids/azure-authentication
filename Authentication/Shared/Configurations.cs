@@ -230,6 +230,10 @@ namespace Authentication.Shared
             public static readonly string CognitoPoolId = Configuration["CognitoPoolId"];
 
             public static readonly string CognitoRegion = Configuration["CognitoRegion"];
+
+            public static readonly string CognitoKey = Configuration["CognitoKey"];
+
+            public static readonly string CognitoSecret = Configuration["CognitoSecret"];
         }
     }
 }

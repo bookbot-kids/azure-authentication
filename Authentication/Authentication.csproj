@@ -17,9 +17,11 @@
     <PackageReference Include="Azure.Storage.Blobs" Version="12.9.0" />
     <PackageReference Include="AsyncEnumerator" Version="4.0.2" />
     <PackageReference Include="JWT" Version="9.0.0" />
+    <PackageReference Include="AWSSDK.CognitoIdentityProvider" Version="3.7.4.10" />
   </ItemGroup>
   <ItemGroup>
     <None Remove="AsyncEnumerator" />
+    <None Remove="AWSSDK.CognitoIdentityProvider" />
   </ItemGroup>
   <ItemGroup>
     <None Update="host.json">

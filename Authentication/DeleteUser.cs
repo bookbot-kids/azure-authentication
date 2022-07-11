@@ -26,14 +26,16 @@ namespace Authentication
             log.LogInformation("C# HTTP trigger function processed a request.");
             // validate client token
             string clientToken = req.Query["client_token"];
-            if(string.IsNullOrWhiteSpace(clientToken)) {
+            if (string.IsNullOrWhiteSpace(clientToken))
+            {
                 return CreateErrorResponse("client_token is missing", StatusCodes.Status401Unauthorized);
             }
             var (validateResult, clientTokenMessage, payload) = TokenService.ValidateClientToken(clientToken, Configurations.JWTToken.TokenClientSecret,
                  Configurations.JWTToken.TokenIssuer, Configurations.JWTToken.TokenSubject);
-            if(!validateResult) {
+            if (!validateResult)
+            {
                 return CreateErrorResponse(clientTokenMessage, StatusCodes.Status401Unauthorized);
-            } 
+            }
 
             // then validate refresh token
             string refreshToken = req.Query["refresh_token"];
@@ -42,41 +44,66 @@ namespace Authentication
                 return CreateErrorResponse("refresh_token is missing");
             }
 
-            // get access token by refresh token
-            var adToken = await ADAccess.Instance.RefreshToken(refreshToken);
-            if(adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
+            string source = req.Query["source"];
+            string userId;
+            if (source == "cognito")
             {
-                return CreateErrorResponse($"refresh_token is invalid: {refreshToken} ", StatusCodes.Status401Unauthorized);
-            }
+                var adToken = await CognitoService.Instance.GetAccessToken(refreshToken);
+                if (adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
+                {
+                    return CreateErrorResponse($"refresh_token is invalid: {refreshToken} ", StatusCodes.Status401Unauthorized);
+                }
 
-            string email = req.Query["email"];
-            // validate email address
-            if (string.IsNullOrWhiteSpace(email))
+                // Validate the access token, then get id and group name
+                var (result, message, id, _) = await CognitoService.Instance.ValidateAccessToken(adToken.AccessToken);
+                if (!result)
+                {
+                    log.LogError($"can not get access token from refresh token {refreshToken}");
+                    return CreateErrorResponse(message, StatusCodes.Status403Forbidden);
+                }
+
+                userId = id;
+                await CognitoService.Instance.SetAccountEable(userId, false);
+
+            } else
             {
-                return CreateErrorResponse($"Email is empty");
+                // get access token by refresh token
+                var adToken = await ADAccess.Instance.RefreshToken(refreshToken);
+                if (adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
+                {
+                    return CreateErrorResponse($"refresh_token is invalid: {refreshToken} ", StatusCodes.Status401Unauthorized);
+                }
+
+                string email = req.Query["email"];
+                // validate email address
+                if (string.IsNullOrWhiteSpace(email))
+                {
+                    return CreateErrorResponse($"Email is empty");
+                }
+
+                if (!email.IsValidEmailAddress())
+                {
+                    return CreateErrorResponse($"Email {email} is invalid");
+                }
+
+                // Fix the encode issue because email parameter that contains "+" will be encoded by space
+                // e.g. client sends "a+1@gmail.com" => Azure function read: "a 1@gmail.com" (= req.Query["email"])
+                // We need to replace space by "+" when reading the parameter req.Query["email"]
+                // Then the result is correct "a+1@gmail.com"
+                email = email.Trim().Replace(" ", "+");
+
+                var adUser = await ADUser.FindByEmail(email);
+                if (adUser == null)
+                {
+                    return CreateErrorResponse($"Can not find user {email}");
+                }
+
+                userId = adUser.ObjectId;
+                log.LogInformation($"Delete user {userId}, {email}");
+
+                await adUser.SetEnable(false);
             }
-
-            if (!email.IsValidEmailAddress())
-            {
-                return CreateErrorResponse($"Email {email} is invalid");
-            }
-
-             // Fix the encode issue because email parameter that contains "+" will be encoded by space
-            // e.g. client sends "a+1@gmail.com" => Azure function read: "a 1@gmail.com" (= req.Query["email"])
-            // We need to replace space by "+" when reading the parameter req.Query["email"]
-            // Then the result is correct "a+1@gmail.com"
-            email = email.Trim().Replace(" ", "+");
-
-            var adUser = await ADUser.FindByEmail(email);
-            if(adUser == null)
-            {
-                return CreateErrorResponse($"Can not find user {email}");
-            }
-
-            var userId = adUser.ObjectId;
-            log.LogInformation($"Delete user {userId}, {email}");
-
-            await adUser.SetEnable(false);
+            
 
             // delete cosmos user
             var dataService = new DataService();

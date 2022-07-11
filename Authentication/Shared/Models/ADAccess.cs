@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Authentication.Shared.Library;
 using Authentication.Shared.Services;
+using Microsoft.Extensions.Logging;
 
 namespace Authentication.Shared.Models
 {
@@ -60,7 +62,7 @@ namespace Authentication.Shared.Models
                 return await AzureB2CService.Instance.GetB2CAccessToken(email, password);
             }
             catch (Exception)
-            {
+            {                
                 return null;
             }
         }
@@ -76,8 +78,9 @@ namespace Authentication.Shared.Models
             {
                 return await AzureB2CService.Instance.RefreshB2CToken(token);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Logger.Log?.LogError($"get azure access token from refresh token {token} error {ex.Message}");
                 return null;
             }
         }
