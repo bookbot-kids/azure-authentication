@@ -60,6 +60,8 @@ namespace Authentication.Shared
             };
 
             public static readonly string[] UserTablesToClear = (Configuration["UserTablesToClear"] ?? "").Split(",");
+
+            public static readonly bool IgnoreConnectionPermission = bool.Parse(Configuration["IgnoreConnectionPermission"] ?? "false");
         }
 
         /// <summary>

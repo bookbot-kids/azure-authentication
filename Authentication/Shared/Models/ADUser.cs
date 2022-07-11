@@ -268,23 +268,27 @@ namespace Authentication.Shared.Models
             }
 
             // add shared permission
-            var connections = await Connection.QueryByShareUser(ObjectId);
-            foreach (var connection in connections)
+            if(!Configurations.Cosmos.IgnoreConnectionPermission)
             {
-                // only process the accepted connection
-                if (!"accepted".EqualsIgnoreCase(connection.Status))
+                var connections = await Connection.QueryByShareUser(ObjectId);
+                foreach (var connection in connections)
                 {
-                    continue;
-                }
+                    // only process the accepted connection
+                    if (!"accepted".EqualsIgnoreCase(connection.Status))
+                    {
+                        continue;
+                    }
 
-                tasks.Add(GetOrCreateSharePermissions(connection));
+                    tasks.Add(GetOrCreateSharePermissions(connection));
 
-                // add shared profile permission
-                if (connection.Profiles != null && connection.Profiles.Count > 0)
-                {
-                    tasks.Add(GetOrCreateShareProfilePermissions(connection));
+                    // add shared profile permission
+                    if (connection.Profiles != null && connection.Profiles.Count > 0)
+                    {
+                        tasks.Add(GetOrCreateShareProfilePermissions(connection));
+                    }
                 }
             }
+            
 
             await Task.WhenAll(tasks);
             foreach (var task in tasks)

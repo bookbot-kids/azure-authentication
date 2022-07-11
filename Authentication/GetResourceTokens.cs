@@ -8,6 +8,8 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using Authentication.Shared.Services;
+using System.Collections.Generic;
+using Microsoft.Azure.Cosmos;
 
 namespace Authentication
 {
@@ -70,11 +72,12 @@ namespace Authentication
                     return CreateErrorResponse(message, StatusCodes.Status403Forbidden);
                 }
 
-                var userInfo = await CognitoService.Instance.GetUserInfo(userId);
-                if (!userInfo.Enabled)
-                {
-                    return CreateErrorResponse("user is disabled", statusCode: StatusCodes.Status401Unauthorized);
-                }
+                // NOTE: if cognito user is disable, it throws exception on refresh token step above, so may not need to check account status
+                //var userInfo = await CognitoService.Instance.GetUserInfo(userId);
+                //if (!userInfo.Enabled)
+                //{
+                //    return CreateErrorResponse("user is disabled", statusCode: StatusCodes.Status401Unauthorized);
+                //}
 
                 // create fake ADUser and ADGroup from cognito information
                 user = new ADUser { ObjectId = userId };
@@ -130,12 +133,20 @@ namespace Authentication
 
             log.LogInformation($"user {user?.ObjectId} has group {userGroup?.Name}");
 
+            var tasks = new List<Task<List<PermissionProperties>>>();
             // get group permissions
-            var permissions = await userGroup.GetPermissions();
+            tasks.Add(userGroup.GetPermissions());
 
             // get user permissions
-            var userPermissions = await user.GetPermissions(userGroup.Name);
-            permissions.AddRange(userPermissions);
+            tasks.Add(user.GetPermissions(userGroup.Name));
+
+            await Task.WhenAll(tasks);
+            var permissions = new List<PermissionProperties>();
+            foreach (var task in tasks)
+            {
+                var p = task.Result;
+                permissions.AddRange(p);
+            }
 
             // return list of permissions
             return new JsonResult(new { success = true, permissions, group = userGroup.Name, refreshToken = adToken.RefreshToken }) { StatusCode = StatusCodes.Status200OK };
