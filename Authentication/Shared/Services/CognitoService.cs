@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -102,6 +103,99 @@ namespace Authentication.Shared.Services
             }
 
             return (false, "Token is invalid", null, null);
+        }
+
+        public async Task<(bool, UserType)> FindOrCreateUser(string email, string name, string country, string ipAddress)
+        {
+            email = email.ToLower();
+            var request = new ListUsersRequest
+            {
+                UserPoolId = Configurations.Cognito.CognitoPoolId,
+                Filter = $"email = \"{email}\"",
+            };
+
+            var usersResponse = await provider.ListUsersAsync(request);
+            if(usersResponse.Users.Count > 0 )
+            {
+                return (true, usersResponse.Users.First());
+            }
+            else
+            {
+                var attributes = new List<AttributeType>();
+                if(!string.IsNullOrWhiteSpace(name))
+                {
+                    attributes.Add(new AttributeType() { Name = "name", Value = name});
+                }
+
+                if (!string.IsNullOrWhiteSpace(country))
+                {
+                    attributes.Add(new AttributeType() { Name = "locale", Value = country });
+                }
+
+                if (!string.IsNullOrWhiteSpace(ipAddress))
+                {
+                    attributes.Add(new AttributeType() { Name = "address", Value = ipAddress });
+                }
+
+                attributes.Add(new AttributeType() { Name = "email", Value = email });
+
+                // create new user with temp password
+                var createRequest = new AdminCreateUserRequest
+                {
+                    UserPoolId = Configurations.Cognito.CognitoPoolId,
+                    Username = email,
+                    UserAttributes = attributes,
+                    TemporaryPassword = TokenService.GeneratePassword(Guid.NewGuid().ToString()),
+                    MessageAction = MessageActionType.SUPPRESS,
+                };
+                var createUserResponse = await provider.AdminCreateUserAsync(createRequest);
+
+                // then change its password
+                var changePasswordRequest = new AdminSetUserPasswordRequest
+                {
+                    UserPoolId = Configurations.Cognito.CognitoPoolId,
+                    Username = createUserResponse.User.Username,
+                    Password = TokenService.GeneratePassword(Guid.NewGuid().ToString()),
+                    Permanent = true
+                };
+
+                await provider.AdminSetUserPasswordAsync(changePasswordRequest);
+
+                return (false, createUserResponse.User);
+            }
+        }
+
+        public async Task UpdateUser(string id, Dictionary<string, string> attributes, bool setEable = false)
+        {
+            if(attributes.Count > 0)
+            {
+                var list = attributes.Select(x => new AttributeType { Name = x.Key, Value = x.Value }).ToList();
+                var request = new AdminUpdateUserAttributesRequest
+                {
+                    UserPoolId = Configurations.Cognito.CognitoPoolId,
+                    Username = id,
+                    UserAttributes = list,
+                };
+
+                await provider.AdminUpdateUserAttributesAsync(request);
+            }
+            
+            if(setEable)
+            {
+                await SetAccountEable(id, true);
+            }
+        }
+
+        public async Task AddUserToGroup(string id, string groupName)
+        {
+            var request = new AdminAddUserToGroupRequest
+            {
+                Username = id,
+                UserPoolId = Configurations.Cognito.CognitoPoolId,
+                GroupName = groupName,
+            };
+
+            await provider.AdminAddUserToGroupAsync(request);
         }
     }
 }
