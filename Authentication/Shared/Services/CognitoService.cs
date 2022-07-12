@@ -22,14 +22,28 @@ namespace Authentication.Shared.Services
             Task<ADToken> GetAccessToken([AliasAs("client_id")] string clientId, [AliasAs("refresh_token")] string refreshToken);
         }
 
-        private readonly HttpClient httpClient;
+        public interface IAWSRestApi
+        {            
+            [Post("/auth/passcode")]
+            Task<ADToken> RequestPasscode([Body(BodySerializationMethod.Serialized )] Dictionary<string, string> body);
+        }
+
         private ICognitoRestApi cognitoRestApi;
         public static CognitoService Instance { get; } = new CognitoService();
         private AmazonCognitoIdentityProviderClient provider;
+
+        private IAWSRestApi awsRestApi;
         private CognitoService()
         {
-            httpClient = new HttpClient(new HttpLoggingHandler()) { BaseAddress = new Uri(Configurations.Cognito.CognitoUrl) };
-            cognitoRestApi = RestService.For<ICognitoRestApi>(httpClient);
+            cognitoRestApi = RestService.For<ICognitoRestApi>(new HttpClient(new HttpLoggingHandler())
+            {
+                BaseAddress = new Uri(Configurations.Cognito.CognitoUrl)
+            });
+
+            awsRestApi = RestService.For<IAWSRestApi>(new HttpClient(new HttpLoggingHandler())
+            {
+                BaseAddress = new Uri(Configurations.Cognito.AWSRestUrl)
+            });
 
             var awsCredentials = new Amazon.Runtime.BasicAWSCredentials(Configurations.Cognito.CognitoKey, Configurations.Cognito.CognitoSecret);
             provider = new AmazonCognitoIdentityProviderClient(awsCredentials, RegionEndpoint.GetBySystemName(Configurations.Cognito.CognitoRegion));
@@ -196,6 +210,15 @@ namespace Authentication.Shared.Services
             };
 
             await provider.AdminAddUserToGroupAsync(request);
+        }
+
+        public async Task RequestPasscode(string email)
+        {
+            await awsRestApi.RequestPasscode(new Dictionary<string, string>
+                {
+                    {"email", email },
+                }
+            );
         }
     }
 }
