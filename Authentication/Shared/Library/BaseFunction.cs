@@ -33,9 +33,9 @@ namespace Authentication.Shared.Library
         /// Create success json response
         /// </summary>
         /// <returns>Success response</returns>
-        public static IActionResult CreateSuccessResponse()
+        public static IActionResult CreateSuccessResponse(object body = null)
         {
-            return new JsonResult(new { success = true }) { StatusCode = StatusCodes.Status200OK };
+            return new JsonResult(body ?? new { success = true }) { StatusCode = StatusCodes.Status200OK };
         }
 
         /// <summary>
