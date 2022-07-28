@@ -13,6 +13,7 @@ using Dasync.Collections;
 using Extensions;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
 
 namespace Authentication
 {
@@ -83,6 +84,18 @@ namespace Authentication
                 await DeleteUserRecords(dataService, table, userId);
             }
 
+            try
+            {
+                await SendDeleteEvent(email);
+            }
+            catch (Exception ex)
+            {
+                if (!(ex is TimeoutException))
+                {
+                    log.LogError($"Send delete analytics error {ex.Message}");
+                }
+            }
+
             return CreateSuccessResponse();
         }
 
@@ -105,6 +118,32 @@ namespace Authentication
             doc["updatedAt"] = new JValue(milliseconds);
             doc["deletedAt"] = new JValue(milliseconds);
             await dataService.SaveDocument(table, doc);
+        }
+
+        private async Task SendDeleteEvent(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return;
+            }
+
+            // log event for new user
+            var body = new Dictionary<string, object>
+                {
+                    {
+                        "activeCampaign", new Dictionary<string, string>
+                            {
+                                {"eventType", "event" },
+                                {"eventName", "Delete Account"},
+                                {"email", email },
+                                {"eventdata", email }
+                            }
+                    },
+                };
+
+            // don't need to wait for this event, just make it timeout after few seconds
+            var task = AnalyticsService.Instance.SendEvent(body);
+            await HttpHelper.TimeoutAfter(task, TimeSpan.FromSeconds(7));
         }
     }
 }
