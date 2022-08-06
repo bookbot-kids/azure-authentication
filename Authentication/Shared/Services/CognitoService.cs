@@ -143,12 +143,12 @@ namespace Authentication.Shared.Services
 
                 if (!string.IsNullOrWhiteSpace(country))
                 {
-                    attributes.Add(new AttributeType() { Name = "locale", Value = country });
+                    attributes.Add(new AttributeType() { Name = "custom:country", Value = country });
                 }
 
                 if (!string.IsNullOrWhiteSpace(ipAddress))
                 {
-                    attributes.Add(new AttributeType() { Name = "address", Value = ipAddress });
+                    attributes.Add(new AttributeType() { Name = "custom:ip", Value = ipAddress });
                 }
 
                 attributes.Add(new AttributeType() { Name = "email", Value = email });
@@ -169,7 +169,7 @@ namespace Authentication.Shared.Services
                 {
                     UserPoolId = Configurations.Cognito.CognitoPoolId,
                     Username = createUserResponse.User.Username,
-                    Password = TokenService.GeneratePassword(Guid.NewGuid().ToString()),
+                    Password = TokenService.GeneratePassword(email),
                     Permanent = true
                 };
 

@@ -42,6 +42,12 @@ namespace Authentication.Shared.Models
         [JsonProperty(PropertyName = "description")]
         public string Description { get; set; }
 
+
+        /// <summary>
+        /// Memory cache manager
+        /// </summary>
+        private static MemoryCache cacheStore = MemoryCache.Default;
+
         #endregion
 
         #region Methods
@@ -102,8 +108,8 @@ namespace Authentication.Shared.Models
         public static async Task<List<ADGroup>> GetAllGroups()
         {
             // get groups from memory cache
-            var cache = MemoryCache.Default;
-            var cacheItem = cache.GetCacheItem("groups");
+           
+            var cacheItem = cacheStore.GetCacheItem("groups");
             if (cacheItem != null)
             {
                 return (List<ADGroup>)cacheItem.Value;
@@ -114,12 +120,10 @@ namespace Authentication.Shared.Models
             if (result?.Groups != null)
             {
                 // cache in 20 minutes
-                var policy = new CacheItemPolicy
+                cacheStore.Set("groups", result.Groups, new CacheItemPolicy
                 {
                     SlidingExpiration = TimeSpan.FromMinutes(20)
-                };
-
-                cache.Set("groups", result.Groups, policy);
+                });
                 return result.Groups;
             }
 
@@ -169,6 +173,13 @@ namespace Authentication.Shared.Models
                 return result;
             }
 
+            var cacheKey = $"groupPermission{Name}";
+            var cacheItems = cacheStore.GetCacheItem(cacheKey);
+            if (cacheItems != null)
+            {
+                return (List<PermissionProperties>)cacheItems.Value;
+            }
+
             // create user if needed
             await CosmosService.Instance.CreateUser(Name);
 
@@ -204,6 +215,7 @@ namespace Authentication.Shared.Models
 
                 }
 
+                cacheStore.Set(cacheKey, result, new CacheItemPolicy { SlidingExpiration = TimeSpan.FromMinutes(20) });
                 return result;
             }
 
@@ -236,6 +248,7 @@ namespace Authentication.Shared.Models
 
             }
 
+            cacheStore.Set(cacheKey, result, new CacheItemPolicy { SlidingExpiration = TimeSpan.FromMinutes(20) });
             return result;
         }
 
