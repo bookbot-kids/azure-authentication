@@ -134,9 +134,6 @@ namespace Authentication
                 }
             }
 
-            // add user to new group
-            await CognitoService.Instance.AddUserToGroup(user.Username, "new");
-
             if (requestPasscode)
             {
                 await CognitoService.Instance.RequestPasscode(email);

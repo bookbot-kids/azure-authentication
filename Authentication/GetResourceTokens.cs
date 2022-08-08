@@ -72,6 +72,13 @@ namespace Authentication
                     return CreateErrorResponse(message, StatusCodes.Status403Forbidden);
                 }
 
+                var customUserId = await CognitoService.Instance.GetCustomUserId(userId);
+
+                if(string.IsNullOrWhiteSpace(customUserId))
+                {
+                    return CreateErrorResponse($"user {userId} does not have custom id", statusCode: StatusCodes.Status500InternalServerError);
+                }
+
                 // NOTE: if cognito user is disable, it throws exception on refresh token step above, so may not need to check account status
                 //var userInfo = await CognitoService.Instance.GetUserInfo(userId);
                 //if (!userInfo.Enabled)
@@ -80,7 +87,7 @@ namespace Authentication
                 //}
 
                 // create fake ADUser and ADGroup from cognito information
-                user = new ADUser { ObjectId = userId };
+                user = new ADUser { ObjectId = customUserId };
                 userGroup = new ADGroup { Name = groupName };
             }
             else

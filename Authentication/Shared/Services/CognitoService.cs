@@ -24,7 +24,7 @@ namespace Authentication.Shared.Services
 
         public interface IAWSRestApi
         {            
-            [Post("/auth/passcode")]
+            [Post("/auth")]
             Task<ADToken> RequestPasscode([Body(BodySerializationMethod.Serialized )] Dictionary<string, string> body);
         }
 
@@ -135,6 +135,7 @@ namespace Authentication.Shared.Services
             }
             else
             {
+                var adUser = await ADUser.FindByEmail(email);
                 var attributes = new List<AttributeType>();
                 if(!string.IsNullOrWhiteSpace(name))
                 {
@@ -144,11 +145,23 @@ namespace Authentication.Shared.Services
                 if (!string.IsNullOrWhiteSpace(country))
                 {
                     attributes.Add(new AttributeType() { Name = "custom:country", Value = country });
+                } else if(!string.IsNullOrWhiteSpace(adUser?.Country))
+                {
+                    attributes.Add(new AttributeType() { Name = "custom:country", Value = adUser.Country });
                 }
 
                 if (!string.IsNullOrWhiteSpace(ipAddress))
                 {
-                    attributes.Add(new AttributeType() { Name = "custom:ip", Value = ipAddress });
+                    attributes.Add(new AttributeType() { Name = "custom:ipAddress", Value = ipAddress });
+                } else if(!string.IsNullOrWhiteSpace(adUser?.IPAddress))
+                {
+                    attributes.Add(new AttributeType() { Name = "custom:ipAddress", Value = adUser.IPAddress });
+                }
+
+                // set custom user id from b2c if needed               
+                if (adUser != null)
+                {
+                    attributes.Add(new AttributeType() { Name = "custom:userId", Value = adUser.ObjectId });
                 }
 
                 attributes.Add(new AttributeType() { Name = "email", Value = email });
@@ -163,19 +176,48 @@ namespace Authentication.Shared.Services
                     MessageAction = MessageActionType.SUPPRESS,
                 };
                 var createUserResponse = await provider.AdminCreateUserAsync(createRequest);
+                var newUser = createUserResponse.User;
 
                 // then change its password
                 var changePasswordRequest = new AdminSetUserPasswordRequest
                 {
                     UserPoolId = Configurations.Cognito.CognitoPoolId,
-                    Username = createUserResponse.User.Username,
+                    Username = newUser.Username,
                     Password = TokenService.GeneratePassword(email),
                     Permanent = true
                 };
 
                 await provider.AdminSetUserPasswordAsync(changePasswordRequest);
+                
 
-                return (false, createUserResponse.User);
+                if (adUser == null)
+                {
+                    // update custom userId for created user
+                    attributes.Add(new AttributeType() { Name = "custom:userId", Value = newUser.Username });                   
+                    await provider.AdminUpdateUserAttributesAsync(new AdminUpdateUserAttributesRequest
+                    {
+                        UserPoolId = Configurations.Cognito.CognitoPoolId,
+                        Username = newUser.Username,
+                        UserAttributes = attributes
+                    });
+
+                    // add user into group new
+                    await AddUserToGroup(newUser.Username, "new");
+                    newUser.Attributes.Add(new AttributeType { Name = "custom:userId", Value = newUser.Username });
+                } else
+                {
+                    // add user into group from b2c
+                    var groupName = await adUser.GroupName();
+                    if (!string.IsNullOrWhiteSpace(groupName))
+                    {
+                        await AddUserToGroup(createUserResponse.User.Username, groupName);
+                    } else
+                    {
+                        Logger.Log?.LogError($"user {email} does not have group");
+                    }
+                }
+
+                return (false, newUser);
             }
         }
 
@@ -219,6 +261,17 @@ namespace Authentication.Shared.Services
                     {"email", email },
                 }
             );
+        }
+
+        public async Task<string> GetCustomUserId(string id)
+        {
+            var response = await provider.AdminGetUserAsync(new AdminGetUserRequest
+            {
+                UserPoolId = Configurations.Cognito.CognitoPoolId,
+                Username = id,
+            });
+
+            return response.UserAttributes.FirstOrDefault(x => x.Name == "custom:userId")?.Value;
         }
     }
 }
