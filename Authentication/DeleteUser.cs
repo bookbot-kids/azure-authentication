@@ -62,9 +62,20 @@ namespace Authentication
                     return CreateErrorResponse(message, StatusCodes.Status403Forbidden);
                 }
 
-                userId = id;
-                await CognitoService.Instance.SetAccountEable(userId, false);
+                var customUserId = await CognitoService.Instance.GetCustomUserId(id);
+                if(string.IsNullOrWhiteSpace(customUserId))
+                {
+                    return CreateErrorResponse($"user {id} does not have custom id", StatusCodes.Status500InternalServerError);
+                }
 
+                userId = customUserId;
+                var adUser = await ADUser.FindById(customUserId);
+                if(adUser != null)
+                {
+                    await adUser.SetEnable(false);
+                }
+
+                await CognitoService.Instance.SetAccountEable(id, false);
             } else
             {
                 // get access token by refresh token
