@@ -95,12 +95,12 @@ namespace Authentication
                 var updateParams = new Dictionary<string, string>();
                 if (!string.IsNullOrWhiteSpace(country))
                 {
-                    updateParams["locale"] = country;
+                    updateParams["custom:country"] = country;
                 }
 
                 if (!string.IsNullOrWhiteSpace(ipAddress))
                 {
-                    updateParams["address"] = ipAddress;
+                    updateParams["custom:ipAddress"] = ipAddress;
                 }
 
                 await CognitoService.Instance.UpdateUser(user.Username, updateParams, !user.Enabled);
@@ -146,6 +146,7 @@ namespace Authentication
         private async Task<IActionResult> ProcessAzureB2cRequest(ILogger log, string email, string name, string country, string ipAddress)
         {
             // check if email is existed in b2c. If it is, return that user
+            // TODO will create new cognito user from this b2c later
             var (exist, user) = await ADUser.FindOrCreate(email, name, country, ipAddress);
 
             // there is an error when creating user

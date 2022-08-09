@@ -238,6 +238,8 @@ namespace Authentication.Shared
             public static readonly string CognitoSecret = Configuration["CognitoSecret"];
 
             public static readonly string AWSRestUrl = Configuration["AWSRestUrl"];
+
+            public static readonly string AWSRestCode = Configuration["AWSRestCode"];
         }
     }
 }

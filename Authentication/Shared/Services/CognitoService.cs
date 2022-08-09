@@ -8,6 +8,7 @@ using Amazon.CognitoIdentityProvider;
 using Amazon.CognitoIdentityProvider.Model;
 using Authentication.Shared.Library;
 using Authentication.Shared.Models;
+using Authentication.Shared.Services.Responses;
 using Microsoft.Extensions.Logging;
 using Refit;
 
@@ -24,8 +25,11 @@ namespace Authentication.Shared.Services
 
         public interface IAWSRestApi
         {            
-            [Post("/auth")]
+            [Post("/auth/signIn")]
             Task<ADToken> RequestPasscode([Body(BodySerializationMethod.Serialized )] Dictionary<string, string> body);
+
+            [Post("/auth/verify")]
+            Task<AwsAPIResult> VerifyPasscode([Body(BodySerializationMethod.Serialized)] Dictionary<string, string> body);
         }
 
         private ICognitoRestApi cognitoRestApi;
@@ -131,11 +135,50 @@ namespace Authentication.Shared.Services
             var usersResponse = await provider.ListUsersAsync(request);
             if(usersResponse.Users.Count > 0 )
             {
-                return (true, usersResponse.Users.First());
+                var user = usersResponse.Users.First();
+                // dont return passcode property to client
+                user.Attributes.Remove(user.Attributes.Find(x => x.Name == "custom:authChallenge"));
+                return (true, user);
             }
             else
             {
-                var adUser = await ADUser.FindByEmail(email);
+                // create AD User if needed
+                var (adUserExisting, adUser) = await ADUser.FindOrCreate(email, name, country, ipAddress);
+                if (adUser == null)
+                {
+                    throw new Exception($"can not create ad user {email}");
+                }
+
+                // update new properties
+                if(adUserExisting)
+                {
+                    var updateParams = new Dictionary<string, dynamic>();
+                    if (!string.IsNullOrWhiteSpace(country))
+                    {
+                        updateParams["country"] = country;
+                        adUser.Country = country;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(ipAddress))
+                    {
+                        updateParams["streetAddress"] = ipAddress;
+                        adUser.IPAddress = ipAddress;
+                    }
+
+                    // enable account if needed
+                    if (!adUser.AccountEnabled)
+                    {
+                        updateParams["accountEnabled"] = true;
+                        adUser.AccountEnabled = true;
+                    }
+
+                    if (updateParams.Count > 0)
+                    {
+                        await adUser.Update(updateParams);
+                    }
+                }
+
+                // then create cognito user
                 var attributes = new List<AttributeType>();
                 if(!string.IsNullOrWhiteSpace(name))
                 {
@@ -145,7 +188,7 @@ namespace Authentication.Shared.Services
                 if (!string.IsNullOrWhiteSpace(country))
                 {
                     attributes.Add(new AttributeType() { Name = "custom:country", Value = country });
-                } else if(!string.IsNullOrWhiteSpace(adUser?.Country))
+                } else if(!string.IsNullOrWhiteSpace(adUser.Country))
                 {
                     attributes.Add(new AttributeType() { Name = "custom:country", Value = adUser.Country });
                 }
@@ -153,17 +196,13 @@ namespace Authentication.Shared.Services
                 if (!string.IsNullOrWhiteSpace(ipAddress))
                 {
                     attributes.Add(new AttributeType() { Name = "custom:ipAddress", Value = ipAddress });
-                } else if(!string.IsNullOrWhiteSpace(adUser?.IPAddress))
+                } else if(!string.IsNullOrWhiteSpace(adUser.IPAddress))
                 {
                     attributes.Add(new AttributeType() { Name = "custom:ipAddress", Value = adUser.IPAddress });
                 }
 
-                // set custom user id from b2c if needed               
-                if (adUser != null)
-                {
-                    attributes.Add(new AttributeType() { Name = "custom:userId", Value = adUser.ObjectId });
-                }
-
+                // set custom user id from b2c        
+                attributes.Add(new AttributeType() { Name = "custom:userId", Value = adUser.ObjectId });
                 attributes.Add(new AttributeType() { Name = "email", Value = email });
 
                 // create new user with temp password
@@ -190,23 +229,21 @@ namespace Authentication.Shared.Services
                 await provider.AdminSetUserPasswordAsync(changePasswordRequest);
                 
 
-                if (adUser == null)
+                if (!adUserExisting)
                 {
-                    // update custom userId for created user
-                    attributes.Add(new AttributeType() { Name = "custom:userId", Value = newUser.Username });                   
-                    await provider.AdminUpdateUserAttributesAsync(new AdminUpdateUserAttributesRequest
-                    {
-                        UserPoolId = Configurations.Cognito.CognitoPoolId,
-                        Username = newUser.Username,
-                        UserAttributes = attributes
-                    });
-
-                    // add user into group new
+                    // add cognito user into group new
                     await AddUserToGroup(newUser.Username, "new");
-                    newUser.Attributes.Add(new AttributeType { Name = "custom:userId", Value = newUser.Username });
+
+                    // add ad user into group new
+                    var newGroup = await ADGroup.FindByName("new");
+                    var addResult = await newGroup.AddUser(adUser.ObjectId);
+                    if (!addResult)
+                    {
+                        throw new Exception($"can not add ad user {email} into new group");
+                    }
                 } else
                 {
-                    // add user into group from b2c
+                    // add cognito user into group from b2c
                     var groupName = await adUser.GroupName();
                     if (!string.IsNullOrWhiteSpace(groupName))
                     {
@@ -217,6 +254,8 @@ namespace Authentication.Shared.Services
                     }
                 }
 
+                // dont return passcode property to client
+                newUser.Attributes.Remove(newUser.Attributes.Find(x => x.Name == "custom:authChallenge"));
                 return (false, newUser);
             }
         }
@@ -259,8 +298,34 @@ namespace Authentication.Shared.Services
             await awsRestApi.RequestPasscode(new Dictionary<string, string>
                 {
                     {"email", email },
+                    {"code", Configurations.Cognito.AWSRestCode },
                 }
             );
+        }
+
+        public async Task<bool> VerifyPasscode(string email, string passcode)
+        {
+            try
+            {
+                var response = await awsRestApi.VerifyPasscode(new Dictionary<string, string>
+                {
+                    {"email", email },
+                    {"code", Configurations.Cognito.AWSRestCode },
+                    {"passcode", passcode },
+                }
+            );
+
+                return response.Message == "success";
+            }
+            catch (ApiException ex)
+            {
+                if(ex.StatusCode != System.Net.HttpStatusCode.Unauthorized)
+                {
+                    throw ex;
+                }
+            }
+
+            return false;
         }
 
         public async Task<string> GetCustomUserId(string id)
