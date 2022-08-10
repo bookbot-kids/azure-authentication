@@ -86,6 +86,25 @@ namespace Authentication.Shared.Services
             return await provider.AdminGetUserAsync(request);
         }
 
+        public async Task<UserType> FindUserByCustomId(string customId)
+        {
+            var request = new ListUsersRequest
+            {
+                UserPoolId = Configurations.Cognito.CognitoPoolId,
+                Filter = $"preferred_username = \"{customId}\"",
+            };
+            var usersResponse = await provider.ListUsersAsync(request);
+            if (usersResponse.Users.Count > 0)
+            {
+                var user = usersResponse.Users.First();
+                // dont return passcode property to client
+                user.Attributes.Remove(user.Attributes.Find(x => x.Name == "custom:authChallenge"));
+                return user;
+            }
+
+            return null;
+        }
+
         public async Task<ADToken> GetAccessToken(string refreshToken)
         {
             try
@@ -123,7 +142,7 @@ namespace Authentication.Shared.Services
             return (false, "Token is invalid", null, null);
         }
 
-        public async Task<(bool, UserType)> FindOrCreateUser(string email, string name, string country, string ipAddress)
+        public async Task<(bool, UserType)> FindOrCreateUser(string email, string name, string country, string ipAddress, ADUser adUser = null, bool shouldUpdateAdUser = true)
         {
             email = email.ToLower();
             var request = new ListUsersRequest
@@ -142,15 +161,25 @@ namespace Authentication.Shared.Services
             }
             else
             {
-                // create AD User if needed
-                var (adUserExisting, adUser) = await ADUser.FindOrCreate(email, name, country, ipAddress);
+                var adUserExisting = false;
+                if (adUser == null)
+                {
+                    // create AD User if needed
+                    var (existing, newAdUser) = await ADUser.FindOrCreate(email, name, country, ipAddress);
+                    adUser = newAdUser;
+                    adUserExisting = existing;
+                } else
+                {
+                    adUserExisting = true;
+                }
+               
                 if (adUser == null)
                 {
                     throw new Exception($"can not create ad user {email}");
                 }
 
                 // update new properties
-                if(adUserExisting)
+                if(adUserExisting && shouldUpdateAdUser)
                 {
                     var updateParams = new Dictionary<string, dynamic>();
                     if (!string.IsNullOrWhiteSpace(country))
@@ -202,7 +231,7 @@ namespace Authentication.Shared.Services
                 }
 
                 // set custom user id from b2c        
-                attributes.Add(new AttributeType() { Name = "custom:userId", Value = adUser.ObjectId });
+                attributes.Add(new AttributeType() { Name = "preferred_username", Value = adUser.ObjectId });
                 attributes.Add(new AttributeType() { Name = "email", Value = email });
 
                 // create new user with temp password
@@ -234,13 +263,16 @@ namespace Authentication.Shared.Services
                     // add cognito user into group new
                     await AddUserToGroup(newUser.Username, "new");
 
-                    // add ad user into group new
-                    var newGroup = await ADGroup.FindByName("new");
-                    var addResult = await newGroup.AddUser(adUser.ObjectId);
-                    if (!addResult)
+                    if(shouldUpdateAdUser)
                     {
-                        throw new Exception($"can not add ad user {email} into new group");
-                    }
+                        // add ad user into group new
+                        var newGroup = await ADGroup.FindByName("new");
+                        var addResult = await newGroup.AddUser(adUser.ObjectId);
+                        if (!addResult)
+                        {
+                            throw new Exception($"can not add ad user {email} into new group");
+                        }
+                    }                   
                 } else
                 {
                     // add cognito user into group from b2c
@@ -336,7 +368,7 @@ namespace Authentication.Shared.Services
                 Username = id,
             });
 
-            return response.UserAttributes.FirstOrDefault(x => x.Name == "custom:userId")?.Value;
+            return response.UserAttributes.FirstOrDefault(x => x.Name == "preferred_username")?.Value;
         }
     }
 }

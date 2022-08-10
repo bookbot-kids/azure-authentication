@@ -63,11 +63,11 @@ namespace Authentication
             // Then the result is correct "a+1@gmail.com"
             email = email.Trim().Replace(" ", "+");
 
-            string name = email.GetNameFromEmail();
-
-            log.LogInformation($"Check account for user ${email}");
+            string name = email.GetNameFromEmail();            
 
             string source = req.Query["source"];
+            log.LogInformation($"Check account for user {email}, source: {source}");
+
             if (source == "cognito")
             {
                 bool requestPasscode = req.Query["request_passcode"] == "true";
@@ -146,7 +146,6 @@ namespace Authentication
         private async Task<IActionResult> ProcessAzureB2cRequest(ILogger log, string email, string name, string country, string ipAddress)
         {
             // check if email is existed in b2c. If it is, return that user
-            // TODO will create new cognito user from this b2c later
             var (exist, user) = await ADUser.FindOrCreate(email, name, country, ipAddress);
 
             // there is an error when creating user
@@ -186,6 +185,7 @@ namespace Authentication
 
                 log.LogInformation($"User ${email} exists, {ipAddress}, {country}");
 
+                await CognitoService.Instance.FindOrCreateUser(email, name, country, ipAddress, user, shouldUpdateAdUser: false);
                 return new JsonResult(new { success = true, exist, user }) { StatusCode = StatusCodes.Status200OK };
             }
             else
@@ -210,20 +210,20 @@ namespace Authentication
                     log.LogInformation($"User ${email} is a test user, skip sending analytics");
                 }
 
+                // add user to new group
+                var newGroup = await ADGroup.FindByName("new");
+                var addResult = await newGroup.AddUser(user.ObjectId);
+
+                // there is an error when add user into new group
+                if (!addResult)
+                {
+                    return CreateErrorResponse($"can not add user {email} into new group", StatusCodes.Status500InternalServerError);
+                }
+
+                await CognitoService.Instance.FindOrCreateUser(email, name, country, ipAddress, user, shouldUpdateAdUser: false);
+                // Success, return user info
+                return new JsonResult(new { success = true, exist, user }) { StatusCode = StatusCodes.Status200OK };
             }
-
-            // add user to new group
-            var newGroup = await ADGroup.FindByName("new");
-            var addResult = await newGroup.AddUser(user.ObjectId);
-
-            // there is an error when add user into new group
-            if (!addResult)
-            {
-                return CreateErrorResponse($"can not add user {email} into new group", StatusCodes.Status500InternalServerError);
-            }
-
-            // Success, return user info
-            return new JsonResult(new { success = true, exist, user }) { StatusCode = StatusCodes.Status200OK };
         }
 
         private async Task SendAnalytics(string email, string id, string country, string ipAddress, string name)
