@@ -86,6 +86,25 @@ namespace Authentication.Shared.Services
             return await provider.AdminGetUserAsync(request);
         }
 
+        public async Task<UserType> FindUserByEmail(string email)
+        {
+            var request = new ListUsersRequest
+            {
+                UserPoolId = Configurations.Cognito.CognitoPoolId,
+                Filter = $"email = \"{email}\"",
+            };
+            var usersResponse = await provider.ListUsersAsync(request);
+            if (usersResponse.Users.Count > 0)
+            {
+                var user = usersResponse.Users.First();
+                // dont return passcode property to client
+                user.Attributes.Remove(user.Attributes.Find(x => x.Name == "custom:authChallenge"));
+                return user;
+            }
+
+            return null;
+        }
+
         public async Task<UserType> FindUserByCustomId(string customId)
         {
             var request = new ListUsersRequest
@@ -261,7 +280,7 @@ namespace Authentication.Shared.Services
                 if (!adUserExisting)
                 {
                     // add cognito user into group new
-                    await AddUserToGroup(newUser.Username, "new");
+                    await UpdateUserGroup(newUser.Username, "new");
 
                     if(shouldUpdateAdUser)
                     {
@@ -279,7 +298,7 @@ namespace Authentication.Shared.Services
                     var groupName = await adUser.GroupName();
                     if (!string.IsNullOrWhiteSpace(groupName))
                     {
-                        await AddUserToGroup(createUserResponse.User.Username, groupName);
+                        await UpdateUserGroup(createUserResponse.User.Username, groupName);
                     } else
                     {
                         Logger.Log?.LogError($"user {email} does not have group");
@@ -313,8 +332,42 @@ namespace Authentication.Shared.Services
             }
         }
 
-        public async Task AddUserToGroup(string id, string groupName)
+        public async Task UpdateUserGroup(string id, string groupName)
         {
+            var groupsResponse = await provider.AdminListGroupsForUserAsync(new AdminListGroupsForUserRequest
+                {
+                    Username = id,
+                    UserPoolId = Configurations.Cognito.CognitoPoolId,
+                }
+            );
+
+            var userAlreadyInGroup = false;
+            if(groupsResponse.Groups.Count > 0)
+            {
+                foreach(var group in groupsResponse.Groups)
+                {
+                    if(group.GroupName == groupName)
+                    {
+                        userAlreadyInGroup = true;
+                        continue;
+                    }
+                    else
+                    {
+                        await provider.AdminRemoveUserFromGroupAsync(new AdminRemoveUserFromGroupRequest
+                        {
+                            Username = id,
+                            UserPoolId = Configurations.Cognito.CognitoPoolId,
+                            GroupName = group.GroupName,
+                        });
+                    }
+                }
+            }
+
+            if(userAlreadyInGroup)
+            {
+                return;
+            }
+
             var request = new AdminAddUserToGroupRequest
             {
                 Username = id,
