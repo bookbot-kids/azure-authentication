@@ -91,7 +91,7 @@ namespace Authentication.Shared.Services
             var request = new ListUsersRequest
             {
                 UserPoolId = Configurations.Cognito.CognitoPoolId,
-                Filter = $"email = \"{email}\"",
+                Filter = $"email = \"{email.ToLower()}\"",
             };
             var usersResponse = await provider.ListUsersAsync(request);
             if (usersResponse.Users.Count > 0)
