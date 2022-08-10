@@ -66,12 +66,13 @@ namespace Authentication
             string name = email.GetNameFromEmail();            
 
             string source = req.Query["source"];
+            string language = req.Query["language"];
             log.LogInformation($"Check account for user {email}, source: {source}");
 
             if (source == "cognito")
             {
                 bool requestPasscode = req.Query["request_passcode"] == "true";
-                return await ProcessCognitoRequest(log, email, name, country, ipAddress, requestPasscode);
+                return await ProcessCognitoRequest(log, email, name, country, ipAddress, requestPasscode, language);
             }
             else
             {
@@ -79,7 +80,7 @@ namespace Authentication
             }
         }
 
-        private async Task<IActionResult> ProcessCognitoRequest(ILogger log, string email, string name, string country, string ipAddress, bool requestPasscode)
+        private async Task<IActionResult> ProcessCognitoRequest(ILogger log, string email, string name, string country, string ipAddress, bool requestPasscode, string language)
         {
             var (exist, user) = await CognitoService.Instance.FindOrCreateUser(email, name, country, ipAddress);
             // there is an error when creating user
@@ -107,7 +108,7 @@ namespace Authentication
                 log.LogInformation($"User ${email} exists, {ipAddress}, {country}");
                 if(requestPasscode)
                 {
-                    await CognitoService.Instance.RequestPasscode(email);
+                    await CognitoService.Instance.RequestPasscode(email, language);
                 }
 
                 return new JsonResult(new { success = true, exist, user }) { StatusCode = StatusCodes.Status200OK };
@@ -136,7 +137,7 @@ namespace Authentication
 
             if (requestPasscode)
             {
-                await CognitoService.Instance.RequestPasscode(email);
+                await CognitoService.Instance.RequestPasscode(email, language);
             }
 
             // Success, return user info

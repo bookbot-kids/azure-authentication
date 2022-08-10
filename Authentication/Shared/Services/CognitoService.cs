@@ -378,12 +378,18 @@ namespace Authentication.Shared.Services
             await provider.AdminAddUserToGroupAsync(request);
         }
 
-        public async Task RequestPasscode(string email)
+        public async Task RequestPasscode(string email, string language)
         {
+            if(string.IsNullOrWhiteSpace(language))
+            {
+                language = "en";
+            }
+
             await awsRestApi.RequestPasscode(new Dictionary<string, string>
                 {
                     {"email", email },
                     {"code", Configurations.Cognito.AWSRestCode },
+                    {"language", language }
                 }
             );
         }
