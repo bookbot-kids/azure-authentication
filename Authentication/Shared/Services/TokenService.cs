@@ -15,6 +15,13 @@ using JWT.Builder;
 using JWT.Exceptions;
 using JWT.Algorithms;
 using System.Text;
+using Microsoft.Azure.KeyVault.Core;
+using System.Security.Cryptography;
+using System.Linq;
+using System.Text.RegularExpressions;
+using Google.Apis;
+using System.Text.Encodings.Web;
+using JWT.Serializers;
 
 namespace Authentication.Shared.Services
 {
@@ -213,13 +220,92 @@ namespace Authentication.Shared.Services
             }
         }
 
-        /// <summary>
-        /// Generate password from email + secret.
-        /// Need to add a prefix to by pass the password complexity requirements
-        /// </summary>
-        /// <param name="email">email adress</param>
-        /// <returns>password hash</returns>
-        public static string GeneratePassword(string email)
+        public static string GenerateAppleToken(string secret, string keyId, string sub, string iss, string aud, DateTime expires)
+        {
+            ReadOnlySpan<byte> keyAsSpan = Convert.FromBase64String(secret);
+            var prvKey = ECDsa.Create();
+            prvKey.ImportPkcs8PrivateKey(keyAsSpan, out var read);
+            IJwtAlgorithm algorithm = new ES256Algorithm(ECDsa.Create(), prvKey);
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var securityKey = new ECDsaSecurityKey(prvKey);
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Expires = expires,
+                Issuer = iss,
+                Audience = aud,
+                SigningCredentials = new SigningCredentials(securityKey, SecurityAlgorithms.EcdsaSha256),
+                Subject = new ClaimsIdentity(new[] { new Claim("sub", sub) }),
+
+
+            };
+
+            var header = new Dictionary<string, object>()
+            {
+                { "kid", keyId }
+            };
+
+
+            var token = tokenHandler.CreateJwtSecurityToken(tokenDescriptor);
+            token.Header.Add("kid", keyId);
+            return tokenHandler.WriteToken(token);
+        }
+
+        public static IDictionary<string, object> DecodeJWTToken(string jwtToken)
+        {
+            try
+            {
+                return JwtBuilder.Create()
+                     .Decode<IDictionary<string, object>>(jwtToken);
+            }
+            catch(Exception)
+            {
+                return new Dictionary<string, object>();
+            }
+        }
+
+        public static bool ValidatePublicJWTToken(string jwtToken, IDictionary<string, string> claims)
+        {
+            try
+            {
+                var validationParameters = ValidationParameters.None;
+                validationParameters.ValidateExpirationTime = true;
+                var data = JwtBuilder.Create()
+                    .WithDateTimeProvider(new UtcDateTimeProvider())
+                    .WithValidationParameters(validationParameters)
+                    .WithSerializer(new JsonNetSerializer())
+                    .WithUrlEncoder(new JwtBase64UrlEncoder())
+                    .Decode<IDictionary<string, object>>(jwtToken);
+                foreach(var claim in claims)
+                {
+                    var value = data.GetOrDefault(claim.Key, "").ToString();
+                    if (value != claim.Value)
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+            catch (TokenExpiredException)
+            {
+                Logger.Log?.LogError($"Token {jwtToken} is expired");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Logger.Log?.LogError($"Parsing token {jwtToken} error {ex.Message}");
+                return false;
+            }
+        }
+
+            /// <summary>
+            /// Generate password from email + secret.
+            /// Need to add a prefix to by pass the password complexity requirements
+            /// </summary>
+            /// <param name="email">email adress</param>
+            /// <returns>password hash</returns>
+            public static string GeneratePassword(string email)
         {
             return Configurations.AzureB2C.PasswordPrefix + (email.ToLower() + Configurations.AzureB2C.PasswordSecretKey).MD5();
         }

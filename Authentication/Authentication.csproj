@@ -18,10 +18,12 @@
     <PackageReference Include="AsyncEnumerator" Version="4.0.2" />
     <PackageReference Include="JWT" Version="9.0.0" />
     <PackageReference Include="AWSSDK.CognitoIdentityProvider" Version="3.7.5.1" />
+    <PackageReference Include="Google.Apis.Auth" Version="1.57.0" />
   </ItemGroup>
   <ItemGroup>
     <None Remove="AsyncEnumerator" />
     <None Remove="AWSSDK.CognitoIdentityProvider" />
+    <None Remove="Google.Apis.Auth" />
   </ItemGroup>
   <ItemGroup>
     <None Update="host.json">

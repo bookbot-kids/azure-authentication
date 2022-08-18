@@ -241,5 +241,20 @@ namespace Authentication.Shared
 
             public static readonly string AWSRestCode = Configuration["AWSRestCode"];
         }
+
+        public static class Google
+        {
+            public static readonly string GoogleClientId = Configuration["GoogleClientId"];
+        }
+
+        public static class Apple
+        {
+            public static readonly string AppleClientId = Configuration["AppleClientId"];
+            public static readonly string AppleTeamId = Configuration["AppleTeamId"];
+            public static readonly string AppleServiceId = Configuration["AppleServiceId"];
+            public static readonly string AppleAppId = Configuration["AppleAppId"];
+            public static readonly string AppleSecret = Configuration["AppleSecret"];
+            public static readonly string AppleRedirectUrl = Configuration["AppleRedirectUrl"];
+        }
     }
 }

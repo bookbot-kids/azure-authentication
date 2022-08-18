@@ -40,7 +40,7 @@ namespace Authentication
             var isValid = await CognitoService.Instance.VerifyPasscode(email, passcode);
             if(!isValid)
             {
-                return CreateErrorResponse("Passcode is invalid", statusCode: 401);
+                return CreateErrorResponse($"Passcode {passcode} is invalid for email ${email}", statusCode: 401);
             }
 
             return CreateSuccessResponse();

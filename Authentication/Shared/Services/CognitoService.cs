@@ -26,7 +26,7 @@ namespace Authentication.Shared.Services
         public interface IAWSRestApi
         {            
             [Post("/auth/signIn")]
-            Task<ADToken> RequestPasscode([Body(BodySerializationMethod.Serialized )] Dictionary<string, string> body);
+            Task<AwsPasscode> RequestPasscode([Body(BodySerializationMethod.Serialized )] Dictionary<string, string> body);
 
             [Post("/auth/verify")]
             Task<AwsAPIResult> VerifyPasscode([Body(BodySerializationMethod.Serialized)] Dictionary<string, string> body);
@@ -378,20 +378,23 @@ namespace Authentication.Shared.Services
             await provider.AdminAddUserToGroupAsync(request);
         }
 
-        public async Task RequestPasscode(string email, string language)
+        public async Task<string> RequestPasscode(string email, string language, bool disableEmail = false)
         {
             if(string.IsNullOrWhiteSpace(language))
             {
                 language = "en";
             }
 
-            await awsRestApi.RequestPasscode(new Dictionary<string, string>
+            var response = await awsRestApi.RequestPasscode(new Dictionary<string, string>
                 {
                     {"email", email },
                     {"code", Configurations.Cognito.AWSRestCode },
-                    {"language", language }
+                    {"language", language },
+                    {"disableEmail", disableEmail == true? "true": "false" }
                 }
             );
+
+            return response.Passcode;
         }
 
         public async Task<bool> VerifyPasscode(string email, string passcode)

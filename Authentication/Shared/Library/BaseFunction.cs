@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Authentication.Shared.Models;
+using Authentication.Shared.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -123,6 +124,52 @@ namespace Authentication.Shared.Library
             {
                 return null;
             }
+        }
+
+        protected async Task SendAnalytics(string email, string id, string country, string ipAddress, string name)
+        {
+            // log event for new user
+            var body = new Dictionary<string, object>
+                {
+                    {
+                        "googleAnalytics", new Dictionary<string, string>
+                            {
+                                {"p_country", country },
+                                {"p_email", email },
+                                {"uid", id },
+                                {"eventType", "event" },
+                                {"eventName", "sign_up"},
+                                {"measurement_id", Configurations.Configuration["GAMeasurementId"]},
+                                {"api_secret", Configurations.Configuration["GASecret"]},
+                                {"p_role", "new" }
+                            }
+                    },
+                    {
+                         "facebookPixel", new Dictionary<string, string>
+                            {
+                                {"em", email },
+                                {"country", country },
+                                {"client_ip_address",  ipAddress},
+                                {"hashFields", "em,country" },
+                                {"eventType", "event" },
+                                {"eventName", "CompleteRegistration"}
+                            }
+                    },
+                    {
+                        "activeCampaign", new Dictionary<string, string>
+                            {
+                                {"country", country },
+                                {"eventType", "user" },
+                                {"firstName", name },
+                                {"email", email },
+                                {"role", "new" }
+                            }
+                    },
+                };
+
+            // don't need to wait for this event, just make it timeout after few seconds
+            var task = AnalyticsService.Instance.SendEvent(body);
+            await HttpHelper.TimeoutAfter(task, TimeSpan.FromSeconds(5));
         }
     }
 }
