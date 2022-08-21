@@ -10,6 +10,7 @@ using Authentication.Shared.Models;
 using Authentication.Shared.Services;
 using Microsoft.Azure.Cosmos;
 using Dasync.Collections;
+using Extensions;
 
 namespace Authentication
 {
@@ -33,12 +34,24 @@ namespace Authentication
             } 
             
             string email = req.Query["email"];
+            // validate email address
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return CreateErrorResponse($"Email is empty");
+            }
+
+            if (!email.IsValidEmailAddress())
+            {
+                return CreateErrorResponse($"Email {email} is invalid");
+            }
+
             // only delete user from special domain
-            if(!email.EndsWith(Configurations.AzureB2C.EmailTestDomain))
+            if (!email.EndsWith(Configurations.AzureB2C.EmailTestDomain))
             {
                 return CreateErrorResponse($"email {email} is invalid");
             }
 
+            email = email.NormalizeEmail();
             var adUser = await ADUser.FindByEmail(email);
             if(adUser == null)
             {

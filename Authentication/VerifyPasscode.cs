@@ -31,6 +31,8 @@ namespace Authentication
                 return CreateErrorResponse($"Email {email} is invalid");
             }
 
+            email = email.NormalizeEmail();
+
             string passcode = req.Query["passcode"];
             if (string.IsNullOrWhiteSpace(passcode))
             {
