@@ -15,11 +15,9 @@ using JWT.Builder;
 using JWT.Exceptions;
 using JWT.Algorithms;
 using System.Text;
-using Microsoft.Azure.KeyVault.Core;
 using System.Security.Cryptography;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Google.Apis;
 using System.Text.Encodings.Web;
 using JWT.Serializers;
 
