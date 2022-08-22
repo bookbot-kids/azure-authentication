@@ -1,13 +1,11 @@
 ﻿using System;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Authentication.Shared.Library;
 using Authentication.Shared.Models;
 using Authentication.Shared.Services.Responses;
-using Google.Apis.Auth;
-using Google.Apis.Auth.OAuth2;
 using Refit;
-using static Authentication.Shared.Services.CognitoService;
 
 namespace Authentication.Shared.Services
 {
@@ -29,26 +27,6 @@ namespace Authentication.Shared.Services
         public static GoogleService Instance { get; } = new GoogleService();
         private IGoogleRestApi googleRestApi;
 
-        public async Task<bool> ValidateIdToken(string idToken)
-        {
-            SignedTokenVerificationOptions options = new SignedTokenVerificationOptions
-            {
-                IssuedAtClockTolerance = TimeSpan.FromMinutes(1),
-                ExpiryClockTolerance = TimeSpan.FromMinutes(1),
-                TrustedAudiences = { Configurations.Google.GoogleClientId }
-            };
-
-            try
-            {
-                var payload = await JsonWebSignature.VerifySignedTokenAsync(idToken, options);
-                return payload != null && payload.Issuer == Configurations.Google.GoogleClientId;
-            }
-            catch(Exception)
-            {
-                return false;
-            }            
-        }
-
         public async Task<bool> ValidateAccessToken(string email, string accessToken)
         {
             try
@@ -57,7 +35,9 @@ namespace Authentication.Shared.Services
                 var expiredIn = int.Parse(response.Exp);
                 var time = DateTime.UnixEpoch.AddSeconds(expiredIn);
                 var now = DateTime.Now;
-                return now < time && response.Email == email && response.Aud == Configurations.Google.GoogleClientId;
+                return now < time // not expired
+                    && response.Email == email // email is matched with token
+                    && Configurations.Google.GoogleClientIds.Contains(response.Aud); // client id must matched
             }
             catch (ApiException ex)
             {

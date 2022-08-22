@@ -244,7 +244,7 @@ namespace Authentication.Shared
 
         public static class Google
         {
-            public static readonly string GoogleClientId = Configuration["GoogleClientId"];
+            public static readonly string[] GoogleClientIds = Configuration["GoogleClientIds"].Split(";");
         }
 
         public static class Apple
