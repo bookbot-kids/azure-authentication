@@ -43,8 +43,7 @@ namespace Authentication
                 return CreateErrorResponse("Email is invalid");
             }
 
-            // replace space by + to correct because email contains "+" will be encoded by space, like "a+1@gmail.com" -> "a 1@gmail.com"
-            email = email.Trim().Replace(" ", "+");
+            email = email.NormalizeEmail();
 
             var user = await User.GetByEmail(email);
             return new JsonResult(new { success = true, user }) { StatusCode = StatusCodes.Status200OK };

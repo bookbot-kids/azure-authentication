@@ -111,7 +111,7 @@ namespace Extensions
         /// <returns></returns>
         public static string NormalizeEmail(this string srt)
         {
-            return srt.Trim().Replace(" ", "+");
+            return srt.Trim().Replace(" ", "+").ToLower();
         }
     }
 }

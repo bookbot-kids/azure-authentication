@@ -79,8 +79,7 @@ namespace Authentication
                 return CreateErrorResponse("Role is invalid");
             }
 
-            // replace space by + to correct because email contains "+" will be encoded by space, like "a+1@gmail.com" -> "a 1@gmail.com"
-            email = email.Trim().Replace(" ", "+");
+            email = email.NormalizeEmail();
 
             string name = email.GetNameFromEmail();
 

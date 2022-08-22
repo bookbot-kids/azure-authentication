@@ -56,12 +56,7 @@ namespace Authentication
 
             var ipAddress = HttpHelper.GetIpFromRequestHeaders(req);
             string country = req.Query["country"];
-
-            // Fix the encode issue because email parameter that contains "+" will be encoded by space
-            // e.g. client sends "a+1@gmail.com" => Azure function read: "a 1@gmail.com" (= req.Query["email"])
-            // We need to replace space by "+" when reading the parameter req.Query["email"]
-            // Then the result is correct "a+1@gmail.com"
-            email = email.Trim().Replace(" ", "+");
+            email = email.NormalizeEmail();
 
             string name = email.GetNameFromEmail();
 
