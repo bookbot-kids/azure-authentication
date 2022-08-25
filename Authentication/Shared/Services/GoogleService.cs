@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Authentication.Shared.Library;
 using Authentication.Shared.Models;
 using Authentication.Shared.Services.Responses;
+using Microsoft.Extensions.Logging;
 using Refit;
 
 namespace Authentication.Shared.Services
@@ -31,6 +32,7 @@ namespace Authentication.Shared.Services
         {
             try
             {
+                Logger.Log?.LogInformation($"validate google sign in {email} {accessToken}");
                 var response = await googleRestApi.ValidateAccessToken(accessToken);
                 var expiredIn = int.Parse(response.Exp);
                 var time = DateTime.UnixEpoch.AddSeconds(expiredIn);
