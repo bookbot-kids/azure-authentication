@@ -39,7 +39,7 @@ namespace Authentication.Shared.Services
                 var now = DateTime.Now;
                 return now < time // not expired
                     && response.Email == email // email is matched with token
-                    && Configurations.Google.GoogleClientIds.Contains(response.Aud); // client id must matched
+                    && Configurations.Google.GoogleClientIds.Contains(response.Sub); // client id must matched
             }
             catch (ApiException ex)
             {
