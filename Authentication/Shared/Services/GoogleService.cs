@@ -33,7 +33,8 @@ namespace Authentication.Shared.Services
 
         public async Task<(bool, string)> ValidateAccessToken(string email, string accessToken, string idToken)
         {
-            if(!string.IsNullOrWhiteSpace(idToken))
+            Logger.Log?.LogInformation($"validate google sign in {email} {accessToken} {idToken}");
+            if (!string.IsNullOrWhiteSpace(idToken))
             {
                 var validation = TokenService.ValidatePublicJWTToken(idToken, new Dictionary<string, string>
                 {
@@ -57,8 +58,7 @@ namespace Authentication.Shared.Services
             }
 
             try
-            {
-                Logger.Log?.LogInformation($"validate google sign in {email} {accessToken}");
+            {               
                 var response = await googleRestApi.ValidateAccessToken(accessToken);
                 var expiredIn = int.Parse(response.Exp);
                 var time = DateTime.UnixEpoch.AddSeconds(expiredIn);

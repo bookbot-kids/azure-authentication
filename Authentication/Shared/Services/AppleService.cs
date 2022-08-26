@@ -6,6 +6,8 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Amazon.Runtime.Internal.Transform;
+using Azure.Core;
+using Microsoft.Extensions.Logging;
 
 namespace Authentication.Shared.Services
 {
@@ -35,6 +37,7 @@ namespace Authentication.Shared.Services
 
         public async Task<(bool, string)> ValidateToken(string email, string authCode, string idToken)
         {
+            Logger.Log?.LogInformation($"validate apple sign in {email} {authCode} {idToken}");
             var isValid = TokenService.ValidatePublicJWTToken(idToken, new Dictionary<string, string>
             {
                 {"email", email },
