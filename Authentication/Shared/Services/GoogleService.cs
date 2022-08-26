@@ -54,6 +54,8 @@ namespace Authentication.Shared.Services
                     {
                         return (false, "id_token is invalid");
                     }
+
+                    Logger.Log?.LogInformation($"client id aud {aud} is valid from id_token");
                 }
             }
 
@@ -65,8 +67,7 @@ namespace Authentication.Shared.Services
                 var now = DateTime.Now;
                 Logger.Log?.LogInformation($"validate access token google sign aud {response.Aud}, email {response.Email}");
                 var isAccessTokenValid = now < time // not expired
-                    && response.Email == email // email is matched with token
-                    && Configurations.Google.GoogleClientIds.Contains(response.Aud); // client id must matched
+                    && response.Email == email; // email is matched with token
                 if(isAccessTokenValid)
                 {
                     return (isAccessTokenValid, "");
