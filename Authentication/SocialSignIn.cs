@@ -47,6 +47,7 @@ namespace Authentication
 
             string source = req.Query["source"];
             log.LogInformation($"Check account for user {email}, source: {source}");
+            string idToken = req.Query["id_token"];
 
             if (source == "google")
             {
@@ -56,7 +57,7 @@ namespace Authentication
                     return CreateErrorResponse($"token is missing");
                 }
 
-                return await ProcessGoogleRequest(log,token, email, name, country, ipAddress);
+                return await ProcessGoogleRequest(log,token, idToken, email, name, country, ipAddress);
             }
             else if (source == "apple")
             {
@@ -66,8 +67,8 @@ namespace Authentication
                     return CreateErrorResponse($"token is missing");
                 }
 
-                string idToken = req.Query["id_token"];
-                if (string.IsNullOrWhiteSpace(token))
+                
+                if (string.IsNullOrWhiteSpace(idToken))
                 {
                     return CreateErrorResponse($"id_token is missing");
                 }
@@ -78,13 +79,13 @@ namespace Authentication
             }
         }
 
-        private async Task<IActionResult> ProcessGoogleRequest(ILogger log, string token, string email, string name, string country, string ipAddress)
+        private async Task<IActionResult> ProcessGoogleRequest(ILogger log, string token, string idToken, string email, string name, string country, string ipAddress)
         {
             // validate token from client
-            var isValid = await GoogleService.Instance.ValidateAccessToken(email, token);
-            if(!isValid)
+            var isValid = await GoogleService.Instance.ValidateAccessToken(email, token, idToken);
+            if(!isValid.Item1)
             {
-                return CreateErrorResponse("Token is invalid", 401);
+                return CreateErrorResponse(isValid.Item2, 401);
             }
 
             // then create or get cognito/b2c user

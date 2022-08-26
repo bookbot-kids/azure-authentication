@@ -1,10 +1,13 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Authentication.Shared.Library;
 using Authentication.Shared.Models;
 using Authentication.Shared.Services.Responses;
+using Extensions;
 using Microsoft.Extensions.Logging;
 using Refit;
 
@@ -28,8 +31,31 @@ namespace Authentication.Shared.Services
         public static GoogleService Instance { get; } = new GoogleService();
         private IGoogleRestApi googleRestApi;
 
-        public async Task<bool> ValidateAccessToken(string email, string accessToken)
+        public async Task<(bool, string)> ValidateAccessToken(string email, string accessToken, string idToken)
         {
+            if(!string.IsNullOrWhiteSpace(idToken))
+            {
+                var validation = TokenService.ValidatePublicJWTToken(idToken, new Dictionary<string, string>
+                {
+                    {"email", email },
+                    {"iss", "https://accounts.google.com" },
+
+                });
+
+                if(!validation.Item1)
+                {
+                    return (false, "id_token is invalid");
+                } else
+                {
+                    // claim client id
+                    var aud = validation.Item2.GetOrDefault("aud", "").ToString();
+                    if(!Configurations.Google.GoogleClientIds.Contains(aud))
+                    {
+                        return (false, "id_token is invalid");
+                    }
+                }
+            }
+
             try
             {
                 Logger.Log?.LogInformation($"validate google sign in {email} {accessToken}");
@@ -37,9 +63,13 @@ namespace Authentication.Shared.Services
                 var expiredIn = int.Parse(response.Exp);
                 var time = DateTime.UnixEpoch.AddSeconds(expiredIn);
                 var now = DateTime.Now;
-                return now < time // not expired
+                var isAccessTokenValid = now < time // not expired
                     && response.Email == email // email is matched with token
-                    && Configurations.Google.GoogleClientIds.Contains(response.Sub); // client id must matched
+                    && Configurations.Google.GoogleClientIds.Contains(response.Aud); // client id must matched
+                if(isAccessTokenValid)
+                {
+                    return (isAccessTokenValid, "");
+                }
             }
             catch (ApiException ex)
             {
@@ -49,7 +79,7 @@ namespace Authentication.Shared.Services
                 }
             }
 
-            return false;
+            return (false, "access_token is invalid");
         }
     }
 }

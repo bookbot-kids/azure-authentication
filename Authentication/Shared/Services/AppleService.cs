@@ -43,7 +43,7 @@ namespace Authentication.Shared.Services
 
             });
 
-            if(!isValid)
+            if(!isValid.Item1)
             {
                 return (false, "Id token is invalid");
             }
@@ -60,7 +60,7 @@ namespace Authentication.Shared.Services
                     {"redirect_uri", Configurations.Apple.AppleRedirectUrl },
                 });
 
-                return (!string.IsNullOrWhiteSpace(response.AccessToken), null);
+                return (!string.IsNullOrWhiteSpace(response.AccessToken), "");
             }
             catch (ApiException ex)
             {

@@ -262,7 +262,7 @@ namespace Authentication.Shared.Services
             }
         }
 
-        public static bool ValidatePublicJWTToken(string jwtToken, IDictionary<string, string> claims)
+        public static (bool, IDictionary<string, object>) ValidatePublicJWTToken(string jwtToken, IDictionary<string, string> claims)
         {
             try
             {
@@ -279,21 +279,21 @@ namespace Authentication.Shared.Services
                     var value = data.GetOrDefault(claim.Key, "").ToString();
                     if (value != claim.Value)
                     {
-                        return false;
+                        return (false, null);
                     }
                 }
 
-                return true;
+                return (true, data);
             }
             catch (TokenExpiredException)
             {
                 Logger.Log?.LogError($"Token {jwtToken} is expired");
-                return false;
+                return (false, null);
             }
             catch (Exception ex)
             {
                 Logger.Log?.LogError($"Parsing token {jwtToken} error {ex.Message}");
-                return false;
+                return (false, null);
             }
         }
 
