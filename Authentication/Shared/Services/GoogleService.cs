@@ -63,6 +63,7 @@ namespace Authentication.Shared.Services
                 var expiredIn = int.Parse(response.Exp);
                 var time = DateTime.UnixEpoch.AddSeconds(expiredIn);
                 var now = DateTime.Now;
+                Logger.Log?.LogInformation($"validate access token google sign aud {response.Aud}, email {response.Email}");
                 var isAccessTokenValid = now < time // not expired
                     && response.Email == email // email is matched with token
                     && Configurations.Google.GoogleClientIds.Contains(response.Aud); // client id must matched
