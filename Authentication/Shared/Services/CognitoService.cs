@@ -262,8 +262,22 @@ namespace Authentication.Shared.Services
                     TemporaryPassword = TokenService.GeneratePassword(Guid.NewGuid().ToString()),
                     MessageAction = MessageActionType.SUPPRESS,
                 };
-                var createUserResponse = await provider.AdminCreateUserAsync(createRequest);
-                var newUser = createUserResponse.User;
+
+                UserType newUser;
+                try
+                {
+                    var createUserResponse = await provider.AdminCreateUserAsync(createRequest);
+                    newUser = createUserResponse.User;
+                }
+                catch (UsernameExistsException ex)
+                {
+                    // TODO will remove later (after fixing from client)
+                    Logger.Log?.LogError($"user name exist {ex.Message}");
+                    // user exist in other request, just get it from cognito after few second
+                    Task.Delay(5 * 1000).Wait();
+                    usersResponse = await provider.ListUsersAsync(request);
+                    newUser = usersResponse.Users.First();
+                }
 
                 // then change its password
                 var changePasswordRequest = new AdminSetUserPasswordRequest
@@ -298,7 +312,7 @@ namespace Authentication.Shared.Services
                     var groupName = await adUser.GroupName();
                     if (!string.IsNullOrWhiteSpace(groupName))
                     {
-                        await UpdateUserGroup(createUserResponse.User.Username, groupName);
+                        await UpdateUserGroup(newUser.Username, groupName);
                     } else
                     {
                         Logger.Log?.LogError($"user {email} does not have group");
