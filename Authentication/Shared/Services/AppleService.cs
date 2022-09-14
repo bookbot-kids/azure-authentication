@@ -8,6 +8,9 @@ using System.Collections.Generic;
 using Amazon.Runtime.Internal.Transform;
 using Azure.Core;
 using Microsoft.Extensions.Logging;
+using System.ComponentModel.DataAnnotations;
+using Extensions;
+using System.Linq;
 
 namespace Authentication.Shared.Services
 {
@@ -29,34 +32,43 @@ namespace Authentication.Shared.Services
         public static AppleService Instance { get; } = new AppleService();
         private IAppleRestApi appleRestApi;
 
-        private string GenerateSecretToken()
+        private string GenerateSecretToken(string clientId)
         {
-            return TokenService.GenerateAppleToken(Configurations.Apple.AppleSecret, Configurations.Apple.AppleClientId, Configurations.Apple.AppleAppId,
+            return TokenService.GenerateAppleToken(Configurations.Apple.AppleSecret, Configurations.Apple.AppleClientId, clientId,
                 Configurations.Apple.AppleTeamId, "https://appleid.apple.com", DateTime.UtcNow.AddDays(1));
         }
 
         public async Task<(bool, string)> ValidateToken(string email, string authCode, string idToken)
         {
             Logger.Log?.LogInformation($"validate apple sign in {email} {authCode} {idToken}");
-            var isValid = TokenService.ValidatePublicJWTToken(idToken, new Dictionary<string, string>
+            var validation = TokenService.ValidatePublicJWTToken(idToken, new Dictionary<string, string>
             {
                 {"email", email },
-                {"iss", "https://appleid.apple.com" },
-                {"aud", Configurations.Apple.AppleAppId },
+                {"iss", "https://appleid.apple.com" }
 
             });
 
-            if(!isValid.Item1)
+            var clientId = "";
+            if (!validation.Item1)
             {
                 return (false, "Id token is invalid");
+            } else
+            {
+                clientId = validation.Item2.GetOrDefault("aud", "").ToString();
+                if (!Configurations.Apple.AppleClientIds.Contains(clientId))
+                {
+                    return (false, "id_token is invalid");
+                }
+
+                Logger.Log?.LogInformation($"client id aud {clientId} is valid from id_token");
             }
 
-            var secret = GenerateSecretToken();
+            var secret = GenerateSecretToken(clientId);
             try
             {
                 var response = await appleRestApi.ValidateIdToken(new Dictionary<string, object>
                 {
-                    {"client_id", Configurations.Apple.AppleAppId },
+                    {"client_id", clientId },
                     {"client_secret", secret },
                     {"code", authCode },
                     {"grant_type", "authorization_code" },

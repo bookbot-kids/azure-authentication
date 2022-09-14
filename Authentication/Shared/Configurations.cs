@@ -255,6 +255,7 @@ namespace Authentication.Shared
             public static readonly string AppleAppId = Configuration["AppleAppId"];
             public static readonly string AppleSecret = Configuration["AppleSecret"];
             public static readonly string AppleRedirectUrl = Configuration["AppleRedirectUrl"];
+            public static readonly string[] AppleClientIds = Configuration["AppleClientIds"].Split(";");
         }
     }
 }
