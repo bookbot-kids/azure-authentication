@@ -13,6 +13,8 @@ using Dasync.Collections;
 using Extensions;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
+using System.Net;
 
 namespace Authentication
 {
@@ -76,6 +78,20 @@ namespace Authentication
                 }
 
                 await CognitoService.Instance.SetAccountEable(id, false);
+
+                string email = req.Query["email"];
+                email = email?.NormalizeEmail();
+                try
+                {
+                    await SendDeleteEvent(email);
+                }
+                catch (Exception ex)
+                {
+                    if (!(ex is TimeoutException))
+                    {
+                        log.LogError($"Send delete analytics error {ex.Message}");
+                    }
+                }
             } else
             {
                 // get access token by refresh token
@@ -109,6 +125,18 @@ namespace Authentication
                 log.LogInformation($"Delete user {userId}, {email}");
 
                 await adUser.SetEnable(false);
+
+                try
+                {
+                    await SendDeleteEvent(email);
+                }
+                catch (Exception ex)
+                {
+                    if (!(ex is TimeoutException))
+                    {
+                        log.LogError($"Send delete analytics error {ex.Message}");
+                    }
+                }
             }
             
 
@@ -143,6 +171,32 @@ namespace Authentication
             doc["updatedAt"] = new JValue(milliseconds);
             doc["deletedAt"] = new JValue(milliseconds);
             await dataService.SaveDocument(table, doc);
+        }
+
+        protected async Task SendDeleteEvent(string email)
+        {
+            if(string.IsNullOrWhiteSpace(email))
+            {
+                return;
+            }
+
+            // log event for new user
+            var body = new Dictionary<string, object>
+                {
+                    {
+                        "activeCampaign", new Dictionary<string, string>
+                            {
+                                {"eventType", "event" },
+                                {"eventName", "Delete Account"},
+                                {"email", email },
+                                {"eventdata", email }
+                            }
+                    },
+                };
+
+            // don't need to wait for this event, just make it timeout after few seconds
+            var task = AnalyticsService.Instance.SendEvent(body);
+            await HttpHelper.TimeoutAfter(task, TimeSpan.FromSeconds(7));
         }
     }
 }
