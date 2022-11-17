@@ -58,7 +58,8 @@ namespace Authentication
             string country = req.Query["country"];
             email = email.NormalizeEmail();
 
-            string name = email.GetNameFromEmail();            
+            string name = email.GetNameFromEmail();
+            string appId = req.Query["app_id"];
 
             string source = req.Query["source"];
             string language = req.Query["language"];
@@ -67,7 +68,7 @@ namespace Authentication
             if (source == "cognito")
             {
                 bool requestPasscode = req.Query["request_passcode"] == "true";
-                return await ProcessCognitoRequest(log, email, name, country, ipAddress, requestPasscode, language);
+                return await ProcessCognitoRequest(log, email, name, country, ipAddress, requestPasscode, language, appId);
             }
             else
             {
@@ -75,7 +76,7 @@ namespace Authentication
             }
         }
 
-        private async Task<IActionResult> ProcessCognitoRequest(ILogger log, string email, string name, string country, string ipAddress, bool requestPasscode, string language)
+        private async Task<IActionResult> ProcessCognitoRequest(ILogger log, string email, string name, string country, string ipAddress, bool requestPasscode, string language, string appId)
         {
             var (exist, user) = await CognitoService.Instance.FindOrCreateUser(email, name, country, ipAddress);
             // there is an error when creating user
@@ -103,7 +104,7 @@ namespace Authentication
                 log.LogInformation($"User ${email} exists, {ipAddress}, {country}");
                 if(requestPasscode)
                 {
-                    await CognitoService.Instance.RequestPasscode(email, language);
+                    await CognitoService.Instance.RequestPasscode(email, language, appId: appId);
                 }
 
                 return new JsonResult(new { success = true, exist, user }) { StatusCode = StatusCodes.Status200OK };

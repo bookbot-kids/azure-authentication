@@ -392,21 +392,27 @@ namespace Authentication.Shared.Services
             await provider.AdminAddUserToGroupAsync(request);
         }
 
-        public async Task<string> RequestPasscode(string email, string language, bool disableEmail = false)
+        public async Task<string> RequestPasscode(string email, string language, bool disableEmail = false, string appId = "")
         {
             if(string.IsNullOrWhiteSpace(language))
             {
                 language = "en";
             }
 
-            var response = await awsRestApi.RequestPasscode(new Dictionary<string, string>
+            var parameters = new Dictionary<string, string>
                 {
                     {"email", email },
                     {"code", Configurations.Cognito.AWSRestCode },
                     {"language", language },
                     {"disableEmail", disableEmail == true? "true": "false" }
-                }
-            );
+                };
+
+            if(!string.IsNullOrWhiteSpace(appId))
+            {
+                parameters["app_id"] = appId;
+            }
+
+            var response = await awsRestApi.RequestPasscode(parameters);
 
             return response.Passcode;
         }
