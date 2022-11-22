@@ -8,6 +8,8 @@ using Authentication.Shared.Library;
 using Extensions;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Logging;
+using System.Reflection.Emit;
+using System.Linq;
 
 namespace Authentication.Shared.Models
 {
@@ -165,7 +167,7 @@ namespace Authentication.Shared.Models
         /// If the permission list is in the cache, then return it. Otherwise refresh cache and return
         /// </summary>
         /// <returns>List of permissions</returns>
-        public async Task<List<PermissionProperties>> GetPermissions()
+        public async Task<List<PermissionProperties>> GetPermissions(List<string> definedTables)
         {
             var result = new List<PermissionProperties>();
             if (string.IsNullOrWhiteSpace(Name))
@@ -173,7 +175,7 @@ namespace Authentication.Shared.Models
                 return result;
             }
 
-            var cacheKey = $"groupPermission{Name}";
+            var cacheKey = $"groupPermission{Name}-{string.Join(",", definedTables)}";
             var cacheItems = cacheStore.GetCacheItem(cacheKey);
             if (cacheItems != null)
             {
@@ -190,6 +192,10 @@ namespace Authentication.Shared.Models
                 var tables = await CosmosRolePermission.GetAllTables();
                 foreach (var table in tables)
                 {
+                    if(definedTables.Count > 0 && !definedTables.Contains(table))
+                    {
+                        continue;
+                    }
                     var rolePermisisons = await CosmosRolePermission.QueryByTable(table);
                     if (rolePermisisons != null)
                     {
@@ -228,6 +234,11 @@ namespace Authentication.Shared.Models
                 if (rolePermission.Permission.EqualsIgnoreCase("none")
                     || rolePermission.Permission.EqualsIgnoreCase("id-read")
                     || rolePermission.Permission.EqualsIgnoreCase("id-read-write"))
+                {
+                    continue;
+                }
+
+                if (definedTables.Count > 0 && !definedTables.Contains(rolePermission.Table))
                 {
                     continue;
                 }

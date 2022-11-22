@@ -241,7 +241,7 @@ namespace Authentication.Shared.Models
         /// Get cosmos permission of this user
         /// </summary>
         /// <returns>List of permissions</returns>
-        public async Task<List<PermissionProperties>> GetPermissions(string groupName)
+        public async Task<List<PermissionProperties>> GetPermissions(string groupName, List<string> definedTables)
         {
             var result = new List<PermissionProperties>();
             // create user if needed
@@ -251,6 +251,10 @@ namespace Authentication.Shared.Models
             List<Task<PermissionProperties>> tasks = new List<Task<PermissionProperties>>();
             foreach (var rolePermission in rolePermissions)
             {
+                if(definedTables.Count > 0 && !definedTables.Contains(rolePermission.Table))
+                {
+                    continue;
+                }
                 // admin will have id-read-write permission for all tables
                 if ("admin".EqualsIgnoreCase(groupName))
                 {
@@ -273,6 +277,11 @@ namespace Authentication.Shared.Models
                 var connections = await Connection.QueryByShareUser(ObjectId);
                 foreach (var connection in connections)
                 {
+                    if (definedTables.Count > 0 && !definedTables.Contains(connection.Table))
+                    {
+                        continue;
+                    }
+
                     // only process the accepted connection
                     if (!"accepted".EqualsIgnoreCase(connection.Status))
                     {

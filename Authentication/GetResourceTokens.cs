@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Authentication.Shared.Services;
 using System.Collections.Generic;
 using Microsoft.Azure.Cosmos;
+using System.Linq;
 
 namespace Authentication
 {
@@ -47,7 +48,7 @@ namespace Authentication
                 var guestGroup = await ADGroup.FindByName(Configurations.AzureB2C.GuestGroup);
 
                 // If the refresh token is missing, then return permissions for guest
-                var guestPermissions = await guestGroup.GetPermissions();
+                var guestPermissions = await guestGroup.GetPermissions(new List<string>());
                 return new JsonResult(new { success = true, permissions = guestPermissions, group = guestGroup.Name }) { StatusCode = StatusCodes.Status200OK };
             }
 
@@ -55,6 +56,17 @@ namespace Authentication
             ADGroup userGroup = null;
             ADUser user;
             ADToken adToken;
+            string clientUserId = req.Query["user_id"];
+            string syncTablesParams = req.Query["sync_tables"];
+            List<string> syncTables;
+            if(!string.IsNullOrWhiteSpace(syncTablesParams))
+            {
+                syncTables = syncTablesParams.Split(",").ToList();
+            } else
+            {
+                syncTables = new List<string>();
+            }
+
             // cognito authentication
             if (source == "cognito")
             {
@@ -72,12 +84,20 @@ namespace Authentication
                     return CreateErrorResponse(message, StatusCodes.Status403Forbidden);
                 }
 
-                var customUserId = await CognitoService.Instance.GetCustomUserId(userId);
-
-                if(string.IsNullOrWhiteSpace(customUserId))
+                string customUserId;
+                if (!string.IsNullOrWhiteSpace(clientUserId))
                 {
-                    return CreateErrorResponse($"user {userId} does not have custom id", statusCode: StatusCodes.Status500InternalServerError);
+                    customUserId = clientUserId;
+                } else
+                {
+                    customUserId = await CognitoService.Instance.GetCustomUserId(userId);
+
+                    if (string.IsNullOrWhiteSpace(customUserId))
+                    {
+                        return CreateErrorResponse($"user {userId} does not have custom id", statusCode: StatusCodes.Status500InternalServerError);
+                    }
                 }
+                
 
                 // NOTE: if cognito user is disable, it throws exception on refresh token step above, so may not need to check account status
                 //var userInfo = await CognitoService.Instance.GetUserInfo(userId);
@@ -142,10 +162,10 @@ namespace Authentication
 
             var tasks = new List<Task<List<PermissionProperties>>>();
             // get group permissions
-            tasks.Add(userGroup.GetPermissions());
+            tasks.Add(userGroup.GetPermissions(syncTables));
 
             // get user permissions
-            tasks.Add(user.GetPermissions(userGroup.Name));
+            tasks.Add(user.GetPermissions(userGroup.Name, syncTables));
 
             await Task.WhenAll(tasks);
             var permissions = new List<PermissionProperties>();
