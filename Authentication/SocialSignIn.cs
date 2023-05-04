@@ -1,12 +1,10 @@
 ﻿using System;
 using Authentication.Shared;
 using Authentication.Shared.Library;
-using Authentication.Shared.Models;
 using Authentication.Shared.Services;
 using Extensions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Routing;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using System.Collections.Generic;

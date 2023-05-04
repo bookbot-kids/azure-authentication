@@ -1,5 +1,4 @@
 using System.Threading.Tasks;
-using Authentication.Shared.Models;
 using Authentication.Shared.Library;
 using Extensions;
 using Microsoft.AspNetCore.Http;
@@ -65,15 +64,14 @@ namespace Authentication
             string language = req.Query["language"];
             log.LogInformation($"Check account for user {email}, source: {source}");
 
-            if (source == "cognito")
+            if (source != "cognito")
             {
-                bool requestPasscode = req.Query["request_passcode"] == "true";
-                return await ProcessCognitoRequest(log, email, name, country, ipAddress, requestPasscode, language, appId);
+                log.LogError($"{email} has invalid source {source}");
+                throw new Exception($"{email} has invalid source {source}");
             }
-            else
-            {
-                return await ProcessAzureB2cRequest(log, email, name, country, ipAddress);
-            }
+
+            bool requestPasscode = req.Query["request_passcode"] == "true";
+            return await ProcessCognitoRequest(log, email, name, country, ipAddress, requestPasscode, language, appId);
         }
 
         private async Task<IActionResult> ProcessCognitoRequest(ILogger log, string email, string name, string country, string ipAddress, bool requestPasscode, string language, string appId)
@@ -138,89 +136,6 @@ namespace Authentication
 
             // Success, return user info
             return new JsonResult(new { success = true, exist, user }) { StatusCode = StatusCodes.Status200OK };
-        }
-
-        private async Task<IActionResult> ProcessAzureB2cRequest(ILogger log, string email, string name, string country, string ipAddress)
-        {
-            // check if email is existed in b2c. If it is, return that user
-            var (exist, user) = await ADUser.FindOrCreate(email, name, country, ipAddress);
-
-            // there is an error when creating user
-            if (user == null)
-            {
-                return CreateErrorResponse($"can not create user {email}", StatusCodes.Status500InternalServerError);
-            }
-
-            // if user already has account
-            if (exist)
-            {
-                // update country and ipadress if needed
-                var updateParams = new Dictionary<string, dynamic>();
-                if (!string.IsNullOrWhiteSpace(country))
-                {
-                    updateParams["country"] = country;
-                    user.Country = country;
-                }
-
-                if (!string.IsNullOrWhiteSpace(ipAddress))
-                {
-                    updateParams["streetAddress"] = ipAddress;
-                    user.IPAddress = ipAddress;
-                }
-
-                // enable account if needed
-                if (!user.AccountEnabled)
-                {
-                    updateParams["accountEnabled"] = true;
-                    user.AccountEnabled = true;
-                }
-
-                if (updateParams.Count > 0)
-                {
-                    await user.Update(updateParams);
-                }
-
-                log.LogInformation($"User ${email} exists, {ipAddress}, {country}");
-
-                await CognitoService.Instance.FindOrCreateUser(email, name, country, ipAddress, user, shouldUpdateAdUser: false);
-                return new JsonResult(new { success = true, exist, user }) { StatusCode = StatusCodes.Status200OK };
-            }
-            else
-            {
-                log.LogInformation($"User ${email} not exists, try to create a new one with {ipAddress}, {country}");
-                if (!email.EndsWith(Configurations.AzureB2C.EmailTestDomain))
-                {
-                    try
-                    {
-                        await SendAnalytics(email, user.ObjectId, country, ipAddress, name);
-                    }
-                    catch (Exception ex)
-                    {
-                        if (!(ex is TimeoutException))
-                        {
-                            log.LogError($"Send analytics error {ex.Message}");
-                        }
-                    }
-                }
-                else
-                {
-                    log.LogInformation($"User ${email} is a test user, skip sending analytics");
-                }
-
-                // add user to new group
-                var newGroup = await ADGroup.FindByName("new");
-                var addResult = await newGroup.AddUser(user.ObjectId);
-
-                // there is an error when add user into new group
-                if (!addResult)
-                {
-                    return CreateErrorResponse($"can not add user {email} into new group", StatusCodes.Status500InternalServerError);
-                }
-
-                await CognitoService.Instance.FindOrCreateUser(email, name, country, ipAddress, user, shouldUpdateAdUser: false);
-                // Success, return user info
-                return new JsonResult(new { success = true, exist, user }) { StatusCode = StatusCodes.Status200OK };
-            }
         }
     }    
 }

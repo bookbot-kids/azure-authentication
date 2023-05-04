@@ -161,7 +161,7 @@ namespace Authentication.Shared.Services
             return (false, "Token is invalid", null, null);
         }
 
-        public async Task<(bool, UserType)> FindOrCreateUser(string email, string name, string country, string ipAddress, ADUser adUser = null, bool shouldUpdateAdUser = true)
+        public async Task<(bool, UserType)> FindOrCreateUser(string email, string name, string country, string ipAddress)
         {
             email = email.ToLower();
             var request = new ListUsersRequest
@@ -171,7 +171,12 @@ namespace Authentication.Shared.Services
             };
 
             var usersResponse = await provider.ListUsersAsync(request);
-            if(usersResponse.Users.Count > 0 )
+            if (usersResponse.Users.Count > 1)
+            {
+                Logger.Log?.LogError($"There are {usersResponse.Users.Count} duplicated {email} user");
+                throw new Exception($"There are {usersResponse.Users.Count} duplicated {email} user");
+            }
+            else if (usersResponse.Users.Count == 1)
             {
                 var user = usersResponse.Users.First();
                 // dont return passcode property to client
@@ -180,52 +185,6 @@ namespace Authentication.Shared.Services
             }
             else
             {
-                var adUserExisting = false;
-                if (adUser == null)
-                {
-                    // create AD User if needed
-                    var (existing, newAdUser) = await ADUser.FindOrCreate(email, name, country, ipAddress);
-                    adUser = newAdUser;
-                    adUserExisting = existing;
-                } else
-                {
-                    adUserExisting = true;
-                }
-               
-                if (adUser == null)
-                {
-                    throw new Exception($"can not create ad user {email}");
-                }
-
-                // update new properties
-                if(adUserExisting && shouldUpdateAdUser)
-                {
-                    var updateParams = new Dictionary<string, dynamic>();
-                    if (!string.IsNullOrWhiteSpace(country))
-                    {
-                        updateParams["country"] = country;
-                        adUser.Country = country;
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(ipAddress))
-                    {
-                        updateParams["streetAddress"] = ipAddress;
-                        adUser.IPAddress = ipAddress;
-                    }
-
-                    // enable account if needed
-                    if (!adUser.AccountEnabled)
-                    {
-                        updateParams["accountEnabled"] = true;
-                        adUser.AccountEnabled = true;
-                    }
-
-                    if (updateParams.Count > 0)
-                    {
-                        await adUser.Update(updateParams);
-                    }
-                }
-
                 // then create cognito user
                 var attributes = new List<AttributeType>();
                 if(!string.IsNullOrWhiteSpace(name))
@@ -236,21 +195,17 @@ namespace Authentication.Shared.Services
                 if (!string.IsNullOrWhiteSpace(country))
                 {
                     attributes.Add(new AttributeType() { Name = "custom:country", Value = country });
-                } else if(!string.IsNullOrWhiteSpace(adUser.Country))
-                {
-                    attributes.Add(new AttributeType() { Name = "custom:country", Value = adUser.Country });
                 }
 
                 if (!string.IsNullOrWhiteSpace(ipAddress))
                 {
                     attributes.Add(new AttributeType() { Name = "custom:ipAddress", Value = ipAddress });
-                } else if(!string.IsNullOrWhiteSpace(adUser.IPAddress))
-                {
-                    attributes.Add(new AttributeType() { Name = "custom:ipAddress", Value = adUser.IPAddress });
                 }
 
+                var userId = Guid.NewGuid().ToString();
+
                 // set custom user id from b2c        
-                attributes.Add(new AttributeType() { Name = "preferred_username", Value = adUser.ObjectId });
+                attributes.Add(new AttributeType() { Name = "preferred_username", Value = userId });
                 attributes.Add(new AttributeType() { Name = "email", Value = email });
 
                 // create new user with temp password
@@ -289,35 +244,9 @@ namespace Authentication.Shared.Services
                 };
 
                 await provider.AdminSetUserPasswordAsync(changePasswordRequest);
-                
 
-                if (!adUserExisting)
-                {
-                    // add cognito user into group new
-                    await UpdateUserGroup(newUser.Username, "new");
-
-                    if(shouldUpdateAdUser)
-                    {
-                        // add ad user into group new
-                        var newGroup = await ADGroup.FindByName("new");
-                        var addResult = await newGroup.AddUser(adUser.ObjectId);
-                        if (!addResult)
-                        {
-                            throw new Exception($"can not add ad user {email} into new group");
-                        }
-                    }                   
-                } else
-                {
-                    // add cognito user into group from b2c
-                    var groupName = await adUser.GroupName();
-                    if (!string.IsNullOrWhiteSpace(groupName))
-                    {
-                        await UpdateUserGroup(newUser.Username, groupName);
-                    } else
-                    {
-                        Logger.Log?.LogError($"user {email} does not have group");
-                    }
-                }
+                // add cognito user into group new
+                await UpdateUserGroup(newUser.Username, "new");
 
                 // dont return passcode property to client
                 newUser.Attributes.Remove(newUser.Attributes.Find(x => x.Name == "custom:authChallenge"));

@@ -14,7 +14,6 @@ using Extensions;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.Net;
 
 namespace Authentication
 {
@@ -47,98 +46,56 @@ namespace Authentication
             }
 
             string source = req.Query["source"];
+            if (source != "cognito")
+            {
+                log.LogError($"invalid source {source}");
+                throw new Exception($"invalid source {source}");
+            }
+
             string userId;
-            if (source == "cognito")
+            var adToken = await CognitoService.Instance.GetAccessToken(refreshToken);
+            if (adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
             {
-                var adToken = await CognitoService.Instance.GetAccessToken(refreshToken);
-                if (adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
-                {
-                    return CreateErrorResponse($"refresh_token is invalid: {refreshToken} ", StatusCodes.Status401Unauthorized);
-                }
+                return CreateErrorResponse($"refresh_token is invalid: {refreshToken} ", StatusCodes.Status401Unauthorized);
+            }
 
-                // Validate the access token, then get id and group name
-                var (result, message, id, _) = await CognitoService.Instance.ValidateAccessToken(adToken.AccessToken);
-                if (!result)
-                {
-                    log.LogError($"can not get access token from refresh token {refreshToken}");
-                    return CreateErrorResponse(message, StatusCodes.Status403Forbidden);
-                }
-
-                var customUserId = await CognitoService.Instance.GetCustomUserId(id);
-                if(string.IsNullOrWhiteSpace(customUserId))
-                {
-                    return CreateErrorResponse($"user {id} does not have custom id", StatusCodes.Status500InternalServerError);
-                }
-
-                userId = customUserId;
-                var adUser = await ADUser.FindById(customUserId);
-                if(adUser != null)
-                {
-                    await adUser.SetEnable(false);
-                }
-
-                await CognitoService.Instance.SetAccountEable(id, false);
-
-                string email = req.Query["email"];
-                email = email?.NormalizeEmail();
-                try
-                {
-                    await SendDeleteEvent(email);
-                }
-                catch (Exception ex)
-                {
-                    if (!(ex is TimeoutException))
-                    {
-                        log.LogError($"Send delete analytics error {ex.Message}");
-                    }
-                }
-            } else
+            // Validate the access token, then get id and group name
+            var (result, message, id, _) = await CognitoService.Instance.ValidateAccessToken(adToken.AccessToken);
+            if (!result)
             {
-                // get access token by refresh token
-                var adToken = await ADAccess.Instance.RefreshToken(refreshToken);
-                if (adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
-                {
-                    return CreateErrorResponse($"refresh_token is invalid: {refreshToken} ", StatusCodes.Status401Unauthorized);
-                }
+                log.LogError($"can not get access token from refresh token {refreshToken}");
+                return CreateErrorResponse(message, StatusCodes.Status403Forbidden);
+            }
 
-                string email = req.Query["email"];
-                // validate email address
-                if (string.IsNullOrWhiteSpace(email))
-                {
-                    return CreateErrorResponse($"Email is empty");
-                }
+            var customUserId = await CognitoService.Instance.GetCustomUserId(id);
+            if (string.IsNullOrWhiteSpace(customUserId))
+            {
+                return CreateErrorResponse($"user {id} does not have custom id", StatusCodes.Status500InternalServerError);
+            }
 
-                if (!email.IsValidEmailAddress())
-                {
-                    return CreateErrorResponse($"Email {email} is invalid");
-                }
-
-                email = email.NormalizeEmail();
-
-                var adUser = await ADUser.FindByEmail(email);
-                if (adUser == null)
-                {
-                    return CreateErrorResponse($"Can not find user {email}");
-                }
-
-                userId = adUser.ObjectId;
-                log.LogInformation($"Delete user {userId}, {email}");
-
+            userId = customUserId;
+            var adUser = await ADUser.FindById(customUserId);
+            if (adUser != null)
+            {
                 await adUser.SetEnable(false);
+            }
 
-                try
+            await CognitoService.Instance.SetAccountEable(id, false);
+
+            string email = req.Query["email"];
+            email = email?.NormalizeEmail();
+            try
+            {
+                await SendDeleteEvent(email);
+            }
+            catch (Exception ex)
+            {
+                if (!(ex is TimeoutException))
                 {
-                    await SendDeleteEvent(email);
-                }
-                catch (Exception ex)
-                {
-                    if (!(ex is TimeoutException))
-                    {
-                        log.LogError($"Send delete analytics error {ex.Message}");
-                    }
+                    log.LogError($"Send delete analytics error {ex.Message}");
                 }
             }
-            
+
 
             // delete cosmos user
             var dataService = new DataService();

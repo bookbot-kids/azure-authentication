@@ -11,6 +11,7 @@ using Authentication.Shared.Services;
 using System.Collections.Generic;
 using Microsoft.Azure.Cosmos;
 using System.Linq;
+using System;
 
 namespace Authentication
 {
@@ -53,7 +54,6 @@ namespace Authentication
             }
 
             string source = req.Query["source"];
-            ADGroup userGroup = null;
             ADUser user;
             ADToken adToken;
             string clientUserId = req.Query["user_id"];
@@ -67,95 +67,53 @@ namespace Authentication
                 syncTables = new List<string>();
             }
 
-            // cognito authentication
-            if (source == "cognito")
+            if (source != "cognito")
             {
-                adToken = await CognitoService.Instance.GetAccessToken(refreshToken);
-                if (adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
-                {
-                    return CreateErrorResponse($"refresh_token is invalid: {refreshToken} ", StatusCodes.Status401Unauthorized);
-                }
+                log.LogError($"invalid source {source}");
+                throw new Exception($"invalid source {source}");
+            }
 
-                // Validate the access token, then get id and group name
-                var (result, message, userId, groupName) = await CognitoService.Instance.ValidateAccessToken(adToken.AccessToken);
-                if (!result)
-                {
-                    log.LogError($"can not get access token from refresh token {refreshToken}");
-                    return CreateErrorResponse(message, StatusCodes.Status403Forbidden);
-                }
+            // cognito authentication
+            adToken = await CognitoService.Instance.GetAccessToken(refreshToken);
+            if (adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
+            {
+                return CreateErrorResponse($"refresh_token is invalid: {refreshToken} ", StatusCodes.Status401Unauthorized);
+            }
 
-                string customUserId;
-                if (!string.IsNullOrWhiteSpace(clientUserId))
-                {
-                    customUserId = clientUserId;
-                } else
-                {
-                    customUserId = await CognitoService.Instance.GetCustomUserId(userId);
+            // Validate the access token, then get id and group name
+            var (result, message, userId, groupName) = await CognitoService.Instance.ValidateAccessToken(adToken.AccessToken);
+            if (!result)
+            {
+                log.LogError($"can not get access token from refresh token {refreshToken}");
+                return CreateErrorResponse(message, StatusCodes.Status403Forbidden);
+            }
 
-                    if (string.IsNullOrWhiteSpace(customUserId))
-                    {
-                        return CreateErrorResponse($"user {userId} does not have custom id", statusCode: StatusCodes.Status500InternalServerError);
-                    }
-                }
-                
-
-                // NOTE: if cognito user is disable, it throws exception on refresh token step above, so may not need to check account status
-                //var userInfo = await CognitoService.Instance.GetUserInfo(userId);
-                //if (!userInfo.Enabled)
-                //{
-                //    return CreateErrorResponse("user is disabled", statusCode: StatusCodes.Status401Unauthorized);
-                //}
-
-                // create fake ADUser and ADGroup from cognito information
-                user = new ADUser { ObjectId = customUserId };
-                userGroup = new ADGroup { Name = groupName };
+            string customUserId;
+            if (!string.IsNullOrWhiteSpace(clientUserId))
+            {
+                customUserId = clientUserId;
             }
             else
             {
-                // azure b2c authentication
-                // get access token by refresh token
-                adToken = await ADAccess.Instance.RefreshToken(refreshToken);
-                if (adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
-                {
-                    return CreateErrorResponse($"refresh_token is invalid: {refreshToken} ", StatusCodes.Status401Unauthorized);
-                }
+                customUserId = await CognitoService.Instance.GetCustomUserId(userId);
 
-                // Validate the access token, then get id
-                var (result, message, id) = await ADAccess.Instance.ValidateAccessToken(adToken.AccessToken);
-                if (!result)
+                if (string.IsNullOrWhiteSpace(customUserId))
                 {
-                    log.LogError($"can not get access token from refresh token {refreshToken}");
-                    return CreateErrorResponse(message, StatusCodes.Status403Forbidden);
-                }
-
-                // find ad user by its email
-                user = await ADUser.FindById(id);
-                if (user == null)
-                {
-                    return CreateErrorResponse("user not exist");
-                }
-
-                if (!user.AccountEnabled)
-                {
-                    return CreateErrorResponse("user is disabled", statusCode: StatusCodes.Status401Unauthorized);
-                }
-
-                // check role of user
-                var groupIds = await user.GroupIds();
-                if (groupIds != null && groupIds.Count > 0)
-                {
-                    var group = await ADGroup.FindById(groupIds[0]);
-                    if (group != null)
-                    {
-                        userGroup = group;
-                    }
-                }
-
-                if (userGroup == null)
-                {
-                    userGroup = await ADGroup.FindByName(Configurations.AzureB2C.GuestGroup);
+                    return CreateErrorResponse($"user {userId} does not have custom id", statusCode: StatusCodes.Status500InternalServerError);
                 }
             }
+
+
+            // NOTE: if cognito user is disable, it throws exception on refresh token step above, so may not need to check account status
+            //var userInfo = await CognitoService.Instance.GetUserInfo(userId);
+            //if (!userInfo.Enabled)
+            //{
+            //    return CreateErrorResponse("user is disabled", statusCode: StatusCodes.Status401Unauthorized);
+            //}
+
+            // create fake ADUser and ADGroup from cognito information
+            user = new ADUser { ObjectId = customUserId };
+            ADGroup userGroup = new ADGroup { Name = groupName };
 
 
             log.LogInformation($"user {user?.ObjectId} has group {userGroup?.Name}");
