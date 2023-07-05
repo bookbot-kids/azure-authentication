@@ -69,8 +69,8 @@ namespace Authentication
 
             if (source != "cognito")
             {
-                log.LogError($"invalid source {source}");
-                throw new Exception($"invalid source {source}");
+                log.LogError($"invalid source {source} for token {refreshToken}");
+                throw new Exception($"invalid source {source} for token {refreshToken}");
             }
 
             // cognito authentication

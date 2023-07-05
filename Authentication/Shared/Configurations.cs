@@ -211,6 +211,8 @@ namespace Authentication.Shared
             public static readonly string UserStorageConnection = Configuration["UserStorageConnection"];
 
             public static readonly string UserStorageContainerName = Configuration["UserStorageContainerName"];
+
+            public static readonly string MainStorageConnection = Configuration["MainStorageConnection"];
         }
 
         public static class Analytics

@@ -6,7 +6,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Authentication.Shared.Services;
 using Authentication.Shared.Library;
-using Authentication.Shared.Models;
+using Authentication.Shared;
+using Newtonsoft.Json;
+using System.IO;
+using System;
+using System.Collections.Generic;
 
 namespace Authentication
 {
@@ -14,7 +18,7 @@ namespace Authentication
     {
         [FunctionName("GetStorageToken")]
         public static async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Function, "get", Route = null)] HttpRequest req,
+            [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
             ILogger log)
         {
             string refreshToken = req.Query["refresh_token"];
@@ -23,23 +27,28 @@ namespace Authentication
                 return CreateErrorResponse("refresh_token is missing", StatusCodes.Status403Forbidden);
             }
 
-            // get access token by refresh token
-            var adToken = await ADAccess.Instance.RefreshToken(refreshToken);
+            // cognito authentication
+            var adToken = await CognitoService.Instance.GetAccessToken(refreshToken);
             if (adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
             {
-                return CreateErrorResponse("refresh_token is invalid", StatusCodes.Status401Unauthorized);
-            }
-
-            // Validate the access token
-            var (result, message, _) = await ADAccess.Instance.ValidateAccessToken(adToken.AccessToken);
-            if (!result)
-            {
-                return CreateErrorResponse(message, StatusCodes.Status403Forbidden);
+                return CreateErrorResponse($"refresh_token is invalid: {refreshToken} ", StatusCodes.Status401Unauthorized);
             }
 
             log.LogInformation("GetStorageToken processed a request.");
-            var uri = StorageService.Instance.CreateSASUri();
-            return new JsonResult ( new { success = true, uri } );
+            var storageService = new StorageService(Configurations.Storage.MainStorageConnection);
+            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+            dynamic data = JsonConvert.DeserializeObject(requestBody);
+            var paths = data.paths;
+            var uris = new List<Uri> { };
+            foreach (string item in paths)
+            {
+                string container = item.Split("/")[0];
+                string subPath = item.Remove(0, container.Length + 1);
+                var uri = storageService.CreateFileSASUriAsync(container, subPath);
+                uris.Add(uri);
+            }
+
+            return new JsonResult ( new { success = true, path = uris } );
         }
     }
 }
