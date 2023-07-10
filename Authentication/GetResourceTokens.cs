@@ -70,7 +70,7 @@ namespace Authentication
             if (source != "cognito")
             {
                 log.LogError($"invalid source {source} for token {refreshToken}");
-                throw new Exception($"invalid source {source} for token {refreshToken}");
+                return CreateErrorResponse($"invalid source {source} for token {refreshToken}", StatusCodes.Status400BadRequest);
             }
 
             // cognito authentication
