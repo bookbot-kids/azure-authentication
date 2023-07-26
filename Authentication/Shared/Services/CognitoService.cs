@@ -381,6 +381,16 @@ namespace Authentication.Shared.Services
 
             return response.UserAttributes.FirstOrDefault(x => x.Name == "preferred_username")?.Value;
         }
+
+        public async Task<bool> DeleteUser(string id)
+        {
+            var response = await provider.AdminDeleteUserAsync(new AdminDeleteUserRequest {
+                UserPoolId = Configurations.Cognito.CognitoPoolId,
+                Username = id,
+            });
+
+            return response.HttpStatusCode == System.Net.HttpStatusCode.OK;
+        }
     }
 }
 

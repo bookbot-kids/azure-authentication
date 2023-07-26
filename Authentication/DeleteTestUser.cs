@@ -11,6 +11,9 @@ using Authentication.Shared.Services;
 using Microsoft.Azure.Cosmos;
 using Dasync.Collections;
 using Extensions;
+using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Concurrent;
 
 namespace Authentication
 {
@@ -22,17 +25,19 @@ namespace Authentication
             ILogger log)
         {
             log.LogInformation("C# HTTP trigger function processed a request.");
-             // validate client token
+            // validate client token
             string clientToken = req.Query["client_token"];
-            if(string.IsNullOrWhiteSpace(clientToken)) {
+            if (string.IsNullOrWhiteSpace(clientToken))
+            {
                 return CreateErrorResponse("client_token is missing", StatusCodes.Status401Unauthorized);
             }
             var (validateResult, clientTokenMessage, payload) = TokenService.ValidateClientToken(clientToken, Configurations.JWTToken.TokenClientSecret,
                  Configurations.JWTToken.TokenIssuer, Configurations.JWTToken.TokenSubject);
-            if(!validateResult) {
+            if (!validateResult)
+            {
                 return CreateErrorResponse(clientTokenMessage, StatusCodes.Status401Unauthorized);
-            } 
-            
+            }
+
             string email = req.Query["email"];
             // validate email address
             if (string.IsNullOrWhiteSpace(email))
@@ -52,46 +57,48 @@ namespace Authentication
             }
 
             email = email.NormalizeEmail();
-            var adUser = await ADUser.FindByEmail(email);
-            if(adUser == null)
+            var user = await CognitoService.Instance.FindUserByEmail(email);
+            if(user == null)
             {
-                return CreateErrorResponse($"Can not find user {email}");
+                return CreateErrorResponse($"email {email} is invalid");
             }
 
-            var userId = adUser.ObjectId;
+            var userId = user.Username;
             log.LogInformation($"Delete user {userId}, {email}");
 
-            await adUser.Delete();
+            var dataService = new DataService();
 
             // delete cosmos user
-            var dataService = new DataService();
-            await dataService.DeleteById("User", userId, userId, ignoreNotFound: true);
+            await DeleteUserRecords(dataService, "User", null,
+                new QueryDefinition("select * from c where c.id = @id").WithParameter("@id", userId));
 
-            // delete all profiles of this user
-            var query = new QueryDefinition("select * from c where c.partition = @id").WithParameter("@id", userId);
-            var profiles = await dataService.QueryDocuments("Profile", query);
+            // delete all data of this user
+            foreach (var table in Configurations.Cosmos.UserTablesToClear)
+            {
+                await DeleteUserRecords(dataService, table, userId);
+            }
 
-            await profiles.ParallelForEachAsync(
-                async profile =>
-                {
-                    string profileId = profile.Value<string>("id");
-                    await dataService.DeleteById("Profile", profileId, userId, ignoreNotFound: true);
-                }, maxDegreeOfParallelism: 64
-             );
-
-            // delete all progress of this user
-            query = new QueryDefinition("select * from c where c.partition = @id").WithParameter("@id", userId);
-            var progresses = await dataService.QueryDocuments("Progress", query);
-
-            await progresses.ParallelForEachAsync(
-                async progress =>
-                {
-                    string progressId = progress.Value<string>("id");
-                    await dataService.DeleteById("Progress", progressId, userId, ignoreNotFound: true);
-                }, maxDegreeOfParallelism: 64
-             );
+            // delete cognito user
+            await CognitoService.Instance.DeleteUser(userId);
 
             return CreateSuccessResponse();
+        }
+
+        private async Task DeleteUserRecords(DataService dataService, string table, string userId, QueryDefinition query = null)
+        {
+            if (query == null)
+            {
+                query = new QueryDefinition("select * from c where c.partition = @id").WithParameter("@id", userId);
+            }
+
+            var documents = await dataService.QueryDocuments(table, query);
+            await documents.ParallelForEachAsync(
+                async doc =>
+                {
+                    var id = doc.GetValue("id").Value<string>();
+                    await dataService.DeleteById(table, id, userId, ignoreNotFound: true);
+                }, maxDegreeOfParallelism: 64
+             );
         }
     }
 }
