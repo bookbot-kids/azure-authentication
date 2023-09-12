@@ -270,35 +270,7 @@ namespace Authentication.Shared.Models
 
                 tasks.Add(GetOrCreateUserPermissions(rolePermission));
             }
-
-            // add shared permission
-            if(!Configurations.Cosmos.IgnoreConnectionPermission)
-            {
-                var connections = await Connection.QueryByShareUser(ObjectId);
-                foreach (var connection in connections)
-                {
-                    if (definedTables.Count > 0 && !definedTables.Contains(connection.Table))
-                    {
-                        continue;
-                    }
-
-                    // only process the accepted connection
-                    if (!"accepted".EqualsIgnoreCase(connection.Status))
-                    {
-                        continue;
-                    }
-
-                    tasks.Add(GetOrCreateSharePermissions(connection));
-
-                    // add shared profile permission
-                    if (connection.Profiles != null && connection.Profiles.Count > 0)
-                    {
-                        tasks.Add(GetOrCreateShareProfilePermissions(connection));
-                    }
-                }
-            }
-            
-
+                       
             await Task.WhenAll(tasks);
             foreach (var task in tasks)
             {
@@ -316,52 +288,7 @@ namespace Authentication.Shared.Models
             return result;
         }
 
-        /// <summary>
-        /// Get or create cosmos permission for shared Profile table
-        /// </summary>
-        /// <param name="connection">The connection record</param>
-        /// <returns>A permission class or null</returns>
-        private async Task<PermissionProperties> GetOrCreateShareProfilePermissions(Connection connection)
-        {
-            var permission = await connection.GetProfilePermission();
-            if (permission == null)
-            {
-                // create permission if not exist
-                var newPermission = await connection.CreateProfilePermission();
-                if (newPermission != null)
-                {
-                    return newPermission;
-                }
-                else
-                {
-                    Logger.Log?.LogError($"error create profile permission ${ObjectId} ${connection.Table}");
-                }
-            }
-            else
-            {
-                if ((connection.Permission.EqualsIgnoreCase("read") && permission.PermissionMode == PermissionMode.All)
-                    || (connection.Permission.EqualsIgnoreCase("write") && permission.PermissionMode == PermissionMode.Read))
-                {
-                    // rolePermission is changed, need to update in cosmos
-                    var updatedPermission = await connection.UpdateProfilePermission();
-                    if (updatedPermission != null)
-                    {
-                        return updatedPermission;
-                    }
-                    else
-                    {
-                        Logger.Log?.LogError($"error update profile permission ${ObjectId} ${connection.Table}");
-                    }
-                }
-                else
-                {
-                    return permission;
-                }
-            }
-
-            return null;
-        }
-
+        
         /// <summary>
         /// Get or create Cosmos permission for a user
         /// </summary>
@@ -433,52 +360,7 @@ namespace Authentication.Shared.Models
 
             return adminPermission;
         }
-
-        /// <summary>
-        /// Get or create shared cosmos permission base on Connection record
-        /// </summary>
-        /// <param name="connection">The role permission record</param>
-        /// <returns>A permission class or null</returns>
-        private async Task<PermissionProperties> GetOrCreateSharePermissions(Connection connection)
-        {
-            var permission = await connection.GetPermission();
-            if (permission == null)
-            {
-                // create permission if not exist
-                var newPermission = await connection.CreatePermission();
-                if (newPermission != null)
-                {
-                    return newPermission;
-                }
-                else
-                {
-                    Logger.Log?.LogError($"error create permission ${ObjectId} ${connection.Table}");
-                }
-            }
-            else
-            {
-                if ((connection.Permission.EqualsIgnoreCase("read") && permission.PermissionMode == PermissionMode.All)
-                    || (connection.Permission.EqualsIgnoreCase("write") && permission.PermissionMode == PermissionMode.Read))
-                {
-                    // rolePermission is changed, need to update in cosmos
-                    var updatedPermission = await connection.UpdatePermission();
-                    if (updatedPermission != null)
-                    {
-                        return updatedPermission;
-                    }
-                    else
-                    {
-                        Logger.Log?.LogError($"error update permission ${ObjectId} ${connection.Table}");
-                    }
-                }
-                else
-                {
-                    return permission;
-                }
-            }
-
-            return null;
-        }
+       
         #endregion
     }
 }
