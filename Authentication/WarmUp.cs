@@ -70,7 +70,8 @@ namespace Authentication
             {
                 tasks.Add(ExecuteGetRequest($"{url}/{function}", new Dictionary<string, string>
                 {
-                    {"code", code }
+                    {"code", code },
+                    {"source", "cognito" }
                 }));
             }
             
