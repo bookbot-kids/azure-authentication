@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using Authentication.Shared.Services;
 using System;
 using Authentication.Shared;
+using static Authentication.Shared.Configurations;
 
 namespace Authentication
 {
@@ -40,38 +41,86 @@ namespace Authentication
             // Set the logger instance
             Logger.Log = log;
 
-            string email = req.Query["email"];
-
-            // validate email address
-            if (string.IsNullOrWhiteSpace(email))
-            {
-                return CreateErrorResponse($"Email is empty");
-            }
-
-            if (!email.IsValidEmailAddress())
-            {
-                return CreateErrorResponse($"Email {email} is invalid");
-            }
+            string email = req.Query["email"];            
 
             var ipAddress = HttpHelper.GetIpFromRequestHeaders(req);
             string country = req.Query["country"];
-            email = email.NormalizeEmail();
+            email = email?.NormalizeEmail();
 
-            string name = email.GetNameFromEmail();
+            string name = email?.GetNameFromEmail();
             string appId = req.Query["app_id"];
 
             string source = req.Query["source"];
             string language = req.Query["language"];
             log.LogInformation($"Check account for user {email}, source: {source}");
 
-            if (source != "cognito")
+            switch(source)
             {
-                log.LogError($"{email} has invalid source {source}");
-                throw new Exception($"{email} has invalid source {source}");
+                case "cognito":
+                    {
+                        // validate email address
+                        if (string.IsNullOrWhiteSpace(email))
+                        {
+                            return CreateErrorResponse($"Email is empty");
+                        }
+
+                        if (!email.IsValidEmailAddress())
+                        {
+                            return CreateErrorResponse($"Email {email} is invalid");
+                        }
+
+                        bool requestPasscode = req.Query["request_passcode"] == "true";
+                        return await ProcessCognitoRequest(log, email, name, country, ipAddress, requestPasscode, language, appId);
+                    }
+                case "whatsapp":
+                    {
+                        if (string.IsNullOrWhiteSpace(language))
+                        {
+                            return CreateErrorResponse($"language is missing");
+                        }
+
+                        string phone = req.Query["phone"];
+                        if (string.IsNullOrWhiteSpace(phone))
+                        {
+                            return CreateErrorResponse($"phone is missing");
+                        }
+
+                        phone = phone.NormalizePhone();
+                        if (phone.isValidPhone() != true)
+                        {
+                            return CreateErrorResponse($"phone is invalid");
+                        }
+
+                        return await ProcessWhatsappRequest(log, phone, name, country, ipAddress, language, appId);
+                    }
+                default:
+                    throw new Exception($"{email} has invalid source {source}");
+            }
+        }
+
+        private async Task<IActionResult> ProcessWhatsappRequest(ILogger log, string phone, string name, string country, string ipAddress, string language, string appId)
+        {
+            var user = await CognitoService.Instance.FindUserByPhone(phone);
+            var existing = true;
+            var placeholderEmail = phone + Configurations.Whatsapp.PlaceholderEmail;
+            if (user == null)
+            {
+                // if user with phone not exist, then create a new one with place holder email
+                var (exist, newUser) = await CognitoService.Instance.FindOrCreateUser(placeholderEmail, name, country, ipAddress, phone: phone, forceCreate: true);
+                user = newUser;
+                existing = exist;
             }
 
-            bool requestPasscode = req.Query["request_passcode"] == "true";
-            return await ProcessCognitoRequest(log, email, name, country, ipAddress, requestPasscode, language, appId);
+            if (user == null)
+            {
+                return CreateErrorResponse($"can not create user for phone {phone}");
+            }
+
+            // send passcode to whatsapp
+            await CognitoService.Instance.RequestPasscode(placeholderEmail, language, appId: appId, disableEmail: true, phone: phone, sendType: "whatsapp");
+            log.LogInformation($"Send OTP into whatsapp {phone}");
+            // Success, return user info
+            return new JsonResult(new { success = true, exist = existing, user }) { StatusCode = StatusCodes.Status200OK };
         }
 
         private async Task<IActionResult> ProcessCognitoRequest(ILogger log, string email, string name, string country, string ipAddress, bool requestPasscode, string language, string appId)

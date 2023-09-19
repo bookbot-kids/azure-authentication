@@ -259,5 +259,10 @@ namespace Authentication.Shared
             public static readonly string AppleRedirectUrl = Configuration["AppleRedirectUrl"];
             public static readonly string[] AppleClientIds = Configuration["AppleClientIds"].Split(";");
         }
+
+        public static class Whatsapp
+        {
+            public static readonly string PlaceholderEmail = Configuration["WhatsappPlaceholderEmail"];
+        }
     }
 }

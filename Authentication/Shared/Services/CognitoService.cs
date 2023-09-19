@@ -9,6 +9,8 @@ using Amazon.CognitoIdentityProvider.Model;
 using Authentication.Shared.Library;
 using Authentication.Shared.Models;
 using Authentication.Shared.Services.Responses;
+using Azure.Core;
+using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Logging;
 using Refit;
 
@@ -105,6 +107,25 @@ namespace Authentication.Shared.Services
             return null;
         }
 
+        public async Task<UserType> FindUserByPhone(string phone)
+        {
+            var request = new ListUsersRequest
+            {
+                UserPoolId = Configurations.Cognito.CognitoPoolId,
+                Filter = $"phone_number = \"{phone}\"",
+            };
+            var usersResponse = await provider.ListUsersAsync(request);
+            if (usersResponse.Users.Count > 0)
+            {
+                var user = usersResponse.Users.First();
+                // dont return passcode property to client
+                user.Attributes.Remove(user.Attributes.Find(x => x.Name == "custom:authChallenge"));
+                return user;
+            }
+
+            return null;
+        }
+
         public async Task<UserType> FindUserByCustomId(string customId)
         {
             var request = new ListUsersRequest
@@ -161,35 +182,22 @@ namespace Authentication.Shared.Services
             return (false, "Token is invalid", null, null);
         }
 
-        public async Task<(bool, UserType)> FindOrCreateUser(string email, string name, string country, string ipAddress)
+        public async Task<(bool, UserType)> FindOrCreateUser(string email, string name, string country, string ipAddress, string phone = null, bool forceCreate = false)
         {
             email = email.ToLower();
-            var request = new ListUsersRequest
+            var listRequest = new ListUsersRequest
             {
                 UserPoolId = Configurations.Cognito.CognitoPoolId,
                 Filter = $"email = \"{email}\"",
             };
 
-            var usersResponse = await provider.ListUsersAsync(request);
-            if (usersResponse.Users.Count > 1)
-            {
-                Logger.Log?.LogError($"There are {usersResponse.Users.Count} duplicated {email} user");
-                throw new Exception($"There are {usersResponse.Users.Count} duplicated {email} user");
-            }
-            else if (usersResponse.Users.Count == 1)
-            {
-                var user = usersResponse.Users.First();
-                // dont return passcode property to client
-                user.Attributes.Remove(user.Attributes.Find(x => x.Name == "custom:authChallenge"));
-                return (true, user);
-            }
-            else
+            Func<ListUsersResponse, Task<UserType>> createCallback = async (ListUsersResponse usersResponse) =>
             {
                 // then create cognito user
                 var attributes = new List<AttributeType>();
-                if(!string.IsNullOrWhiteSpace(name))
+                if (!string.IsNullOrWhiteSpace(name))
                 {
-                    attributes.Add(new AttributeType() { Name = "name", Value = name});
+                    attributes.Add(new AttributeType() { Name = "name", Value = name });
                 }
 
                 if (!string.IsNullOrWhiteSpace(country))
@@ -200,6 +208,11 @@ namespace Authentication.Shared.Services
                 if (!string.IsNullOrWhiteSpace(ipAddress))
                 {
                     attributes.Add(new AttributeType() { Name = "custom:ipAddress", Value = ipAddress });
+                }
+
+                if (!string.IsNullOrWhiteSpace(phone))
+                {
+                    attributes.Add(new AttributeType() { Name = "phone_number", Value = phone });
                 }
 
                 var userId = Guid.NewGuid().ToString();
@@ -228,10 +241,17 @@ namespace Authentication.Shared.Services
                 {
                     // TODO will remove later (after fixing from client)
                     Logger.Log?.LogError($"user name exist {ex.Message}");
-                    // user exist in other request, just get it from cognito after few second
-                    Task.Delay(5 * 1000).Wait();
-                    usersResponse = await provider.ListUsersAsync(request);
-                    newUser = usersResponse.Users.First();
+                    if(usersResponse != null)
+                    {
+                        // user exist in other request, just get it from cognito after few second
+                        Task.Delay(5 * 1000).Wait();
+                        usersResponse = await provider.ListUsersAsync(listRequest);
+                        newUser = usersResponse.Users.First();
+                    }
+                    else
+                    {
+                        throw ex;
+                    }                    
                 }
 
                 // then change its password
@@ -250,6 +270,31 @@ namespace Authentication.Shared.Services
 
                 // dont return passcode property to client
                 newUser.Attributes.Remove(newUser.Attributes.Find(x => x.Name == "custom:authChallenge"));
+                return newUser;
+            };
+
+            if(forceCreate)
+            {
+                var newUser = await createCallback(null);
+                return (false, newUser);
+            }
+
+            var usersResponse = await provider.ListUsersAsync(listRequest);
+            if (usersResponse.Users.Count > 1)
+            {
+                Logger.Log?.LogError($"There are {usersResponse.Users.Count} duplicated {email} user");
+                throw new Exception($"There are {usersResponse.Users.Count} duplicated {email} user");
+            }
+            else if (usersResponse.Users.Count == 1)
+            {
+                var user = usersResponse.Users.First();
+                // dont return passcode property to client
+                user.Attributes.Remove(user.Attributes.Find(x => x.Name == "custom:authChallenge"));
+                return (true, user);
+            }
+            else
+            {
+                var newUser = await createCallback(usersResponse);
                 return (false, newUser);
             }
         }
@@ -321,7 +366,7 @@ namespace Authentication.Shared.Services
             await provider.AdminAddUserToGroupAsync(request);
         }
 
-        public async Task<string> RequestPasscode(string email, string language, bool disableEmail = false, string appId = "")
+        public async Task<string> RequestPasscode(string email, string language, bool disableEmail = false, string appId = "", string phone = "", string sendType = "email")
         {
             if(string.IsNullOrWhiteSpace(language))
             {
@@ -333,12 +378,18 @@ namespace Authentication.Shared.Services
                     {"email", email },
                     {"code", Configurations.Cognito.AWSRestCode },
                     {"language", language },
-                    {"disableEmail", disableEmail == true? "true": "false" }
+                    {"disableEmail", disableEmail == true? "true": "false" },
+                    {"sender_type", sendType },
                 };
 
             if(!string.IsNullOrWhiteSpace(appId))
             {
                 parameters["app_id"] = appId;
+            }
+
+            if (!string.IsNullOrWhiteSpace(phone))
+            {
+                parameters["phone"] = phone;
             }
 
             var response = await awsRestApi.RequestPasscode(parameters);

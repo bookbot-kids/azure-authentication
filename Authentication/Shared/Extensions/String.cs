@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net.Mail;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Extensions
 {
@@ -9,6 +10,8 @@ namespace Extensions
     /// </summary>
     public static class String
     {
+        static Regex phoneRegex = new Regex(@"^\+\d{1,15}$");
+
         /// <summary>
         /// Generate md5 hash
         /// </summary>
@@ -112,6 +115,16 @@ namespace Extensions
         public static string NormalizeEmail(this string srt)
         {
             return srt.Trim().Replace(" ", "+").ToLower();
+        }
+
+        public static string NormalizePhone(this string srt)
+        {
+            return srt.Replace(" ", "+").ToLower();
+        }
+
+        public static bool isValidPhone(this string str)
+        {
+            return phoneRegex.IsMatch(str);
         }
     }
 }
