@@ -11,6 +11,7 @@ using Authentication.Shared.Services;
 using System;
 using Authentication.Shared;
 using static Authentication.Shared.Configurations;
+using System.Collections;
 
 namespace Authentication
 {
@@ -110,11 +111,28 @@ namespace Authentication
                 var (exist, newUser) = await CognitoService.Instance.FindOrCreateUser(userEmail, name, country, ipAddress, phone: phone, forceCreate: string.IsNullOrWhiteSpace(email));
                 user = newUser;
                 existing = exist;
-            }
 
-            if (user == null)
-            {
-                return CreateErrorResponse($"can not create user for phone {phone}");
+                if (existing)
+                {
+                    // update phone, country and ipadress if needed
+                    var updateParams = new Dictionary<string, string>();
+                    if (!string.IsNullOrWhiteSpace(country) && CognitoService.Instance.GetUserAttributeValue(user, "custom:country") != country)
+                    {
+                        updateParams["custom:country"] = country;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(ipAddress) && CognitoService.Instance.GetUserAttributeValue(user, "custom:ipAddress") != ipAddress)
+                    {
+                        updateParams["custom:ipAddress"] = ipAddress;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(phone) && CognitoService.Instance.GetUserAttributeValue(user, "phone_number") != phone)
+                    {
+                        updateParams["phone_number"] = phone;
+                    }
+
+                    await CognitoService.Instance.UpdateUser(user.Username, updateParams, !user.Enabled);
+                }
             }
 
             // send passcode to whatsapp
@@ -138,12 +156,12 @@ namespace Authentication
             {
                 // update country and ipadress if needed
                 var updateParams = new Dictionary<string, string>();
-                if (!string.IsNullOrWhiteSpace(country))
+                if (!string.IsNullOrWhiteSpace(country) && CognitoService.Instance.GetUserAttributeValue(user, "custom:country") != country)
                 {
                     updateParams["custom:country"] = country;
                 }
 
-                if (!string.IsNullOrWhiteSpace(ipAddress))
+                if (!string.IsNullOrWhiteSpace(ipAddress) && CognitoService.Instance.GetUserAttributeValue(user, "custom:ipAddress") != ipAddress)
                 {
                     updateParams["custom:ipAddress"] = ipAddress;
                 }

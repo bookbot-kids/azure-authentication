@@ -442,6 +442,11 @@ namespace Authentication.Shared.Services
 
             return response.HttpStatusCode == System.Net.HttpStatusCode.OK;
         }
+
+        public string GetUserAttributeValue( UserType user, string name)
+        {
+            return user.Attributes.FirstOrDefault(x => x.Name == name)?.Value;
+        }
     }
 }
 
