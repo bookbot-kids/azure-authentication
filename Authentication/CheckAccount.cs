@@ -91,22 +91,23 @@ namespace Authentication
                             return CreateErrorResponse($"phone is invalid");
                         }
 
-                        return await ProcessWhatsappRequest(log, phone, name, country, ipAddress, language, appId);
+                        return await ProcessWhatsappRequest(log, phone, email, name, country, ipAddress, language, appId);
                     }
                 default:
                     throw new Exception($"{email} has invalid source {source}");
             }
         }
 
-        private async Task<IActionResult> ProcessWhatsappRequest(ILogger log, string phone, string name, string country, string ipAddress, string language, string appId)
+        private async Task<IActionResult> ProcessWhatsappRequest(ILogger log, string phone, string email, string name, string country, string ipAddress, string language, string appId)
         {
             var user = await CognitoService.Instance.FindUserByPhone(phone);
             var existing = true;
             var placeholderEmail = phone + Configurations.Whatsapp.PlaceholderEmail;
+            var userEmail = string.IsNullOrWhiteSpace(email) ? placeholderEmail : email;
             if (user == null)
             {
                 // if user with phone not exist, then create a new one with place holder email
-                var (exist, newUser) = await CognitoService.Instance.FindOrCreateUser(placeholderEmail, name, country, ipAddress, phone: phone, forceCreate: true);
+                var (exist, newUser) = await CognitoService.Instance.FindOrCreateUser(userEmail, name, country, ipAddress, phone: phone, forceCreate: string.IsNullOrWhiteSpace(email));
                 user = newUser;
                 existing = exist;
             }
@@ -117,7 +118,7 @@ namespace Authentication
             }
 
             // send passcode to whatsapp
-            await CognitoService.Instance.RequestPasscode(placeholderEmail, language, appId: appId, disableEmail: true, phone: phone, sendType: "whatsapp");
+            await CognitoService.Instance.RequestPasscode(userEmail, language, appId: appId, disableEmail: true, phone: phone, sendType: "whatsapp");
             log.LogInformation($"Send OTP into whatsapp {phone}");
             // Success, return user info
             return new JsonResult(new { success = true, exist = existing, user }) { StatusCode = StatusCodes.Status200OK };
