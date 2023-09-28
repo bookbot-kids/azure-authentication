@@ -134,6 +134,11 @@ namespace Authentication
                     await CognitoService.Instance.UpdateUser(user.Username, updateParams, !user.Enabled);
                 }
             }
+            else
+            {
+                var accountEmail = CognitoService.Instance.GetUserAttributeValue(user, "email");
+                userEmail = accountEmail ?? userEmail;
+            }
 
             // send passcode to whatsapp
             await CognitoService.Instance.RequestPasscode(userEmail, language, appId: appId, disableEmail: true, phone: phone, sendType: "whatsapp");
