@@ -264,5 +264,10 @@ namespace Authentication.Shared
         {
             public static readonly string PlaceholderEmail = Configuration["WhatsappPlaceholderEmail"];
         }
+
+        public static class DeepLink
+        {
+            public static readonly string Key = Configuration["DeepLinkKey"];
+        }
     }
 }

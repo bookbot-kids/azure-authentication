@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Linq;
 using System.Net.Http;
-using System.Security.Claims;
 using System.Threading.Tasks;
 using Authentication.Shared.Library;
-using Authentication.Shared.Models;
 using Authentication.Shared.Services.Responses;
 using Extensions;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
 using Refit;
 
@@ -20,16 +20,29 @@ namespace Authentication.Shared.Services
             [Get("/tokeninfo")]
             Task<GoogleTokenResponse> ValidateAccessToken([AliasAs("access_token")] string accessToken);
         }
+
+        public interface IFirebaseRestApi
+        {
+            [Post("/shortLinks")]
+            Task<DeepLink> GenerateShortLink([AliasAs("key")] string key, [Body(BodySerializationMethod.Serialized)] ExpandoObject body);
+        }
+
         private GoogleService()
         {
             googleRestApi = RestService.For<IGoogleRestApi>(new HttpClient(new HttpLoggingHandler())
             {
                 BaseAddress = new Uri("https://www.googleapis.com/oauth2/v3")
             });
+
+            firebaseRestApi = RestService.For<IFirebaseRestApi>(new HttpClient(new HttpLoggingHandler())
+            {
+                BaseAddress = new Uri("https://firebasedynamiclinks.googleapis.com/v1")
+            });
         }
 
         public static GoogleService Instance { get; } = new GoogleService();
         private IGoogleRestApi googleRestApi;
+        private IFirebaseRestApi firebaseRestApi;
 
         public async Task<(bool, string)> ValidateAccessToken(string email, string accessToken, string idToken)
         {
@@ -82,6 +95,23 @@ namespace Authentication.Shared.Services
             }
 
             return (false, "access_token is invalid");
+        }
+
+        public async Task<DeepLink> GenerateDynamicLink(string key, string domain, string androidPackage, string iosPackage, string iosAppId, Dictionary<string, string> parameters)
+        {
+            var url = QueryHelpers.AddQueryString($"{domain}/p", parameters);
+            dynamic body = new ExpandoObject();
+            body.dynamicLinkInfo = new ExpandoObject();
+            body.dynamicLinkInfo.domainUriPrefix = domain;
+            body.dynamicLinkInfo.link = url;
+            body.dynamicLinkInfo.androidInfo = new ExpandoObject();
+            body.dynamicLinkInfo.androidInfo.androidPackageName = androidPackage;
+            body.dynamicLinkInfo.iosInfo = new ExpandoObject();
+            body.dynamicLinkInfo.iosInfo.iosBundleId = iosPackage;
+            body.dynamicLinkInfo.iosInfo.iosAppStoreId = iosAppId;
+            body.dynamicLinkInfo.socialMetaTagInfo = new ExpandoObject();
+            body.dynamicLinkInfo.socialMetaTagInfo.socialTitle = "Bookbot";
+            return await firebaseRestApi.GenerateShortLink(key, body);
         }
     }
 }

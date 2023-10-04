@@ -9,7 +9,6 @@ using Amazon.CognitoIdentityProvider.Model;
 using Authentication.Shared.Library;
 using Authentication.Shared.Models;
 using Authentication.Shared.Services.Responses;
-using Azure.Core;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Logging;
 using Refit;
@@ -88,7 +87,7 @@ namespace Authentication.Shared.Services
             return await provider.AdminGetUserAsync(request);
         }
 
-        public async Task<UserType> FindUserByEmail(string email)
+        public async Task<UserType> FindUserByEmail(string email, bool removeChallenge = true)
         {
             var request = new ListUsersRequest
             {
@@ -100,7 +99,11 @@ namespace Authentication.Shared.Services
             {
                 var user = usersResponse.Users.First();
                 // dont return passcode property to client
-                user.Attributes.Remove(user.Attributes.Find(x => x.Name == "custom:authChallenge"));
+                if(removeChallenge)
+                {
+                    user.Attributes.Remove(user.Attributes.Find(x => x.Name == "custom:authChallenge"));
+                }
+                
                 return user;
             }
 
