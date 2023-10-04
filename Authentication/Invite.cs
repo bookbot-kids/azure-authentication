@@ -31,7 +31,7 @@ namespace Authentication
             string language = req.Query["language"];
             string country = req.Query["country"];
             string phone = req.Query["phone"];
-            phone = phone.NormalizePhone();
+            phone = phone?.NormalizePhone();
             string name = email?.GetNameFromEmail();
             var ipAddress = HttpHelper.GetIpFromRequestHeaders(req);
             Dictionary<string, string> bodyData;
