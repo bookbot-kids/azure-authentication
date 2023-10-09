@@ -20,6 +20,8 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Text.Encodings.Web;
 using JWT.Serializers;
+using System.IO;
+using static Authentication.Shared.Configurations;
 
 namespace Authentication.Shared.Services
 {
@@ -306,6 +308,57 @@ namespace Authentication.Shared.Services
             public static string GeneratePassword(string email)
         {
             return Configurations.AzureB2C.PasswordPrefix + (email.ToLower() + Configurations.AzureB2C.PasswordSecretKey).MD5();
+        }
+
+        public static string EASDecrypt(string key, string iv, string text)
+        {
+            try
+            {
+                return EASDecrypt(Encoding.UTF8.GetBytes(key), Encoding.UTF8.GetBytes(iv), Convert.FromBase64String(text));
+            }
+            catch(Exception ex)
+            {
+                Logger.Log?.LogError($"Decrypt AES {text} error {ex.Message}");
+                return null;
+            }
+        }
+
+        public static string EASDecrypt(byte[] key, byte[] iv, byte[] cipherText)
+        {
+            using (var aes = Aes.Create())
+            {
+                aes.Key = key;
+                aes.IV = iv;
+                aes.Padding = PaddingMode.PKCS7;
+                aes.Mode = CipherMode.CBC;
+
+                using (var decryptor = aes.CreateDecryptor(aes.Key, aes.IV))
+                using (var msDecrypt = new MemoryStream(cipherText))
+                using (var csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read))
+                {
+                    using (StreamReader srDecrypt = new StreamReader(csDecrypt))
+                    {
+                        return srDecrypt.ReadToEnd();
+                    }
+                }
+            }
+        }
+
+        public static bool IsValidBase64(string text)
+        {
+            foreach (char c in text)
+            {
+                if (c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '+' || c == '/' || c == '=')
+                {
+                    continue;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 }

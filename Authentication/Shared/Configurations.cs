@@ -201,6 +201,8 @@ namespace Authentication.Shared
             /// Sub domain
             /// </summary>
             public static readonly string TokenSubject = Configuration["TokenSubject"];
+
+            public static readonly string SignInKey = Configuration["SignInKey"];
         }
 
         public static class Storage

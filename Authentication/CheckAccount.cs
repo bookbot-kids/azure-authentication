@@ -10,8 +10,6 @@ using System.Collections.Generic;
 using Authentication.Shared.Services;
 using System;
 using Authentication.Shared;
-using static Authentication.Shared.Configurations;
-using System.Collections;
 
 namespace Authentication
 {
@@ -54,8 +52,53 @@ namespace Authentication
             string source = req.Query["source"];
             string language = req.Query["language"];
             log.LogInformation($"Check account for user {email}, source: {source}");
+            string signInToken = req.Query["sign_in_token"];
+            bool returnPasscode = req.Query["return_passcode"] == "true";
+            var autoSignInTokenValid = false;
+            if (!string.IsNullOrWhiteSpace(signInToken))
+            {
+                string userId = req.Query["user_id"];
+                if (string.IsNullOrWhiteSpace(signInToken))
+                {
+                    return CreateErrorResponse("user_id is required with sign_in_token");
+                }
 
-            switch(source)
+                if (!TokenService.IsValidBase64(signInToken))
+                {
+                    return CreateErrorResponse("sign_in_token is not valid");
+                }
+
+                // validate token
+                var iv = userId.Substring(0, 16); // iv is first 16 characters from user id
+                var decrypted = TokenService.EASDecrypt(Configurations.JWTToken.SignInKey, iv, signInToken);
+                if(decrypted == null)
+                {
+                    return CreateErrorResponse("sign_in_token is not valid");
+                }
+
+                var parts = decrypted.Split(";");
+                if(parts.Length < 2)
+                {
+                    return CreateErrorResponse("sign_in_token is not valid");
+                }
+
+                if(userId != parts[0])
+                {
+                    return CreateErrorResponse("sign_in_token is not valid");
+                }
+
+                var timestamp = long.Parse(parts[1]);
+                DateTime expiryDate = DateTimeOffset.FromUnixTimeMilliseconds(timestamp).UtcDateTime;
+                if (DateTime.UtcNow > expiryDate)
+                {
+                    return CreateErrorResponse("sign_in_token is expired");
+                }
+
+                autoSignInTokenValid = true;
+
+            }
+
+            switch (source)
             {
                 case "cognito":
                     {
@@ -71,7 +114,7 @@ namespace Authentication
                         }
 
                         bool requestPasscode = req.Query["request_passcode"] == "true";
-                        return await ProcessCognitoRequest(log, email, name, country, ipAddress, requestPasscode, language, appId);
+                        return await ProcessCognitoRequest(log, email, name, country, ipAddress, requestPasscode, language, appId, autoSignInTokenValid, returnPasscode);
                     }
                 case "whatsapp":
                     {
@@ -92,14 +135,14 @@ namespace Authentication
                             return CreateErrorResponse($"phone is invalid");
                         }
 
-                        return await ProcessWhatsappRequest(log, phone, email, name, country, ipAddress, language, appId);
+                        return await ProcessWhatsappRequest(log, phone, email, name, country, ipAddress, language, appId, autoSignInTokenValid, returnPasscode);
                     }
                 default:
                     throw new Exception($"{email} has invalid source {source}");
             }
         }
 
-        private async Task<IActionResult> ProcessWhatsappRequest(ILogger log, string phone, string email, string name, string country, string ipAddress, string language, string appId)
+        private async Task<IActionResult> ProcessWhatsappRequest(ILogger log, string phone, string email, string name, string country, string ipAddress, string language, string appId, bool autoSignInTokenValid, bool returnPasscode)
         {
             var user = await CognitoService.Instance.FindUserByPhone(phone);
             var existing = true;
@@ -140,6 +183,12 @@ namespace Authentication
                 userEmail = accountEmail ?? userEmail;
             }
 
+            if(autoSignInTokenValid && returnPasscode)
+            {
+                var passcode = await CognitoService.Instance.RequestPasscode(userEmail, language, appId: appId, disableEmail: true, phone: phone, sendType: "whatsapp", returnPasscode: true);
+                return new JsonResult(new { success = true, exist = existing, user, passcode }) { StatusCode = StatusCodes.Status200OK };
+            }
+
             // send passcode to whatsapp
             await CognitoService.Instance.RequestPasscode(userEmail, language, appId: appId, disableEmail: true, phone: phone, sendType: "whatsapp");
             log.LogInformation($"Send OTP into whatsapp {phone}");
@@ -147,7 +196,7 @@ namespace Authentication
             return new JsonResult(new { success = true, exist = existing, user }) { StatusCode = StatusCodes.Status200OK };
         }
 
-        private async Task<IActionResult> ProcessCognitoRequest(ILogger log, string email, string name, string country, string ipAddress, bool requestPasscode, string language, string appId)
+        private async Task<IActionResult> ProcessCognitoRequest(ILogger log, string email, string name, string country, string ipAddress, bool requestPasscode, string language, string appId, bool autoSignInTokenValid, bool returnPasscode)
         {
             var (exist, user) = await CognitoService.Instance.FindOrCreateUser(email, name, country, ipAddress);
             // there is an error when creating user
@@ -173,7 +222,14 @@ namespace Authentication
 
                 await CognitoService.Instance.UpdateUser(user.Username, updateParams, !user.Enabled);
                 log.LogInformation($"User ${email} exists, {ipAddress}, {country}");
-                if(requestPasscode)
+
+                if (autoSignInTokenValid && returnPasscode)
+                {
+                    var passcode = await CognitoService.Instance.RequestPasscode(email, language, appId: appId, disableEmail: true);
+                    return new JsonResult(new { success = true, exist, user, passcode }) { StatusCode = StatusCodes.Status200OK };
+                }
+
+                if (requestPasscode)
                 {
                     await CognitoService.Instance.RequestPasscode(email, language, appId: appId);
                 }
@@ -202,9 +258,15 @@ namespace Authentication
                 }
             }
 
+            if (autoSignInTokenValid && returnPasscode)
+            {
+                var passcode = await CognitoService.Instance.RequestPasscode(email, language, appId: appId, disableEmail: true);
+                return new JsonResult(new { success = true, exist, user, passcode }) { StatusCode = StatusCodes.Status200OK };
+            }
+
             if (requestPasscode)
             {
-                await CognitoService.Instance.RequestPasscode(email, language);
+                await CognitoService.Instance.RequestPasscode(email, language, appId: appId);
             }
 
             // Success, return user info

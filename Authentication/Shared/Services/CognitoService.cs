@@ -369,7 +369,7 @@ namespace Authentication.Shared.Services
             await provider.AdminAddUserToGroupAsync(request);
         }
 
-        public async Task<string> RequestPasscode(string email, string language, bool disableEmail = false, string appId = "", string phone = "", string sendType = "email")
+        public async Task<string> RequestPasscode(string email, string language, bool disableEmail = false, string appId = "", string phone = "", string sendType = "email", bool returnPasscode = false)
         {
             if(string.IsNullOrWhiteSpace(language))
             {
@@ -382,6 +382,7 @@ namespace Authentication.Shared.Services
                     {"code", Configurations.Cognito.AWSRestCode },
                     {"language", language },
                     {"disableEmail", disableEmail == true? "true": "false" },
+                    {"returnPasscode", returnPasscode == true? "true": "false" },
                     {"sender_type", sendType },
                 };
 
