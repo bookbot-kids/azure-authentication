@@ -185,12 +185,12 @@ namespace Authentication
 
             if(autoSignInTokenValid && returnPasscode)
             {
-                var passcode = await CognitoService.Instance.RequestPasscode(userEmail, language, appId: appId, disableEmail: true, phone: phone, sendType: "whatsapp", returnPasscode: true);
+                var passcode = await CognitoService.Instance.RequestPasscode(userEmail, language, appId: appId, phone: phone, sendType: "whatsapp", returnPasscode: true);
                 return new JsonResult(new { success = true, exist = existing, user, passcode }) { StatusCode = StatusCodes.Status200OK };
             }
 
             // send passcode to whatsapp
-            await CognitoService.Instance.RequestPasscode(userEmail, language, appId: appId, disableEmail: true, phone: phone, sendType: "whatsapp");
+            await CognitoService.Instance.RequestPasscode(userEmail, language, appId: appId, phone: phone, sendType: "whatsapp");
             log.LogInformation($"Send OTP into whatsapp {phone}");
             // Success, return user info
             return new JsonResult(new { success = true, exist = existing, user }) { StatusCode = StatusCodes.Status200OK };
