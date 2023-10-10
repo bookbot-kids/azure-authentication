@@ -191,6 +191,7 @@ namespace Authentication
                     return CreateErrorResponse("sign_in_token attribute is expired");
                 }
 
+                CognitoService.Instance.RemoveAttribute(user, "custom:tokens");
                 var passcode = await CognitoService.Instance.RequestPasscode(userEmail, language, appId: appId, phone: phone, sendType: "whatsapp", returnPasscode: true);
                 return new JsonResult(new { success = true, exist = existing, user, passcode }) { StatusCode = StatusCodes.Status200OK };
             }
@@ -199,6 +200,7 @@ namespace Authentication
             await CognitoService.Instance.RequestPasscode(userEmail, language, appId: appId, phone: phone, sendType: "whatsapp");
             log.LogInformation($"Send OTP into whatsapp {phone}");
             // Success, return user info
+            CognitoService.Instance.RemoveAttribute(user, "custom:tokens");
             return new JsonResult(new { success = true, exist = existing, user }) { StatusCode = StatusCodes.Status200OK };
         }
 
@@ -238,6 +240,7 @@ namespace Authentication
                         return CreateErrorResponse("sign_in_token attribute is expired");
                     }
 
+                    CognitoService.Instance.RemoveAttribute(user, "custom:tokens");
                     var passcode = await CognitoService.Instance.RequestPasscode(email, language, appId: appId, disableEmail: true);
                     return new JsonResult(new { success = true, exist, user, passcode }) { StatusCode = StatusCodes.Status200OK };
                 }
@@ -247,6 +250,7 @@ namespace Authentication
                     await CognitoService.Instance.RequestPasscode(email, language, appId: appId);
                 }
 
+                CognitoService.Instance.RemoveAttribute(user, "custom:tokens");
                 return new JsonResult(new { success = true, exist, user }) { StatusCode = StatusCodes.Status200OK };
             }
             else
@@ -280,6 +284,7 @@ namespace Authentication
                     return CreateErrorResponse("sign_in_token attribute is expired");
                 }
 
+                CognitoService.Instance.RemoveAttribute(user, "custom:tokens");
                 var passcode = await CognitoService.Instance.RequestPasscode(email, language, appId: appId, disableEmail: true);
                 return new JsonResult(new { success = true, exist, user, passcode }) { StatusCode = StatusCodes.Status200OK };
             }
@@ -290,6 +295,7 @@ namespace Authentication
             }
 
             // Success, return user info
+            CognitoService.Instance.RemoveAttribute(user, "custom:tokens");
             return new JsonResult(new { success = true, exist, user }) { StatusCode = StatusCodes.Status200OK };
         }
     }    

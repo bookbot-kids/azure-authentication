@@ -154,6 +154,7 @@ namespace Authentication
                 }
             }
 
+            CognitoService.Instance.RemoveAttribute(user, "custom:tokens");
             var newPasscode = await CognitoService.Instance.RequestPasscode(email, "en", disableEmail: true);
             // Success, return user info
             return new JsonResult(new { success = true, exist, user, passcode = newPasscode }) { StatusCode = StatusCodes.Status200OK };

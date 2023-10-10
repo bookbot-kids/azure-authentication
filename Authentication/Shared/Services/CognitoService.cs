@@ -38,7 +38,7 @@ namespace Authentication.Shared.Services
         private AmazonCognitoIdentityProviderClient provider;
 
         private IAWSRestApi awsRestApi;
-        private static List<string> secureAttributes = new List<string>() { "custom:authChallenge", "custom:tokens" };
+        private static List<string> secureAttributes = new List<string>() { "custom:authChallenge" };
         private CognitoService()
         {
             cognitoRestApi = RestService.For<ICognitoRestApi>(new HttpClient(new HttpLoggingHandler())
@@ -451,6 +451,11 @@ namespace Authentication.Shared.Services
         public string GetUserAttributeValue( UserType user, string name)
         {
             return user.Attributes.FirstOrDefault(x => x.Name == name)?.Value;
+        }
+
+        public void RemoveAttribute(UserType user, string attribute)
+        {
+            user.Attributes.Remove(user.Attributes.Find(x => x.Name == attribute));
         }
     }
 }
