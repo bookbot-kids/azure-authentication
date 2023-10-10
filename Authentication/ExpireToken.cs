@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Authentication.Shared.Library;
 using Authentication.Shared.Services;
@@ -12,9 +13,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Authentication
 {
-    public class ExpirePasscode : BaseFunction
+    public class ExpireToken : BaseFunction
     {
-        [FunctionName("ExpirePasscode")]
+        [FunctionName("ExpireToken")]
         public async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
             ILogger log)
@@ -24,8 +25,13 @@ namespace Authentication
 
             string email = req.Query["email"];
             email = email?.NormalizeEmail();
-            string passcode = req.Query["passcode"];
+            string token = req.Query["token"];
             string refreshToken = req.Query["refresh_token"];
+
+            if (string.IsNullOrWhiteSpace(refreshToken))
+            {
+                return CreateErrorResponse("missing refresh_token");
+            }
 
             // cognito authentication
             var adToken = await CognitoService.Instance.GetAccessToken(refreshToken);
@@ -40,42 +46,24 @@ namespace Authentication
                 return CreateErrorResponse($"can not find user {email}", StatusCodes.Status401Unauthorized);
             }
 
-            var attributePasscode = CognitoService.Instance.GetUserAttributeValue(user, "custom:authChallenge");
-            if(string.IsNullOrWhiteSpace(attributePasscode))
+            var attributeToken = CognitoService.Instance.GetUserAttributeValue(user, "custom:tokens") ?? "";
+            var allTokens = attributeToken.Split(";").ToList();
+            if(allTokens.Count > 15)
             {
-                return CreateErrorResponse($"can not get passcode");
+                allTokens.RemoveAt(0);
             }
 
-            var passcodes = attributePasscode.Split(";");
-            var newPasscodes = new List<string>();
-            var hasFound = false;
-            foreach (var token in passcodes)
-            {
-                var parts = token.Split(",");
-                if (parts[0] == passcode)
-                {
-                    // make passcode expired
-                    var expired = ((DateTimeOffset)DateTime.Now.AddDays(-1)).ToUnixTimeMilliseconds();
-                    newPasscodes.Add($"{parts[0]},{expired}");
-                    hasFound = true;
-                }
-                else
-                {
-                    newPasscodes.Add(token);
-                }                
-            }
+            allTokens.Add(token);
+            allTokens = allTokens.Distinct().Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
 
-            if(hasFound)
-            {
-                // update passcode attribute
-                await CognitoService.Instance.UpdateUser(user.Username, new Dictionary<string, string>
+            // update token attribute
+            await CognitoService.Instance.UpdateUser(user.Username, new Dictionary<string, string>
                 {
-                    {"custom:authChallenge", string.Join(";", newPasscodes) }
+                        {"custom:tokens", string.Join(";", allTokens) }
                 });
-                return CreateSuccessResponse();
-            }
 
-            return CreateErrorResponse("Not found passcode");
+            return CreateSuccessResponse();
+
         }
     }
 }

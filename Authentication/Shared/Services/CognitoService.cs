@@ -38,6 +38,7 @@ namespace Authentication.Shared.Services
         private AmazonCognitoIdentityProviderClient provider;
 
         private IAWSRestApi awsRestApi;
+        private static List<string> secureAttributes = new List<string>() { "custom:authChallenge", "custom:tokens" };
         private CognitoService()
         {
             cognitoRestApi = RestService.For<ICognitoRestApi>(new HttpClient(new HttpLoggingHandler())
@@ -101,7 +102,7 @@ namespace Authentication.Shared.Services
                 // dont return passcode property to client
                 if(removeChallenge)
                 {
-                    user.Attributes.Remove(user.Attributes.Find(x => x.Name == "custom:authChallenge"));
+                    user.Attributes.Remove(user.Attributes.Find(x => secureAttributes.Contains(x.Name)));
                 }
                 
                 return user;
@@ -122,7 +123,7 @@ namespace Authentication.Shared.Services
             {
                 var user = usersResponse.Users.First();
                 // dont return passcode property to client
-                user.Attributes.Remove(user.Attributes.Find(x => x.Name == "custom:authChallenge"));
+                user.Attributes.Remove(user.Attributes.Find(x => secureAttributes.Contains(x.Name)));
                 return user;
             }
 
@@ -141,7 +142,7 @@ namespace Authentication.Shared.Services
             {
                 var user = usersResponse.Users.First();
                 // dont return passcode property to client
-                user.Attributes.Remove(user.Attributes.Find(x => x.Name == "custom:authChallenge"));
+                user.Attributes.Remove(user.Attributes.Find(x => secureAttributes.Contains(x.Name)));
                 return user;
             }
 
@@ -272,7 +273,7 @@ namespace Authentication.Shared.Services
                 await UpdateUserGroup(newUser.Username, "new");
 
                 // dont return passcode property to client
-                newUser.Attributes.Remove(newUser.Attributes.Find(x => x.Name == "custom:authChallenge"));
+                newUser.Attributes.Remove(newUser.Attributes.Find(x => secureAttributes.Contains(x.Name)));
                 return newUser;
             };
 
@@ -292,7 +293,7 @@ namespace Authentication.Shared.Services
             {
                 var user = usersResponse.Users.First();
                 // dont return passcode property to client
-                user.Attributes.Remove(user.Attributes.Find(x => x.Name == "custom:authChallenge"));
+                user.Attributes.Remove(user.Attributes.Find(x => secureAttributes.Contains(x.Name)));
                 return (true, user);
             }
             else

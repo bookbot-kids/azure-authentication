@@ -53,12 +53,11 @@ namespace Authentication
             string language = req.Query["language"];
             log.LogInformation($"Check account for user {email}, source: {source}");
             string signInToken = req.Query["sign_in_token"];
-            bool returnPasscode = req.Query["return_passcode"] == "true";
             var autoSignInTokenValid = false;
             if (!string.IsNullOrWhiteSpace(signInToken))
             {
                 string userId = req.Query["user_id"];
-                if (string.IsNullOrWhiteSpace(signInToken))
+                if (string.IsNullOrWhiteSpace(userId))
                 {
                     return CreateErrorResponse("user_id is required with sign_in_token");
                 }
@@ -114,7 +113,7 @@ namespace Authentication
                         }
 
                         bool requestPasscode = req.Query["request_passcode"] == "true";
-                        return await ProcessCognitoRequest(log, email, name, country, ipAddress, requestPasscode, language, appId, autoSignInTokenValid, returnPasscode);
+                        return await ProcessCognitoRequest(log, email, name, country, ipAddress, requestPasscode, language, appId, signInToken, autoSignInTokenValid);
                     }
                 case "whatsapp":
                     {
@@ -135,14 +134,14 @@ namespace Authentication
                             return CreateErrorResponse($"phone is invalid");
                         }
 
-                        return await ProcessWhatsappRequest(log, phone, email, name, country, ipAddress, language, appId, autoSignInTokenValid, returnPasscode);
+                        return await ProcessWhatsappRequest(log, phone, email, name, country, ipAddress, language, appId, signInToken, autoSignInTokenValid);
                     }
                 default:
                     throw new Exception($"{email} has invalid source {source}");
             }
         }
 
-        private async Task<IActionResult> ProcessWhatsappRequest(ILogger log, string phone, string email, string name, string country, string ipAddress, string language, string appId, bool autoSignInTokenValid, bool returnPasscode)
+        private async Task<IActionResult> ProcessWhatsappRequest(ILogger log, string phone, string email, string name, string country, string ipAddress, string language, string appId, string signInToken, bool autoSignInTokenValid)
         {
             var user = await CognitoService.Instance.FindUserByPhone(phone);
             var existing = true;
@@ -183,8 +182,15 @@ namespace Authentication
                 userEmail = accountEmail ?? userEmail;
             }
 
-            if(autoSignInTokenValid && returnPasscode)
+            if(autoSignInTokenValid)
             {
+                // check sign in token is in expired list
+                var currentTokens = CognitoService.Instance.GetUserAttributeValue(user, "custom:tokens");
+                if (currentTokens?.Contains(signInToken) == true)
+                {
+                    return CreateErrorResponse("sign_in_token attribute is expired");
+                }
+
                 var passcode = await CognitoService.Instance.RequestPasscode(userEmail, language, appId: appId, phone: phone, sendType: "whatsapp", returnPasscode: true);
                 return new JsonResult(new { success = true, exist = existing, user, passcode }) { StatusCode = StatusCodes.Status200OK };
             }
@@ -196,7 +202,7 @@ namespace Authentication
             return new JsonResult(new { success = true, exist = existing, user }) { StatusCode = StatusCodes.Status200OK };
         }
 
-        private async Task<IActionResult> ProcessCognitoRequest(ILogger log, string email, string name, string country, string ipAddress, bool requestPasscode, string language, string appId, bool autoSignInTokenValid, bool returnPasscode)
+        private async Task<IActionResult> ProcessCognitoRequest(ILogger log, string email, string name, string country, string ipAddress, bool requestPasscode, string language, string appId, string signInToken, bool autoSignInTokenValid)
         {
             var (exist, user) = await CognitoService.Instance.FindOrCreateUser(email, name, country, ipAddress);
             // there is an error when creating user
@@ -223,8 +229,15 @@ namespace Authentication
                 await CognitoService.Instance.UpdateUser(user.Username, updateParams, !user.Enabled);
                 log.LogInformation($"User ${email} exists, {ipAddress}, {country}");
 
-                if (autoSignInTokenValid && returnPasscode)
+                if (autoSignInTokenValid)
                 {
+                    // check sign in token is in expired list
+                    var currentTokens = CognitoService.Instance.GetUserAttributeValue(user, "custom:tokens");
+                    if (currentTokens?.Contains(signInToken) == true)
+                    {
+                        return CreateErrorResponse("sign_in_token attribute is expired");
+                    }
+
                     var passcode = await CognitoService.Instance.RequestPasscode(email, language, appId: appId, disableEmail: true);
                     return new JsonResult(new { success = true, exist, user, passcode }) { StatusCode = StatusCodes.Status200OK };
                 }
@@ -258,8 +271,15 @@ namespace Authentication
                 }
             }
 
-            if (autoSignInTokenValid && returnPasscode)
+            if (autoSignInTokenValid)
             {
+                // check sign in token is in expired list
+                var currentTokens = CognitoService.Instance.GetUserAttributeValue(user, "custom:tokens");
+                if (currentTokens?.Contains(signInToken) == true)
+                {
+                    return CreateErrorResponse("sign_in_token attribute is expired");
+                }
+
                 var passcode = await CognitoService.Instance.RequestPasscode(email, language, appId: appId, disableEmail: true);
                 return new JsonResult(new { success = true, exist, user, passcode }) { StatusCode = StatusCodes.Status200OK };
             }
