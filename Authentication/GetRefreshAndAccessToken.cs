@@ -79,7 +79,10 @@ namespace Authentication
                     try
                     {
                         Logger.Log?.LogInformation($"Found user {user.ObjectId} {email}, group = {group}");
-                        await SendAnalytics(email, user.ObjectId);
+                        if(!email.Contains(Configurations.Whatsapp.PlaceholderEmail))
+                        {
+                            await SendAnalytics(email, user.ObjectId);
+                        }                        
                     }
                     catch (Exception ex)
                     {

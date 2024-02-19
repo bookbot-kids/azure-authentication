@@ -15,7 +15,8 @@ namespace Authentication.Shared.Services
         public Task<JObject> FindById(string table, string id);
         public Task SaveDocument(string table, JObject doc);
         public Task DeleteById(string table, string id, string partition, bool ignoreNotFound = false);
-        public Task<List<JObject>> QueryDocuments(string table, QueryDefinition query);
+        public Task<List<JObject>> QueryDocuments(string table, QueryDefinition query, QueryRequestOptions options = null);
+        public Task<List<JObject>> GetAll(string table);
     }
 
     public class DataService: IDataService
@@ -37,14 +38,14 @@ namespace Authentication.Shared.Services
         {
             var container = client.GetDatabase(Configurations.Cosmos.DatabaseId).GetContainer(table);
             var query = new QueryDefinition("select * from c where c.id = @id").WithParameter("@id", id);
-            var items = await LoadDocument(container, query);
+            var items = await LoadDocument(container, query, null);
             return items.Count == 0 ? null : items[0];
         }
 
-        public async Task<List<JObject>> QueryDocuments(string table, QueryDefinition query)
+        public async Task<List<JObject>> QueryDocuments(string table, QueryDefinition query, QueryRequestOptions options = null)
         {
             var container = client.GetDatabase(Configurations.Cosmos.DatabaseId).GetContainer(table);
-            var items = await LoadDocument(container, query);
+            var items = await LoadDocument(container, query, options);
             return items;
         }
 
@@ -85,12 +86,12 @@ namespace Authentication.Shared.Services
         /// <param name="query">Query</param>
         /// <param name="continuationToken">Continuation Token</param>
         /// <returns></returns>
-        private async Task<List<JObject>> LoadDocument(Container container, string query)
+        private async Task<List<JObject>> LoadDocument(Container container, string query, QueryRequestOptions options = null)
         {
             QueryDefinition queryDefinition = new QueryDefinition(query);
-            FeedIterator<JObject> queryResultSetIterator = container.GetItemQueryIterator<JObject>(queryDefinition);
+            FeedIterator<JObject> queryResultSetIterator = container.GetItemQueryIterator<JObject>(queryDefinition, null, options);
             List<JObject> documents = new List<JObject>();
-            if (queryResultSetIterator.HasMoreResults)
+            while (queryResultSetIterator.HasMoreResults)
             {
                 FeedResponse<JObject> currentResultSet = await queryResultSetIterator.ReadNextAsync();
                 documents.AddRange(currentResultSet);
@@ -105,11 +106,11 @@ namespace Authentication.Shared.Services
         /// <param name="query">Query</param>
         /// <param name="continuationToken">Continuation Token</param>
         /// <returns></returns>
-        private async Task<List<JObject>> LoadDocument(Container container, QueryDefinition queryDefinition)
+        private async Task<List<JObject>> LoadDocument(Container container, QueryDefinition queryDefinition, QueryRequestOptions options)
         {
-            FeedIterator<JObject> queryResultSetIterator = container.GetItemQueryIterator<JObject>(queryDefinition);
+            FeedIterator<JObject> queryResultSetIterator = container.GetItemQueryIterator<JObject>(queryDefinition, null, options);
             List<JObject> documents = new List<JObject>();
-            if (queryResultSetIterator.HasMoreResults)
+            while (queryResultSetIterator.HasMoreResults)
             {
                 FeedResponse<JObject> currentResultSet = await queryResultSetIterator.ReadNextAsync();
                 documents.AddRange(currentResultSet);
