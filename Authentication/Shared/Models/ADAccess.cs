@@ -36,7 +36,7 @@ namespace Authentication.Shared.Models
         /// <returns>Master key</returns>
         public async Task<string> GetMasterKey()
         {
-            if (masterToken == null || masterToken.IsExpired)
+            if (masterToken == null || masterToken.IsExpired || masterToken.AccessToken == null)
             {
                 masterToken = await MicrosoftService.Instance.GetMasterToken();
             }

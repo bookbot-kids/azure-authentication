@@ -273,7 +273,7 @@ namespace Authentication.Shared.Services
                 var data = JwtBuilder.Create()
                     .WithDateTimeProvider(new UtcDateTimeProvider())
                     .WithValidationParameters(validationParameters)
-                    .WithSerializer(new JsonNetSerializer())
+                    .WithJsonSerializer(new JsonNetSerializer())
                     .WithUrlEncoder(new JwtBase64UrlEncoder())
                     .Decode<IDictionary<string, object>>(jwtToken);
                 foreach(var claim in claims)

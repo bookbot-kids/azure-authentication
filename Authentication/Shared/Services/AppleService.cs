@@ -5,10 +5,7 @@ using Refit;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using Amazon.Runtime.Internal.Transform;
-using Azure.Core;
 using Microsoft.Extensions.Logging;
-using System.ComponentModel.DataAnnotations;
 using Extensions;
 using System.Linq;
 

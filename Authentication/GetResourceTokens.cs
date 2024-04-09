@@ -46,7 +46,7 @@ namespace Authentication
             if (string.IsNullOrWhiteSpace(refreshToken))
             {
                 // default is guest
-                var guestGroup = await ADGroup.FindByName(Configurations.AzureB2C.GuestGroup);
+                var guestGroup = new ADGroup() { Name = Configurations.AzureB2C.GuestGroup };
 
                 // If the refresh token is missing, then return permissions for guest
                 var guestPermissions = await guestGroup.GetPermissions(new List<string>());
