@@ -16,12 +16,8 @@ using JWT.Exceptions;
 using JWT.Algorithms;
 using System.Text;
 using System.Security.Cryptography;
-using System.Linq;
-using System.Text.RegularExpressions;
-using System.Text.Encodings.Web;
 using JWT.Serializers;
 using System.IO;
-using static Authentication.Shared.Configurations;
 
 namespace Authentication.Shared.Services
 {
@@ -273,7 +269,7 @@ namespace Authentication.Shared.Services
                 var data = JwtBuilder.Create()
                     .WithDateTimeProvider(new UtcDateTimeProvider())
                     .WithValidationParameters(validationParameters)
-                    .WithJsonSerializer(new JsonNetSerializer())
+                    .WithSerializer(new JsonNetSerializer())
                     .WithUrlEncoder(new JwtBase64UrlEncoder())
                     .Decode<IDictionary<string, object>>(jwtToken);
                 foreach(var claim in claims)
