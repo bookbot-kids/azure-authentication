@@ -244,8 +244,8 @@ namespace Authentication.Shared.Services
                 catch (UsernameExistsException ex)
                 {
                     // TODO will remove later (after fixing from client)
-                    Logger.Log?.LogError($"user name exist {ex.Message}");
-                    if(usersResponse != null)
+                    Logger.Log?.LogError($"user name {phone} {email} exist {ex.Message}");
+                    if (usersResponse != null)
                     {
                         // user exist in other request, just get it from cognito after few second
                         Task.Delay(5 * 1000).Wait();
@@ -255,7 +255,23 @@ namespace Authentication.Shared.Services
                     else
                     {
                         throw ex;
-                    }                    
+                    }
+                } catch (Amazon.Runtime.Internal.HttpErrorResponseException ex)
+                {
+                    // TODO will remove later (after fixing from client)
+                    if (ex.Message?.ToLower()?.Contains("alias entry already exists for a different username") == true && usersResponse != null)
+                    {
+                        Logger.Log?.LogError($"user name {phone} {email} exist {ex.Message}");
+                        // user exist in other request, just get it from cognito after few second
+                        Task.Delay(5 * 1000).Wait();
+                        usersResponse = await provider.ListUsersAsync(listRequest);
+                        newUser = usersResponse.Users.First();
+                    }
+                    else
+                    {
+                        Logger.Log?.LogError($"user name {phone} {email} has error {ex.Message}");
+                        throw ex;
+                    }
                 }
 
                 // then change its password

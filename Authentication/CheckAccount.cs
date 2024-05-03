@@ -134,6 +134,7 @@ namespace Authentication
                             return CreateErrorResponse($"phone is invalid");
                         }
 
+                        log.LogInformation($"Check account for user {phone}, source: {source}");
                         return await ProcessWhatsappRequest(log, phone, email, name, country, ipAddress, language, appId, signInToken, autoSignInTokenValid);
                     }
                 default:
@@ -147,6 +148,7 @@ namespace Authentication
             var existing = true;
             var placeholderEmail = phone + Configurations.Whatsapp.PlaceholderEmail;
             var userEmail = string.IsNullOrWhiteSpace(email) ? placeholderEmail : email;
+            log.LogInformation($"ProcessWhatsappRequest {userEmail}, phone: {phone}");
             if (user == null)
             {
                 // if user with phone not exist, then create a new one with place holder email
