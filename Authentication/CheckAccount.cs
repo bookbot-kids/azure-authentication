@@ -181,6 +181,11 @@ namespace Authentication
             else
             {
                 var accountEmail = CognitoService.Instance.GetUserAttributeValue(user, "email");
+                if(accountEmail != null && !string.IsNullOrWhiteSpace(email) && accountEmail != userEmail)
+                {
+                    return CreateErrorResponse($"phone number is existing on another account");
+                }
+
                 userEmail = accountEmail ?? userEmail;
             }
 
