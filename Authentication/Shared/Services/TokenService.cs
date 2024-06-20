@@ -220,7 +220,17 @@ namespace Authentication.Shared.Services
         {
             ReadOnlySpan<byte> keyAsSpan = Convert.FromBase64String(secret);
             var prvKey = ECDsa.Create();
-            prvKey.ImportPkcs8PrivateKey(keyAsSpan, out var read);
+            try
+            {
+                // Try importing the private key using the PKCS#8 format
+                prvKey.ImportPkcs8PrivateKey(keyAsSpan, out var read);
+            }
+            catch (Exception)
+            {
+                // If PKCS#8 import fails, try importing the traditional EC private key format
+                prvKey.ImportECPrivateKey(keyAsSpan, out int read);
+            }
+
             IJwtAlgorithm algorithm = new ES256Algorithm(ECDsa.Create(), prvKey);
 
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -232,8 +242,6 @@ namespace Authentication.Shared.Services
                 Audience = aud,
                 SigningCredentials = new SigningCredentials(securityKey, SecurityAlgorithms.EcdsaSha256),
                 Subject = new ClaimsIdentity(new[] { new Claim("sub", sub) }),
-
-
             };
 
             var header = new Dictionary<string, object>()
