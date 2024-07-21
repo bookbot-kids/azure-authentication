@@ -19,7 +19,7 @@ namespace Authentication
           [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
           ILogger log)
         {
-            var refreshToken = req.Form["refresh_token"];
+            string refreshToken = req.Query["refresh_token"];
             if (string.IsNullOrWhiteSpace(refreshToken))
             {
                 return CreateErrorResponse("refresh_token is missing", StatusCodes.Status403Forbidden);
