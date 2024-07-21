@@ -57,7 +57,7 @@ namespace Authentication
             }
 
             email = email.NormalizeEmail();
-            var user = await CognitoService.Instance.FindUserByEmail(email);
+            var user = await AWSService.Instance.FindUserByEmail(email);
             if(user == null)
             {
                 return CreateErrorResponse($"email {email} is invalid");
@@ -79,7 +79,7 @@ namespace Authentication
             }
 
             // delete cognito user
-            await CognitoService.Instance.DeleteUser(userId);
+            await AWSService.Instance.DeleteUser(userId);
 
             return CreateSuccessResponse();
         }

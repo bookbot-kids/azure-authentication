@@ -244,6 +244,12 @@ namespace Authentication.Shared
             public static readonly string AWSRestUrl = Configuration["AWSRestUrl"];
 
             public static readonly string AWSRestCode = Configuration["AWSRestCode"];
+
+            public static readonly string AWSS3MainRegion = Configuration["AWSS3MainRegion"];
+
+            public static readonly string AWSS3MainBucket = Configuration["AWSS3MainBucket"];
+
+            public static readonly string AWSS3MainPrefixPath = Configuration["AWSS3MainPrefixPath"];
         }
 
         public static class Google

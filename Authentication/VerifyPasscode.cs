@@ -39,7 +39,7 @@ namespace Authentication
                 return CreateErrorResponse($"Passcode is empty");
             }
 
-            var isValid = await CognitoService.Instance.VerifyPasscode(email, passcode);
+            var isValid = await AWSService.Instance.VerifyPasscode(email, passcode);
             if(!isValid)
             {
                 return CreateErrorResponse($"Passcode {passcode} is invalid for email ${email}", statusCode: 401);

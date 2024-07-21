@@ -53,21 +53,21 @@ namespace Authentication
             }
 
             string userId;
-            var adToken = await CognitoService.Instance.GetAccessToken(refreshToken);
+            var adToken = await AWSService.Instance.GetAccessToken(refreshToken);
             if (adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
             {
                 return CreateErrorResponse($"refresh_token is invalid: {refreshToken} ", StatusCodes.Status401Unauthorized);
             }
 
             // Validate the access token, then get id and group name
-            var (result, message, id, _) = await CognitoService.Instance.ValidateAccessToken(adToken.AccessToken);
+            var (result, message, id, _) = await AWSService.Instance.ValidateAccessToken(adToken.AccessToken);
             if (!result)
             {
                 log.LogError($"can not get access token from refresh token {refreshToken}");
                 return CreateErrorResponse(message, StatusCodes.Status403Forbidden);
             }
 
-            var customUserId = await CognitoService.Instance.GetCustomUserId(id);
+            var customUserId = await AWSService.Instance.GetCustomUserId(id);
             if (string.IsNullOrWhiteSpace(customUserId))
             {
                 return CreateErrorResponse($"user {id} does not have custom id", StatusCodes.Status500InternalServerError);
@@ -80,7 +80,7 @@ namespace Authentication
                 await adUser.SetEnable(false);
             }
 
-            await CognitoService.Instance.SetAccountEable(id, false);
+            await AWSService.Instance.SetAccountEable(id, false);
 
             string email = req.Query["email"];
             email = email?.NormalizeEmail();

@@ -34,19 +34,19 @@ namespace Authentication
             }
 
             // cognito authentication
-            var adToken = await CognitoService.Instance.GetAccessToken(refreshToken);
+            var adToken = await AWSService.Instance.GetAccessToken(refreshToken);
             if (adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
             {
                 return CreateErrorResponse($"refresh_token is invalid: {refreshToken} ", StatusCodes.Status401Unauthorized);
             }
 
-            var user = await CognitoService.Instance.FindUserByEmail(email, removeChallenge: false);
+            var user = await AWSService.Instance.FindUserByEmail(email, removeChallenge: false);
             if(user == null)
             {
                 return CreateErrorResponse($"can not find user {email}", StatusCodes.Status401Unauthorized);
             }
 
-            var attributeToken = CognitoService.Instance.GetUserAttributeValue(user, "custom:tokens") ?? "";
+            var attributeToken = AWSService.Instance.GetUserAttributeValue(user, "custom:tokens") ?? "";
             var allTokens = attributeToken.Split(";").ToList();
             if(allTokens.Count > 15)
             {
@@ -57,7 +57,7 @@ namespace Authentication
             allTokens = allTokens.Distinct().Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
 
             // update token attribute
-            await CognitoService.Instance.UpdateUser(user.Username, new Dictionary<string, string>
+            await AWSService.Instance.UpdateUser(user.Username, new Dictionary<string, string>
                 {
                         {"custom:tokens", string.Join(";", allTokens) }
                 });

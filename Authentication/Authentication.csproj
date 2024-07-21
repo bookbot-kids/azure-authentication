@@ -19,6 +19,7 @@
     <PackageReference Include="AsyncEnumerator" Version="4.0.2" />
     <PackageReference Include="JWT" Version="9.0.0" />
     <PackageReference Include="AWSSDK.CognitoIdentityProvider" Version="3.7.304.3" />
+    <PackageReference Include="AWSSDK.S3" Version="3.7.310.7" />
   </ItemGroup>
   <ItemGroup>
     <None Remove="AsyncEnumerator" />

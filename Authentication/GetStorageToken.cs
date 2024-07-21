@@ -28,7 +28,7 @@ namespace Authentication
             }
 
             // cognito authentication
-            var adToken = await CognitoService.Instance.GetAccessToken(refreshToken);
+            var adToken = await AWSService.Instance.GetAccessToken(refreshToken);
             if (adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
             {
                 return CreateErrorResponse($"refresh_token is invalid: {refreshToken} ", StatusCodes.Status401Unauthorized);

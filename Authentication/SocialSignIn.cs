@@ -105,7 +105,7 @@ namespace Authentication
 
         private async Task<IActionResult> CreateOrGetCognito(ILogger log, string email, string name, string country, string ipAddress)
         {
-            var (exist, user) = await CognitoService.Instance.FindOrCreateUser(email, name, country, ipAddress);
+            var (exist, user) = await AWSService.Instance.FindOrCreateUser(email, name, country, ipAddress);
             // there is an error when creating user
             if (user == null)
             {
@@ -127,9 +127,9 @@ namespace Authentication
                     updateParams["custom:ipAddress"] = ipAddress;
                 }
 
-                await CognitoService.Instance.UpdateUser(user.Username, updateParams, !user.Enabled);
+                await AWSService.Instance.UpdateUser(user.Username, updateParams, !user.Enabled);
                 log.LogInformation($"User ${email} exists, {ipAddress}, {country}");
-                var passcode = await CognitoService.Instance.RequestPasscode(email, "en", disableEmail: true);
+                var passcode = await AWSService.Instance.RequestPasscode(email, "en", disableEmail: true);
                 return new JsonResult(new { success = true, exist, user, passcode = passcode }) { StatusCode = StatusCodes.Status200OK };
             }
             else
@@ -154,8 +154,8 @@ namespace Authentication
                 }
             }
 
-            CognitoService.Instance.RemoveAttribute(user, "custom:tokens");
-            var newPasscode = await CognitoService.Instance.RequestPasscode(email, "en", disableEmail: true);
+            AWSService.Instance.RemoveAttribute(user, "custom:tokens");
+            var newPasscode = await AWSService.Instance.RequestPasscode(email, "en", disableEmail: true);
             // Success, return user info
             return new JsonResult(new { success = true, exist, user, passcode = newPasscode }) { StatusCode = StatusCodes.Status200OK };
         }

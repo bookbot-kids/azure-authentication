@@ -74,14 +74,14 @@ namespace Authentication
             }
 
             // cognito authentication
-            adToken = await CognitoService.Instance.GetAccessToken(refreshToken);
+            adToken = await AWSService.Instance.GetAccessToken(refreshToken);
             if (adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
             {
                 return CreateErrorResponse($"refresh_token is invalid: {refreshToken} ", StatusCodes.Status401Unauthorized);
             }
 
             // Validate the access token, then get id and group name
-            var (result, message, userId, groupName) = await CognitoService.Instance.ValidateAccessToken(adToken.AccessToken);
+            var (result, message, userId, groupName) = await AWSService.Instance.ValidateAccessToken(adToken.AccessToken);
             if (!result)
             {
                 log.LogError($"can not get access token from refresh token {refreshToken}");
@@ -95,7 +95,7 @@ namespace Authentication
             }
             else
             {
-                customUserId = await CognitoService.Instance.GetCustomUserId(userId);
+                customUserId = await AWSService.Instance.GetCustomUserId(userId);
 
                 if (string.IsNullOrWhiteSpace(customUserId))
                 {

@@ -1,11 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Amazon;
 using Amazon.CognitoIdentityProvider;
 using Amazon.CognitoIdentityProvider.Model;
+using Amazon.Runtime;
+using Amazon.S3;
+using Amazon.S3.Model;
 using Authentication.Shared.Library;
 using Authentication.Shared.Models;
 using Authentication.Shared.Services.Responses;
@@ -15,7 +19,7 @@ using Refit;
 
 namespace Authentication.Shared.Services
 {
-    public class CognitoService
+    public class AWSService
     {
         public interface ICognitoRestApi
         {
@@ -34,12 +38,13 @@ namespace Authentication.Shared.Services
         }
 
         private ICognitoRestApi cognitoRestApi;
-        public static CognitoService Instance { get; } = new CognitoService();
+        public static AWSService Instance { get; } = new AWSService();
         private AmazonCognitoIdentityProviderClient provider;
+        private AmazonS3Client amazonS3Client;
 
         private IAWSRestApi awsRestApi;
         private static List<string> secureAttributes = new List<string>() { "custom:authChallenge" };
-        private CognitoService()
+        private AWSService()
         {
             cognitoRestApi = RestService.For<ICognitoRestApi>(new HttpClient(new HttpLoggingHandler())
             {
@@ -51,10 +56,13 @@ namespace Authentication.Shared.Services
                 BaseAddress = new Uri(Configurations.Cognito.AWSRestUrl)
             });
 
-            var awsCredentials = new Amazon.Runtime.BasicAWSCredentials(Configurations.Cognito.CognitoKey, Configurations.Cognito.CognitoSecret);
+            var awsCredentials = new BasicAWSCredentials(Configurations.Cognito.CognitoKey, Configurations.Cognito.CognitoSecret);
             provider = new AmazonCognitoIdentityProviderClient(awsCredentials, RegionEndpoint.GetBySystemName(Configurations.Cognito.CognitoRegion));
+            var regionEndpoint = RegionEndpoint.GetBySystemName(Configurations.Cognito.AWSS3MainRegion);
+            amazonS3Client = new AmazonS3Client(Configurations.Cognito.CognitoKey, Configurations.Cognito.CognitoSecret, regionEndpoint);
         }
 
+        #region Cognito
         public async Task SetAccountEable(string id, bool enabled)
         {
             if(enabled)
@@ -340,6 +348,23 @@ namespace Authentication.Shared.Services
             }
         }
 
+        public async Task<string> GetUserGroup(string id) 
+        {
+            var groupsResponse = await provider.AdminListGroupsForUserAsync(new AdminListGroupsForUserRequest
+                {
+                    Username = id,
+                    UserPoolId = Configurations.Cognito.CognitoPoolId,
+                }
+            );
+
+            if(groupsResponse.Groups.Count > 0) 
+            {
+                return groupsResponse.Groups[0].GroupName;
+            }
+
+            return "";
+        }
+
         public async Task UpdateUserGroup(string id, string groupName)
         {
             var groupsResponse = await provider.AdminListGroupsForUserAsync(new AdminListGroupsForUserRequest
@@ -473,6 +498,23 @@ namespace Authentication.Shared.Services
         {
             user.Attributes.Remove(user.Attributes.Find(x => x.Name == attribute));
         }
+
+        #endregion
+
+        #region S3
+        public string GeneratePreSignedURL(string bucketName, string objectKey)
+        {
+            var request = new GetPreSignedUrlRequest
+            {
+                BucketName = bucketName,
+                Key = objectKey,
+                Expires = DateTime.UtcNow.AddMinutes(5),
+                Verb = HttpVerb.PUT
+            };
+
+            return amazonS3Client.GetPreSignedURL(request);
+        }
+        #endregion
     }
 }
 

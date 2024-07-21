@@ -144,7 +144,7 @@ namespace Authentication
 
         private async Task<IActionResult> ProcessWhatsappRequest(ILogger log, string phone, string email, string name, string country, string ipAddress, string language, string appId, string signInToken, bool autoSignInTokenValid)
         {
-            var user = await CognitoService.Instance.FindUserByPhone(phone);
+            var user = await AWSService.Instance.FindUserByPhone(phone);
             var existing = true;
             var placeholderEmail = phone + Configurations.Whatsapp.PlaceholderEmail;
             var userEmail = string.IsNullOrWhiteSpace(email) ? placeholderEmail : email;
@@ -152,7 +152,7 @@ namespace Authentication
             if (user == null)
             {
                 // if user with phone not exist, then create a new one with place holder email
-                var (exist, newUser) = await CognitoService.Instance.FindOrCreateUser(userEmail, name, country, ipAddress, phone: phone, forceCreate: string.IsNullOrWhiteSpace(email));
+                var (exist, newUser) = await AWSService.Instance.FindOrCreateUser(userEmail, name, country, ipAddress, phone: phone, forceCreate: string.IsNullOrWhiteSpace(email));
                 user = newUser;
                 existing = exist;
 
@@ -160,27 +160,27 @@ namespace Authentication
                 {
                     // update phone, country and ipadress if needed
                     var updateParams = new Dictionary<string, string>();
-                    if (!string.IsNullOrWhiteSpace(country) && CognitoService.Instance.GetUserAttributeValue(user, "custom:country") != country)
+                    if (!string.IsNullOrWhiteSpace(country) && AWSService.Instance.GetUserAttributeValue(user, "custom:country") != country)
                     {
                         updateParams["custom:country"] = country;
                     }
 
-                    if (!string.IsNullOrWhiteSpace(ipAddress) && CognitoService.Instance.GetUserAttributeValue(user, "custom:ipAddress") != ipAddress)
+                    if (!string.IsNullOrWhiteSpace(ipAddress) && AWSService.Instance.GetUserAttributeValue(user, "custom:ipAddress") != ipAddress)
                     {
                         updateParams["custom:ipAddress"] = ipAddress;
                     }
 
-                    if (!string.IsNullOrWhiteSpace(phone) && CognitoService.Instance.GetUserAttributeValue(user, "phone_number") != phone)
+                    if (!string.IsNullOrWhiteSpace(phone) && AWSService.Instance.GetUserAttributeValue(user, "phone_number") != phone)
                     {
                         updateParams["phone_number"] = phone;
                     }
 
-                    await CognitoService.Instance.UpdateUser(user.Username, updateParams, !user.Enabled);
+                    await AWSService.Instance.UpdateUser(user.Username, updateParams, !user.Enabled);
                 }
             }
             else
             {
-                var accountEmail = CognitoService.Instance.GetUserAttributeValue(user, "email");
+                var accountEmail = AWSService.Instance.GetUserAttributeValue(user, "email");
                 if(accountEmail != null && !string.IsNullOrWhiteSpace(email) && accountEmail != userEmail)
                 {
                     return CreateErrorResponse($"phone number is existing on another account");
@@ -192,28 +192,28 @@ namespace Authentication
             if(autoSignInTokenValid)
             {
                 // check sign in token is in expired list
-                var currentTokens = CognitoService.Instance.GetUserAttributeValue(user, "custom:tokens");
+                var currentTokens = AWSService.Instance.GetUserAttributeValue(user, "custom:tokens");
                 if (currentTokens?.Contains(signInToken) == true)
                 {
                     return CreateErrorResponse("sign_in_token attribute is expired");
                 }
 
-                CognitoService.Instance.RemoveAttribute(user, "custom:tokens");
-                var passcode = await CognitoService.Instance.RequestPasscode(userEmail, language, appId: appId, phone: phone, sendType: "whatsapp", returnPasscode: true);
+                AWSService.Instance.RemoveAttribute(user, "custom:tokens");
+                var passcode = await AWSService.Instance.RequestPasscode(userEmail, language, appId: appId, phone: phone, sendType: "whatsapp", returnPasscode: true);
                 return new JsonResult(new { success = true, exist = existing, user, passcode }) { StatusCode = StatusCodes.Status200OK };
             }
 
             // send passcode to whatsapp
-            await CognitoService.Instance.RequestPasscode(userEmail, language, appId: appId, phone: phone, sendType: "whatsapp");
+            await AWSService.Instance.RequestPasscode(userEmail, language, appId: appId, phone: phone, sendType: "whatsapp");
             log.LogInformation($"Send OTP into whatsapp {phone}");
             // Success, return user info
-            CognitoService.Instance.RemoveAttribute(user, "custom:tokens");
+            AWSService.Instance.RemoveAttribute(user, "custom:tokens");
             return new JsonResult(new { success = true, exist = existing, user }) { StatusCode = StatusCodes.Status200OK };
         }
 
         private async Task<IActionResult> ProcessCognitoRequest(ILogger log, string email, string name, string country, string ipAddress, bool requestPasscode, string language, string appId, string signInToken, bool autoSignInTokenValid)
         {
-            var (exist, user) = await CognitoService.Instance.FindOrCreateUser(email, name, country, ipAddress);
+            var (exist, user) = await AWSService.Instance.FindOrCreateUser(email, name, country, ipAddress);
             // there is an error when creating user
             if (user == null)
             {
@@ -225,39 +225,39 @@ namespace Authentication
             {
                 // update country and ipadress if needed
                 var updateParams = new Dictionary<string, string>();
-                if (!string.IsNullOrWhiteSpace(country) && CognitoService.Instance.GetUserAttributeValue(user, "custom:country") != country)
+                if (!string.IsNullOrWhiteSpace(country) && AWSService.Instance.GetUserAttributeValue(user, "custom:country") != country)
                 {
                     updateParams["custom:country"] = country;
                 }
 
-                if (!string.IsNullOrWhiteSpace(ipAddress) && CognitoService.Instance.GetUserAttributeValue(user, "custom:ipAddress") != ipAddress)
+                if (!string.IsNullOrWhiteSpace(ipAddress) && AWSService.Instance.GetUserAttributeValue(user, "custom:ipAddress") != ipAddress)
                 {
                     updateParams["custom:ipAddress"] = ipAddress;
                 }
 
-                await CognitoService.Instance.UpdateUser(user.Username, updateParams, !user.Enabled);
+                await AWSService.Instance.UpdateUser(user.Username, updateParams, !user.Enabled);
                 log.LogInformation($"User ${email} exists, {ipAddress}, {country}");
 
                 if (autoSignInTokenValid)
                 {
                     // check sign in token is in expired list
-                    var currentTokens = CognitoService.Instance.GetUserAttributeValue(user, "custom:tokens");
+                    var currentTokens = AWSService.Instance.GetUserAttributeValue(user, "custom:tokens");
                     if (currentTokens?.Contains(signInToken) == true)
                     {
                         return CreateErrorResponse("sign_in_token attribute is expired");
                     }
 
-                    CognitoService.Instance.RemoveAttribute(user, "custom:tokens");
-                    var passcode = await CognitoService.Instance.RequestPasscode(email, language, appId: appId, disableEmail: true);
+                    AWSService.Instance.RemoveAttribute(user, "custom:tokens");
+                    var passcode = await AWSService.Instance.RequestPasscode(email, language, appId: appId, disableEmail: true);
                     return new JsonResult(new { success = true, exist, user, passcode }) { StatusCode = StatusCodes.Status200OK };
                 }
 
                 if (requestPasscode)
                 {
-                    await CognitoService.Instance.RequestPasscode(email, language, appId: appId);
+                    await AWSService.Instance.RequestPasscode(email, language, appId: appId);
                 }
 
-                CognitoService.Instance.RemoveAttribute(user, "custom:tokens");
+                AWSService.Instance.RemoveAttribute(user, "custom:tokens");
                 return new JsonResult(new { success = true, exist, user }) { StatusCode = StatusCodes.Status200OK };
             }
             else
@@ -285,24 +285,24 @@ namespace Authentication
             if (autoSignInTokenValid)
             {
                 // check sign in token is in expired list
-                var currentTokens = CognitoService.Instance.GetUserAttributeValue(user, "custom:tokens");
+                var currentTokens = AWSService.Instance.GetUserAttributeValue(user, "custom:tokens");
                 if (currentTokens?.Contains(signInToken) == true)
                 {
                     return CreateErrorResponse("sign_in_token attribute is expired");
                 }
 
-                CognitoService.Instance.RemoveAttribute(user, "custom:tokens");
-                var passcode = await CognitoService.Instance.RequestPasscode(email, language, appId: appId, disableEmail: true);
+                AWSService.Instance.RemoveAttribute(user, "custom:tokens");
+                var passcode = await AWSService.Instance.RequestPasscode(email, language, appId: appId, disableEmail: true);
                 return new JsonResult(new { success = true, exist, user, passcode }) { StatusCode = StatusCodes.Status200OK };
             }
 
             if (requestPasscode)
             {
-                await CognitoService.Instance.RequestPasscode(email, language, appId: appId);
+                await AWSService.Instance.RequestPasscode(email, language, appId: appId);
             }
 
             // Success, return user info
-            CognitoService.Instance.RemoveAttribute(user, "custom:tokens");
+            AWSService.Instance.RemoveAttribute(user, "custom:tokens");
             return new JsonResult(new { success = true, exist, user }) { StatusCode = StatusCodes.Status200OK };
         }
     }    
