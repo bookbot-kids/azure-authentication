@@ -19,19 +19,6 @@ namespace Authentication
           [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
           ILogger log)
         {
-            string refreshToken = req.Query["refresh_token"];
-            if (string.IsNullOrWhiteSpace(refreshToken))
-            {
-                return CreateErrorResponse("refresh_token is missing", StatusCodes.Status403Forbidden);
-            }
-
-            // cognito authentication
-            var adToken = await AWSService.Instance.GetAccessToken(refreshToken);
-            if (adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
-            {
-                return CreateErrorResponse($"refresh_token is invalid: {refreshToken} ", StatusCodes.Status401Unauthorized);
-            }
-
             log.LogInformation("S3StorageUpload processed a request.");
 
             // Parse the request body
