@@ -73,6 +73,14 @@ namespace Authentication
                             return CreateErrorResponse("Upload operation timed out", StatusCodes.Status408RequestTimeout);
                         }
                     }
+                    catch (System.Runtime.InteropServices.COMException)
+                    {
+                        log.LogWarning($"Upload failed from client. Attempt {i + 1} of {MaxRetries}");
+                        if (i == MaxRetries - 1)
+                        {
+                            return CreateErrorResponse("Upload failed from client", StatusCodes.Status417ExpectationFailed);
+                        }
+                    }
                     catch (HttpRequestException ex)
                     {
                         log.LogWarning($"HTTP request failed. Attempt {i + 1} of {MaxRetries}. Error: {ex.Message}");
