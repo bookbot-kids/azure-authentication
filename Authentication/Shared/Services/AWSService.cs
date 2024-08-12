@@ -411,7 +411,7 @@ namespace Authentication.Shared.Services
             await provider.AdminAddUserToGroupAsync(request);
         }
 
-        public async Task<string> RequestPasscode(string email, string language, bool disableEmail = false, string appId = "", string phone = "", string sendType = "email", bool returnPasscode = false)
+        public async Task<string> RequestPasscode(string email, string language, bool disableEmail = false, string appId = "", string phone = "", string sendType = "email", bool returnPasscode = false, string linkType = "firebase")
         {
             if(string.IsNullOrWhiteSpace(language))
             {
@@ -426,6 +426,7 @@ namespace Authentication.Shared.Services
                     {"disableEmail", disableEmail == true? "true": "false" },
                     {"returnPasscode", returnPasscode == true? "true": "false" },
                     {"sender_type", sendType },
+                    {"link_type", linkType },
                 };
 
             if(!string.IsNullOrWhiteSpace(appId))

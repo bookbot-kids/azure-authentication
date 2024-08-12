@@ -51,6 +51,7 @@ namespace Authentication
 
             string source = req.Query["source"];
             string language = req.Query["language"];
+            string linkType = req.Query["link_type"];
             log.LogInformation($"Check account for user {email}, source: {source}");
             string signInToken = req.Query["sign_in_token"];
             var autoSignInTokenValid = false;
@@ -113,7 +114,7 @@ namespace Authentication
                         }
 
                         bool requestPasscode = req.Query["request_passcode"] == "true";
-                        return await ProcessCognitoRequest(log, email, name, country, ipAddress, requestPasscode, language, appId, signInToken, autoSignInTokenValid);
+                        return await ProcessCognitoRequest(log, email, name, country, ipAddress, requestPasscode, language, appId, signInToken, autoSignInTokenValid, linkType);
                     }
                 case "whatsapp":
                     {
@@ -135,14 +136,14 @@ namespace Authentication
                         }
 
                         log.LogInformation($"Check account for user {phone}, source: {source}");
-                        return await ProcessWhatsappRequest(log, phone, email, name, country, ipAddress, language, appId, signInToken, autoSignInTokenValid);
+                        return await ProcessWhatsappRequest(log, phone, email, name, country, ipAddress, language, appId, signInToken, autoSignInTokenValid, linkType);
                     }
                 default:
                     throw new Exception($"{email} has invalid source {source}");
             }
         }
 
-        private async Task<IActionResult> ProcessWhatsappRequest(ILogger log, string phone, string email, string name, string country, string ipAddress, string language, string appId, string signInToken, bool autoSignInTokenValid)
+        private async Task<IActionResult> ProcessWhatsappRequest(ILogger log, string phone, string email, string name, string country, string ipAddress, string language, string appId, string signInToken, bool autoSignInTokenValid, string linkType)
         {
             var user = await AWSService.Instance.FindUserByPhone(phone);
             var existing = true;
@@ -199,19 +200,19 @@ namespace Authentication
                 }
 
                 AWSService.Instance.RemoveAttribute(user, "custom:tokens");
-                var passcode = await AWSService.Instance.RequestPasscode(userEmail, language, appId: appId, phone: phone, sendType: "whatsapp", returnPasscode: true);
+                var passcode = await AWSService.Instance.RequestPasscode(userEmail, language, appId: appId, phone: phone, sendType: "whatsapp", returnPasscode: true, linkType: linkType);
                 return new JsonResult(new { success = true, exist = existing, user, passcode }) { StatusCode = StatusCodes.Status200OK };
             }
 
             // send passcode to whatsapp
-            await AWSService.Instance.RequestPasscode(userEmail, language, appId: appId, phone: phone, sendType: "whatsapp");
+            await AWSService.Instance.RequestPasscode(userEmail, language, appId: appId, phone: phone, sendType: "whatsapp", linkType: linkType);
             log.LogInformation($"Send OTP into whatsapp {phone}");
             // Success, return user info
             AWSService.Instance.RemoveAttribute(user, "custom:tokens");
             return new JsonResult(new { success = true, exist = existing, user }) { StatusCode = StatusCodes.Status200OK };
         }
 
-        private async Task<IActionResult> ProcessCognitoRequest(ILogger log, string email, string name, string country, string ipAddress, bool requestPasscode, string language, string appId, string signInToken, bool autoSignInTokenValid)
+        private async Task<IActionResult> ProcessCognitoRequest(ILogger log, string email, string name, string country, string ipAddress, bool requestPasscode, string language, string appId, string signInToken, bool autoSignInTokenValid, string linkType)
         {
             var (exist, user) = await AWSService.Instance.FindOrCreateUser(email, name, country, ipAddress);
             // there is an error when creating user
@@ -248,13 +249,13 @@ namespace Authentication
                     }
 
                     AWSService.Instance.RemoveAttribute(user, "custom:tokens");
-                    var passcode = await AWSService.Instance.RequestPasscode(email, language, appId: appId, disableEmail: true);
+                    var passcode = await AWSService.Instance.RequestPasscode(email, language, appId: appId, disableEmail: true, linkType: linkType);
                     return new JsonResult(new { success = true, exist, user, passcode }) { StatusCode = StatusCodes.Status200OK };
                 }
 
                 if (requestPasscode)
                 {
-                    await AWSService.Instance.RequestPasscode(email, language, appId: appId);
+                    await AWSService.Instance.RequestPasscode(email, language, appId: appId, linkType: linkType);
                 }
 
                 AWSService.Instance.RemoveAttribute(user, "custom:tokens");
@@ -292,13 +293,13 @@ namespace Authentication
                 }
 
                 AWSService.Instance.RemoveAttribute(user, "custom:tokens");
-                var passcode = await AWSService.Instance.RequestPasscode(email, language, appId: appId, disableEmail: true);
+                var passcode = await AWSService.Instance.RequestPasscode(email, language, appId: appId, disableEmail: true, linkType: linkType);
                 return new JsonResult(new { success = true, exist, user, passcode }) { StatusCode = StatusCodes.Status200OK };
             }
 
             if (requestPasscode)
             {
-                await AWSService.Instance.RequestPasscode(email, language, appId: appId);
+                await AWSService.Instance.RequestPasscode(email, language, appId: appId, linkType: linkType);
             }
 
             // Success, return user info
