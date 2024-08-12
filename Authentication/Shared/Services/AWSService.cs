@@ -509,7 +509,7 @@ namespace Authentication.Shared.Services
             {
                 BucketName = bucketName,
                 Key = objectKey,
-                Expires = DateTime.UtcNow.AddMinutes(5),
+                Expires = DateTime.UtcNow.AddMinutes(10),
                 Verb = HttpVerb.PUT
             };
 
