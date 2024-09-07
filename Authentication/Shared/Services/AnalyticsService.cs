@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Authentication.Shared.Library;
+using Microsoft.Azure.Cosmos;
 using Refit;
 
 namespace Authentication.Shared.Services
@@ -23,21 +25,50 @@ namespace Authentication.Shared.Services
 
         public static AnalyticsService Instance { get; } = new AnalyticsService();
         private IAnalyticsApi analyticsApi;
+        private DataService dataService;
 
         private AnalyticsService()
         {
             var httpClient = new HttpClient(new HttpLoggingHandler()) { BaseAddress = new Uri(Configurations.Analytics.AnalyticsUrl) };
             analyticsApi = RestService.For<IAnalyticsApi>(httpClient);
+            dataService = new DataService();
         }
 
         public async Task SendEvent(Dictionary<string, object> data)
         {
-            var body = new Dictionary<string, object>
+            string uuid = Guid.NewGuid().ToString();
+            long timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            dynamic item = new
             {
-                {"triggerAction", data }
+                id = uuid,
+                createdAt = timestamp,
+                updatedAt = timestamp,
+                type = "analytics",
+                version = 1,
+                eventData = new { },
+                triggerAction = data,
+                partition = "default",
+                processed = false
             };
-            var response = await analyticsApi.SendEvent(Configurations.Analytics.AnalyticsToken, body);
-            response.EnsureSuccessStatusCode();
+
+            await dataService.CreateDocument("Event", item);
+        }
+
+        public async Task SendEventSilent(string type, Dictionary<string, object> dict)
+        {
+            try
+            {
+                var task = SendEvent(new Dictionary<string, object>
+                {
+
+                    {
+                       type, dict
+                    },
+                });
+                await HttpHelper.TimeoutAfter(task, TimeSpan.FromSeconds(3));
+            }
+            catch (TimeoutException) { }
         }
     }
 }

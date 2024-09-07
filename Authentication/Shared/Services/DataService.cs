@@ -55,6 +55,12 @@ namespace Authentication.Shared.Services
             await container.UpsertItemAsync(doc);
         }
 
+        public async Task CreateDocument(string table, dynamic doc)
+        {
+            var container = client.GetDatabase(Configurations.Cosmos.DatabaseId).GetContainer(table);
+            await container.CreateItemAsync(doc);
+        }
+
         public async Task DeleteById(string table, string id, string partition, bool ignoreNotFound = false)
         {
             if (string.IsNullOrWhiteSpace(partition))
