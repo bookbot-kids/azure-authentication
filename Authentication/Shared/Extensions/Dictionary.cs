@@ -26,12 +26,24 @@ namespace Extensions
             dictionary.Add(key, value);
         }
 
-        public static TValue GetOrDefault<TKey, TValue>(this IDictionary<TKey, TValue> dictionary,
-         TKey key,
-         TValue defaultValue)
+        public static TValue GetOrDefault<TValue>(this IDictionary<string, TValue> dictionary,
+         string key,
+         TValue defaultValue, bool ignoreCase = false)
         {
-            TValue value;
-            return dictionary.TryGetValue(key, out value) ? value : defaultValue;
+            if (ignoreCase)
+            {
+                var comparer = StringComparer.OrdinalIgnoreCase;
+                foreach (var pair in dictionary)
+                {
+                    if (comparer.Equals(pair.Key, key))
+                    {
+                        return pair.Value;
+                    }
+                }
+                return defaultValue;
+            }
+
+            return dictionary.TryGetValue(key, out var value) ? value : defaultValue;
         }
 
         /// <summary>
