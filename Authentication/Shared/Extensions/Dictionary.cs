@@ -42,12 +42,11 @@ namespace Extensions
         /// <param name="dictionary"></param>
         /// <param name="toRemove"></param>
         /// <returns></returns>
-        public static Dictionary<TKey, TValue> Export<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, List<TKey> toRemove)
+        public static Dictionary<string, TValue> Export<TValue>(this IDictionary<string, TValue> dictionary, List<string> toRemove, bool ignoreCase = false)
         {
-            return dictionary.Where(pair => !toRemove.Contains(pair.Key))
+            return dictionary.Where(pair => !toRemove.Contains(ignoreCase? pair.Key.ToLower(): pair.Key))
                                  .ToDictionary(pair => pair.Key,
                                                pair => pair.Value);
         }
-
     }
 }
