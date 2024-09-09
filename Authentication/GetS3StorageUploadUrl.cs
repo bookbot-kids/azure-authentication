@@ -20,6 +20,7 @@ namespace Authentication
 
             // Parse the request body
             var uploadPath = req.Query["upload_path"];
+            var forDownload = req.Query["for_download"] == "true";
 
             if (string.IsNullOrEmpty(uploadPath))
             {
@@ -32,7 +33,7 @@ namespace Authentication
             }
 
             // Generate pre-signed URL
-            var presignedUrl = AWSService.Instance.GeneratePreSignedURL(Configurations.Cognito.AWSS3MainBucket, uploadPath);
+            var presignedUrl = AWSService.Instance.GeneratePreSignedURL(Configurations.Cognito.AWSS3MainBucket, uploadPath, forDownload);
             return new JsonResult(new { success = true, url = presignedUrl }) { StatusCode = StatusCodes.Status200OK };
         }
     }

@@ -43,7 +43,7 @@ namespace Authentication
                 }
 
                 // Generate pre-signed URL
-                var presignedUrl = AWSService.Instance.GeneratePreSignedURL(Configurations.Cognito.AWSS3MainBucket, uploadPath);
+                var presignedUrl = AWSService.Instance.GeneratePreSignedURL(Configurations.Cognito.AWSS3MainBucket, uploadPath, false);
 
                 // Implement retry logic
                 for (int i = 0; i < MaxRetries; i++)

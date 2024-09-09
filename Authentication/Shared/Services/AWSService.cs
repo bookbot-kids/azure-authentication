@@ -503,14 +503,14 @@ namespace Authentication.Shared.Services
         #endregion
 
         #region S3
-        public string GeneratePreSignedURL(string bucketName, string objectKey)
+        public string GeneratePreSignedURL(string bucketName, string objectKey, bool isDownload)
         {
             var request = new GetPreSignedUrlRequest
             {
                 BucketName = bucketName,
                 Key = objectKey,
-                Expires = DateTime.UtcNow.AddMinutes(10),
-                Verb = HttpVerb.PUT
+                Expires = DateTime.UtcNow.AddMinutes(30),
+                Verb = isDownload ? HttpVerb.GET : HttpVerb.PUT,
             };
 
             return amazonS3Client.GetPreSignedURL(request);
