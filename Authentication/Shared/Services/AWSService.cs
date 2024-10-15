@@ -350,6 +350,11 @@ namespace Authentication.Shared.Services
 
         public async Task<string> GetUserGroup(string id) 
         {
+            if(id == null)
+            {
+                return "";
+            }
+
             var groupsResponse = await provider.AdminListGroupsForUserAsync(new AdminListGroupsForUserRequest
                 {
                     Username = id,
@@ -490,9 +495,9 @@ namespace Authentication.Shared.Services
             return response.HttpStatusCode == System.Net.HttpStatusCode.OK;
         }
 
-        public string GetUserAttributeValue( UserType user, string name)
+        public string GetUserAttributeValue(UserType user, string name)
         {
-            return user.Attributes.FirstOrDefault(x => x.Name == name)?.Value;
+            return user?.Attributes.FirstOrDefault(x => x.Name == name)?.Value;
         }
 
         public void RemoveAttribute(UserType user, string attribute)

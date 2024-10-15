@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Authentication.Shared.Library;
-using Microsoft.Azure.Cosmos;
 using Refit;
 
 namespace Authentication.Shared.Services

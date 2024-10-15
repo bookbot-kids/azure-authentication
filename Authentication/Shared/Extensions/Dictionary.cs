@@ -60,5 +60,19 @@ namespace Extensions
                                  .ToDictionary(pair => pair.Key,
                                                pair => pair.Value);
         }
+
+        /// <summary>
+        /// Remove null or empty string item
+        /// </summary>
+        /// <typeparam name="TValue"></typeparam>
+        /// <param name="dict"></param>
+        /// <returns></returns>
+        public static Dictionary<string, TValue> RemoveNullOrWhiteSpace<TValue>(this IDictionary<string, TValue> dict)
+        {
+            return dict.Where(pair =>
+                !(pair.Value == null ||
+                  (pair.Value is string stringValue && string.IsNullOrWhiteSpace(stringValue))))
+                .ToDictionary(pair => pair.Key, pair => pair.Value);
+        }
     }
 }
