@@ -31,7 +31,7 @@ namespace Authentication.Shared.Services
 
         private string GenerateSecretToken(string clientId)
         {
-            return TokenService.GenerateAppleToken(Configurations.Apple.AppleSecret, Configurations.Apple.AppleClientId, clientId,
+            return TokenService.GenerateAppleTokenV2(Configurations.Apple.AppleSecret, Configurations.Apple.AppleClientId, clientId,
                 Configurations.Apple.AppleTeamId, "https://appleid.apple.com", DateTime.UtcNow.AddDays(1));
         }
 

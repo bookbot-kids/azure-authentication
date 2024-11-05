@@ -255,6 +255,60 @@ namespace Authentication.Shared.Services
             return tokenHandler.WriteToken(token);
         }
 
+        public static string GenerateAppleTokenV2(string secret, string keyId, string sub, string iss, string aud, DateTime expires)
+        {
+            // Remove PEM headers and footers
+            string pemHeader = "-----BEGIN PRIVATE KEY-----";
+            string pemFooter = "-----END PRIVATE KEY-----";
+
+            if (secret.Contains(pemHeader) && secret.Contains(pemFooter))
+            {
+                int start = secret.IndexOf(pemHeader) + pemHeader.Length;
+                int end = secret.IndexOf(pemFooter, start);
+                secret = secret.Substring(start, end - start);
+                secret = secret.Replace("\r", "").Replace("\n", "").Trim();
+            }
+
+            // Decode the Base64 string
+            byte[] keyAsBytes = Convert.FromBase64String(secret);
+
+            // Import the private key
+            using var prvKey = ECDsa.Create();
+            try
+            {
+                prvKey.ImportPkcs8PrivateKey(keyAsBytes, out _);
+            }
+            catch (Exception)
+            {
+                prvKey.ImportECPrivateKey(keyAsBytes, out _);
+            }
+
+            // Create the security key
+            var securityKey = new ECDsaSecurityKey(prvKey)
+            {
+                KeyId = keyId // Important to set the KeyId here
+            };
+
+            // Create signing credentials
+            var signingCredentials = new SigningCredentials(securityKey, SecurityAlgorithms.EcdsaSha256);
+
+            // Create JWT token
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Expires = expires,
+                Issuer = iss,
+                Audience = aud,
+                SigningCredentials = signingCredentials,
+                Subject = new ClaimsIdentity(new[] { new Claim("sub", sub) }),
+            };
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var token = tokenHandler.CreateJwtSecurityToken(tokenDescriptor);
+
+            return tokenHandler.WriteToken(token);
+        }
+
+
         public static IDictionary<string, object> DecodeJWTToken(string jwtToken)
         {
             try

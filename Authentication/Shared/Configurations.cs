@@ -26,27 +26,27 @@ namespace Authentication.Shared
             /// <summary>
             /// The partition key
             /// </summary>
-            public static readonly string PartitionKey = Configuration["PartitionKey"];
+            public static string PartitionKey => Configuration["PartitionKey"];
 
             /// <summary>
             /// Default partition
             /// </summary>
-            public static readonly string DefaultPartition = Configuration["DefaultPartition"];
+            public static string DefaultPartition => Configuration["DefaultPartition"];
 
             /// <summary>
             /// Cosmos database id
             /// </summary>
-            public static readonly string DatabaseId = Configuration["DatabaseId"];
+            public static string DatabaseId => Configuration["DatabaseId"];
 
             /// <summary>
             /// Cosmos master key
             /// </summary>
-            public static readonly string DatabaseMasterKey = Configuration["DatabaseMasterKey"];
+            public static string DatabaseMasterKey => Configuration["DatabaseMasterKey"];
 
             /// <summary>
             /// Cosmos database url
             /// </summary>
-            public static readonly string DatabaseUrl = Configuration["DatabaseUrl"];
+            public static string DatabaseUrl => Configuration["DatabaseUrl"];
 
             /// <summary>
             /// The permissions that can create
@@ -59,9 +59,9 @@ namespace Authentication.Shared
             "id-read-write"
             };
 
-            public static readonly string[] UserTablesToClear = (Configuration["UserTablesToClear"] ?? "").Split(",");
+            public static string[] UserTablesToClear => (Configuration["UserTablesToClear"] ?? "").Split(",");
 
-            public static readonly bool IgnoreConnectionPermission = bool.Parse(Configuration["IgnoreConnectionPermission"] ?? "false");
+            public static bool IgnoreConnectionPermission => bool.Parse(Configuration["IgnoreConnectionPermission"] ?? "false");
         }
 
         /// <summary>
@@ -112,27 +112,27 @@ namespace Authentication.Shared
             /// <summary>
             /// Tenant id
             /// </summary>
-            public static readonly string TenantId = Configuration["TenantId"];
+            public static string TenantId => Configuration["TenantId"];
 
             /// <summary>
             /// Tenant name
             /// </summary>
-            public static readonly string TenantName = Configuration["TenantName"];
+            public static string TenantName => Configuration["TenantName"];
 
             /// <summary>
             /// admin client key
             /// </summary>
-            public static readonly string AdminClientId = Configuration["AdminClientId"];
+            public static string AdminClientId => Configuration["AdminClientId"];
 
             /// <summary>
             /// Admin secret key
             /// </summary>
-            public static readonly string AdminClientSecret = Configuration["AdminClientSecret"];
+            public static string AdminClientSecret => Configuration["AdminClientSecret"];
 
             /// <summary>
             /// Secret key to generate password
             /// </summary>
-            public static readonly string PasswordSecretKey = Configuration["PasswordSecretKey"];
+            public static string PasswordSecretKey => Configuration["PasswordSecretKey"];
 
             /// <summary>
             /// The admin group name
@@ -152,7 +152,7 @@ namespace Authentication.Shared
             /// <summary>
             /// Password prefix to by pass the password complexity requirements
             /// </summary>
-            public static readonly string PasswordPrefix = Configuration["PasswordPrefix"];
+            public static string PasswordPrefix => Configuration["PasswordPrefix"];
 
             /// <summary>
             /// B2C resource url
@@ -162,24 +162,24 @@ namespace Authentication.Shared
             /// <summary>
             /// ROPC auth policy
             /// </summary>
-            public static readonly string AuthPolicy = Configuration["AuthPolicy"];
+            public static string AuthPolicy => Configuration["AuthPolicy"];
 
             /// <summary>
             /// Sign in sign up policy
             /// </summary>
-            public static readonly string SignInSignUpPolicy = Configuration["SignInSignUpPolicy"];
+            public static string SignInSignUpPolicy => Configuration["SignInSignUpPolicy"];
 
             /// <summary>
             /// B2C client id
             /// </summary>
-            public static readonly string B2CClientId = Configuration["B2CClientId"];
+            public static string B2CClientId => Configuration["B2CClientId"];
 
             public static readonly string GraphApiUrl = "https://graph.microsoft.com/v1.0";
 
             /// <summary>
             /// Test email domain
             /// </summary>
-            public static readonly string EmailTestDomain = Configuration["EmailTestDomain"] ?? "[######]"; // default is invalid domain
+            public static string EmailTestDomain => Configuration["EmailTestDomain"] ?? "[######]"; // default is invalid domain
         }
 
         /// <summary>
@@ -190,19 +190,19 @@ namespace Authentication.Shared
             /// <summary>
             /// Mobile client secret key
             /// </summary>
-            public static readonly string TokenClientSecret = Configuration["TokenClientSecret"];
+            public static string TokenClientSecret => Configuration["TokenClientSecret"];
 
             /// <summary>
             /// Token issuer
             /// </summary>
-            public static readonly string TokenIssuer = Configuration["TokenIssuer"];
+            public static string TokenIssuer => Configuration["TokenIssuer"];
 
             /// <summary>
             /// Sub domain
             /// </summary>
-            public static readonly string TokenSubject = Configuration["TokenSubject"];
+            public static string TokenSubject => Configuration["TokenSubject"];
 
-            public static readonly string SignInKey = Configuration["SignInKey"];
+            public static string SignInKey => Configuration["SignInKey"];
         }
 
         public static class Storage
@@ -210,11 +210,11 @@ namespace Authentication.Shared
             /// <summary>
             /// Storage connection string
             /// </summary>
-            public static readonly string UserStorageConnection = Configuration["UserStorageConnection"];
+            public static string UserStorageConnection => Configuration["UserStorageConnection"];
 
-            public static readonly string UserStorageContainerName = Configuration["UserStorageContainerName"];
+            public static string UserStorageContainerName => Configuration["UserStorageContainerName"];
 
-            public static readonly string MainStorageConnection = Configuration["MainStorageConnection"];
+            public static string MainStorageConnection => Configuration["MainStorageConnection"];
         }
 
         public static class Analytics
@@ -222,60 +222,60 @@ namespace Authentication.Shared
             /// <summary>
             /// analytics server url
             /// </summary>
-            public static readonly string AnalyticsUrl = Configuration["AnalyticsUrl"];
+            public static string AnalyticsUrl => Configuration["AnalyticsUrl"];
 
-            public static readonly string AnalyticsToken = Configuration["AnalyticsToken"];
+            public static string AnalyticsToken => Configuration["AnalyticsToken"];
         }
 
         public static class Cognito
         {
-            public static readonly string CognitoClientId = Configuration["CognitoClientId"];
+            public static string CognitoClientId => Configuration["CognitoClientId"];
 
-            public static readonly string CognitoUrl = Configuration["CognitoUrl"];
+            public static string CognitoUrl => Configuration["CognitoUrl"];
 
-            public static readonly string CognitoPoolId = Configuration["CognitoPoolId"];
+            public static string CognitoPoolId => Configuration["CognitoPoolId"];
 
-            public static readonly string CognitoRegion = Configuration["CognitoRegion"];
+            public static string CognitoRegion => Configuration["CognitoRegion"];
 
-            public static readonly string CognitoKey = Configuration["CognitoKey"];
+            public static string CognitoKey => Configuration["CognitoKey"];
 
-            public static readonly string CognitoSecret = Configuration["CognitoSecret"];
+            public static string CognitoSecret => Configuration["CognitoSecret"];
 
-            public static readonly string AWSRestUrl = Configuration["AWSRestUrl"];
+            public static string AWSRestUrl => Configuration["AWSRestUrl"];
 
-            public static readonly string AWSRestCode = Configuration["AWSRestCode"];
+            public static string AWSRestCode => Configuration["AWSRestCode"];
 
-            public static readonly string AWSS3MainRegion = Configuration["AWSS3MainRegion"];
+            public static string AWSS3MainRegion => Configuration["AWSS3MainRegion"];
 
-            public static readonly string AWSS3MainBucket = Configuration["AWSS3MainBucket"];
+            public static string AWSS3MainBucket => Configuration["AWSS3MainBucket"];
 
-            public static readonly string AWSS3MainPrefixPath = Configuration["AWSS3MainPrefixPath"];
+            public static string AWSS3MainPrefixPath => Configuration["AWSS3MainPrefixPath"];
         }
 
         public static class Google
         {
-            public static readonly string[] GoogleClientIds = Configuration["GoogleClientIds"].Split(";");
+            public static string[] GoogleClientIds => Configuration["GoogleClientIds"].Split(";");
         }
 
         public static class Apple
         {
-            public static readonly string AppleClientId = Configuration["AppleClientId"];
-            public static readonly string AppleTeamId = Configuration["AppleTeamId"];
-            public static readonly string AppleServiceId = Configuration["AppleServiceId"];
-            public static readonly string AppleAppId = Configuration["AppleAppId"];
-            public static readonly string AppleSecret = Configuration["AppleSecret"];
-            public static readonly string AppleRedirectUrl = Configuration["AppleRedirectUrl"];
-            public static readonly string[] AppleClientIds = Configuration["AppleClientIds"].Split(";");
+            public static string AppleClientId => Configuration["AppleClientId"];
+            public static string AppleTeamId => Configuration["AppleTeamId"];
+            public static string AppleServiceId => Configuration["AppleServiceId"];
+            public static string AppleAppId => Configuration["AppleAppId"];
+            public static string AppleSecret => Configuration["AppleSecret"];
+            public static string AppleRedirectUrl => Configuration["AppleRedirectUrl"];
+            public static string[] AppleClientIds => Configuration["AppleClientIds"].Split(";");
         }
 
         public static class Whatsapp
         {
-            public static readonly string PlaceholderEmail = Configuration["WhatsappPlaceholderEmail"];
+            public static string PlaceholderEmail => Configuration["WhatsappPlaceholderEmail"];
         }
 
         public static class DeepLink
         {
-            public static readonly string Key = Configuration["DeepLinkKey"];
+            public static string Key => Configuration["DeepLinkKey"];
         }
     }
 }
