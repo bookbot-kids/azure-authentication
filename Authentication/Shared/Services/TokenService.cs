@@ -257,56 +257,81 @@ namespace Authentication.Shared.Services
 
         public static string GenerateAppleTokenV2(string secret, string keyId, string sub, string iss, string aud, DateTime expires)
         {
-            // Remove PEM headers and footers
-            string pemHeader = "-----BEGIN PRIVATE KEY-----";
-            string pemFooter = "-----END PRIVATE KEY-----";
-
-            if (secret.Contains(pemHeader) && secret.Contains(pemFooter))
-            {
-                int start = secret.IndexOf(pemHeader) + pemHeader.Length;
-                int end = secret.IndexOf(pemFooter, start);
-                secret = secret.Substring(start, end - start);
-                secret = secret.Replace("\r", "").Replace("\n", "").Trim();
-            }
-
-            // Decode the Base64 string
-            byte[] keyAsBytes = Convert.FromBase64String(secret);
-
-            // Import the private key
-            using var prvKey = ECDsa.Create();
+            ECDsa prvKey = null;
             try
             {
-                prvKey.ImportPkcs8PrivateKey(keyAsBytes, out _);
+                // Remove PEM headers and footers
+                string pemHeader1 = "-----BEGIN PRIVATE KEY-----";
+                string pemHeader2 = "-----BEGIN EC PRIVATE KEY-----";
+                string pemFooter1 = "-----END PRIVATE KEY-----";
+                string pemFooter2 = "-----END EC PRIVATE KEY-----";
+
+                if (secret.Contains(pemHeader1) && secret.Contains(pemFooter1))
+                {
+                    int start = secret.IndexOf(pemHeader1) + pemHeader1.Length;
+                    int end = secret.IndexOf(pemFooter1, start);
+                    secret = secret.Substring(start, end - start);
+                }
+                else if (secret.Contains(pemHeader2) && secret.Contains(pemFooter2))
+                {
+                    int start = secret.IndexOf(pemHeader2) + pemHeader2.Length;
+                    int end = secret.IndexOf(pemFooter2, start);
+                    secret = secret.Substring(start, end - start);
+                }
+
+                // Remove any whitespace or line breaks
+                secret = secret.Replace("\r", "").Replace("\n", "").Trim();
+
+                // Decode the Base64 string
+                byte[] keyAsBytes = Convert.FromBase64String(secret);
+
+                // Import the private key
+                prvKey = ECDsa.Create();
+                try
+                {
+                    prvKey.ImportPkcs8PrivateKey(keyAsBytes, out _);
+                }
+                catch (Exception)
+                {
+                    prvKey.ImportECPrivateKey(keyAsBytes, out _);
+                }
+
+                // Create the security key and set the KeyId
+                var securityKey = new ECDsaSecurityKey(prvKey)
+                {
+                    KeyId = keyId
+                };
+
+                // Create signing credentials
+                var signingCredentials = new SigningCredentials(securityKey, SecurityAlgorithms.EcdsaSha256);
+
+                // Create JWT token
+                var tokenDescriptor = new SecurityTokenDescriptor
+                {
+                    Expires = expires,
+                    Issuer = iss,
+                    Audience = aud,
+                    SigningCredentials = signingCredentials,
+                    Subject = new ClaimsIdentity(new[] { new Claim("sub", sub) }),
+                };
+
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var token = tokenHandler.CreateJwtSecurityToken(tokenDescriptor);
+
+                return tokenHandler.WriteToken(token);
             }
-            catch (Exception)
+            finally
             {
-                prvKey.ImportECPrivateKey(keyAsBytes, out _);
+                if(prvKey != null)
+                {
+                    try
+                    {
+                        prvKey.Dispose();
+                    }catch(Exception) { }
+                }                 
             }
-
-            // Create the security key
-            var securityKey = new ECDsaSecurityKey(prvKey)
-            {
-                KeyId = keyId // Important to set the KeyId here
-            };
-
-            // Create signing credentials
-            var signingCredentials = new SigningCredentials(securityKey, SecurityAlgorithms.EcdsaSha256);
-
-            // Create JWT token
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Expires = expires,
-                Issuer = iss,
-                Audience = aud,
-                SigningCredentials = signingCredentials,
-                Subject = new ClaimsIdentity(new[] { new Claim("sub", sub) }),
-            };
-
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var token = tokenHandler.CreateJwtSecurityToken(tokenDescriptor);
-
-            return tokenHandler.WriteToken(token);
         }
+
 
 
         public static IDictionary<string, object> DecodeJWTToken(string jwtToken)
