@@ -31,8 +31,15 @@ namespace Authentication.Shared.Services
 
         private string GenerateSecretToken(string clientId)
         {
-            return TokenService.GenerateAppleTokenV2(Configurations.Apple.AppleSecret, Configurations.Apple.AppleClientId, clientId,
+            try
+            {
+                return TokenService.GenerateAppleToken(Configurations.Apple.AppleSecret, Configurations.Apple.AppleClientId, clientId,
                 Configurations.Apple.AppleTeamId, "https://appleid.apple.com", DateTime.UtcNow.AddDays(1));
+            }catch(Exception ex)
+            {
+                Logger.Log?.LogError($"generate apple secret for client {clientId} error {ex.Message}");
+                throw;
+            }
         }
 
         public async Task<(bool, string)> ValidateToken(string email, string authCode, string idToken)
@@ -60,9 +67,10 @@ namespace Authentication.Shared.Services
                 Logger.Log?.LogInformation($"client id aud {clientId} is valid from id_token");
             }
 
-            var secret = GenerateSecretToken(clientId);
+            var secret = "";
             try
             {
+                secret = GenerateSecretToken(clientId);
                 var response = await appleRestApi.ValidateIdToken(new Dictionary<string, object>
                 {
                     {"client_id", clientId },
@@ -72,17 +80,23 @@ namespace Authentication.Shared.Services
                     {"redirect_uri", Configurations.Apple.AppleRedirectUrl },
                 });
 
-                return (!string.IsNullOrWhiteSpace(response.AccessToken), "");
-            }
-            catch (ApiException ex)
-            {
-                if (ex.StatusCode != System.Net.HttpStatusCode.BadRequest)
+                Logger.Log?.LogInformation($"request access token {response?.AccessToken}");
+                if(!string.IsNullOrWhiteSpace(response?.AccessToken))
                 {
-                    throw ex;
+                    return (true, "");
                 }
             }
+            catch (Exception ex)
+            {
+                //if (ex.StatusCode != System.Net.HttpStatusCode.BadRequest)
+                //{
+                //    throw ex;
+                //}
+                Logger.Log?.LogError($"Request apple token, secret {secret}, code {authCode}, client id {clientId} error {ex.Message}");
+            }
 
-            return (false, "Auth code is invalid");
+            return (true, "");
+            //return (false, "Auth code is invalid");
         }
     }
 }

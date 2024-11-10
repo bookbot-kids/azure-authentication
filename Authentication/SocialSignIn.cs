@@ -128,7 +128,7 @@ namespace Authentication
                 }
 
                 await AWSService.Instance.UpdateUser(user.Username, updateParams, !user.Enabled);
-                log.LogInformation($"User ${email} exists, {ipAddress}, {country}");
+                log.LogInformation($"User {email} exists, {ipAddress}, {country}");
                 var passcode = await AWSService.Instance.RequestPasscode(email, "en", disableEmail: true);
                 return new JsonResult(new { success = true, exist, user, passcode = passcode }) { StatusCode = StatusCodes.Status200OK };
             }
@@ -150,7 +150,7 @@ namespace Authentication
                 }
                 else
                 {
-                    log.LogInformation($"User ${email} is a test user, skip sending analytics");
+                    log.LogInformation($"User {email} is a test user, skip sending analytics");
                 }
             }
 
