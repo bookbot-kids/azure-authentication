@@ -28,7 +28,7 @@ namespace Authentication.Shared.Services
         private AnalyticsService()
         {
             var httpClient = new HttpClient(new HttpLoggingHandler()) { BaseAddress = new Uri(Configurations.Analytics.AnalyticsUrl) };
-            analyticsApi = RestService.For<IAnalyticsApi>(httpClient);
+            analyticsApi = RestService.For<IAnalyticsApi>(httpClient, new RefitSettings(new NewtonsoftJsonContentSerializer()));
             dataService = new DataService();
         }
 

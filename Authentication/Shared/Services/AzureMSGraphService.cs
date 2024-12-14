@@ -46,7 +46,7 @@ namespace Authentication.Shared.Services
         public AzureMSGraphService()
         {
             var client = new HttpClient(new HttpLoggingHandler()) { BaseAddress = new Uri(Configurations.AzureB2C.GraphApiUrl) };
-            graphAPI = RestService.For<MSGraphAPI>(client);
+            graphAPI = RestService.For<MSGraphAPI>(client, new RefitSettings(new NewtonsoftJsonContentSerializer()));
         }
 
         public async Task DeleteADUser(string userId)

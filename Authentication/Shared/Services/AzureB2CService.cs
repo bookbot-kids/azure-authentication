@@ -185,10 +185,10 @@ namespace Authentication.Shared.Services
         private AzureB2CService()
         {
             graphHttpClient = new HttpClient(new HttpLoggingHandler()) { BaseAddress = new Uri(Configurations.AzureB2C.GraphResource) };
-            azureGraphRestApi = RestService.For<IAzureGraphRestApi>(graphHttpClient);
+            azureGraphRestApi = RestService.For<IAzureGraphRestApi>(graphHttpClient, new RefitSettings(new NewtonsoftJsonContentSerializer()));
 
             b2cHttpClient = new HttpClient(new HttpLoggingHandler()) { BaseAddress = new Uri(Configurations.AzureB2C.B2CUrl) };
-            b2cRestApi = RestService.For<IB2CRestApi>(b2cHttpClient);
+            b2cRestApi = RestService.For<IB2CRestApi>(b2cHttpClient, new RefitSettings(new NewtonsoftJsonContentSerializer()));
         }
 
         /// <summary>

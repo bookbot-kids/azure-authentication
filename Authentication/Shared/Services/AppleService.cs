@@ -23,7 +23,7 @@ namespace Authentication.Shared.Services
             appleRestApi = RestService.For<IAppleRestApi>(new HttpClient(new HttpLoggingHandler())
             {
                 BaseAddress = new Uri("https://appleid.apple.com/auth")
-            });
+            }, new RefitSettings(new NewtonsoftJsonContentSerializer()));
         }
 
         public static AppleService Instance { get; } = new AppleService();

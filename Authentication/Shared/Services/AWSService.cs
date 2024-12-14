@@ -49,12 +49,12 @@ namespace Authentication.Shared.Services
             cognitoRestApi = RestService.For<ICognitoRestApi>(new HttpClient(new HttpLoggingHandler())
             {
                 BaseAddress = new Uri(Configurations.Cognito.CognitoUrl)
-            });
+            }, new RefitSettings(new NewtonsoftJsonContentSerializer()));
 
             awsRestApi = RestService.For<IAWSRestApi>(new HttpClient(new HttpLoggingHandler())
             {
                 BaseAddress = new Uri(Configurations.Cognito.AWSRestUrl)
-            });
+            }, new RefitSettings(new NewtonsoftJsonContentSerializer()));
 
             var awsCredentials = new BasicAWSCredentials(Configurations.Cognito.CognitoKey, Configurations.Cognito.CognitoSecret);
             provider = new AmazonCognitoIdentityProviderClient(awsCredentials, RegionEndpoint.GetBySystemName(Configurations.Cognito.CognitoRegion));
