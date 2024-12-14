@@ -31,7 +31,7 @@ namespace Authentication.Shared.Services
         private MicrosoftService()
         {
             httpClient = new HttpClient(new HttpLoggingHandler()) { BaseAddress = new Uri(Configurations.AzureB2C.MicorsoftAuthUrl) };
-            service = RestService.For<IMicrosoftRestApi>(httpClient);
+            service = RestService.For<IMicrosoftRestApi>(httpClient, new RefitSettings(new NewtonsoftJsonContentSerializer()));
         }
 
         /// <summary>
