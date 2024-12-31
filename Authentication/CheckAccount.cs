@@ -10,6 +10,8 @@ using System.Collections.Generic;
 using Authentication.Shared.Services;
 using System;
 using Authentication.Shared;
+using QRCoder;
+using System.IO;
 
 namespace Authentication
 {
@@ -265,6 +267,9 @@ namespace Authentication
             {
                 if (!email.EndsWith(Configurations.AzureB2C.EmailTestDomain))
                 {
+                    await SubscribeToEmailList(log, email, name, ipAddress, appId);
+
+                    // Send analytics tracking
                     try
                     {
                         await SendAnalytics(email, user.Username, country, ipAddress, name);
@@ -305,6 +310,53 @@ namespace Authentication
             // Success, return user info
             AWSService.Instance.RemoveAttribute(user, "custom:tokens");
             return new JsonResult(new { success = true, exist, user }) { StatusCode = StatusCodes.Status200OK };
+        }
+
+        private static async Task SubscribeToEmailList(ILogger log, string email, string name, string ipAddress, string appId)
+        {
+            // create deeplink and add to sendy
+            var expiry = DateTime.Now.AddDays(35).ToString("yyyy-MM-dd HH:mm:ss.fff");
+            var branchIOKey = Configurations.Configuration[$"BranchIOKey_{appId}"];
+            if (!string.IsNullOrWhiteSpace(branchIOKey))
+            {
+                var data = new Dictionary<string, object>
+                        {
+                             {"branch_key", branchIOKey},
+                             {"channel", Configurations.Apple.AppleServiceId},
+                             {"feature", "email"},
+                             {"campaign", "offer"},
+                             {"tags", new List<string> { "Discount" } },
+                             {"data", new Dictionary<string, object> {
+                                 {"offer", Configurations.Configuration["OfferPackage"]},
+                                 {"$canonical_url", Configurations.JWTToken.TokenIssuer},
+                                 {"expiry", expiry},
+
+                             } },
+                        };
+
+                var deepLink = await AnalyticsService.Instance.CreateDeepLink(data);
+
+                // create QRCode image
+                var filename = Guid.NewGuid().ToString() + ".png";
+                var qrcodeUrl = $"{Configurations.Configuration["CloudFlareR2Url"]}/qrcode/{filename}";
+
+                log.LogInformation($"Generate link {deepLink}, qrcode url {qrcodeUrl} for user ${email}");
+                using (QRCodeGenerator qrGenerator = new QRCodeGenerator())
+                using (QRCodeData qrCodeData = qrGenerator.CreateQrCode(deepLink, QRCodeGenerator.ECCLevel.Q))
+                using (PngByteQRCode qrCode = new PngByteQRCode(qrCodeData))
+                {
+                    byte[] qrCodeImage = qrCode.GetGraphic(10);
+                    // upload qrcode to cloudflare r2
+                    await StorageService.UpdateToCloudFlareR2(Configurations.Configuration["CloudFlareR2Key"], qrcodeUrl, qrCodeImage, "image/png");
+
+                    // Send to sendy
+                    await AnalyticsService.Instance.SubscribeToSendyList(Configurations.Analytics.SendyRegisteredListId, email, name: name, ipAddress: ipAddress, offer: deepLink, qrcode: qrcodeUrl);
+                }
+            }
+            else
+            {
+                log.LogError($"Ignore invalid appid {appId}");
+            }
         }
     }    
 }

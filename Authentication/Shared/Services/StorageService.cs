@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs;
 using Azure.Storage.Sas;
@@ -66,6 +67,26 @@ namespace Authentication.Shared.Services
             var destBlob = containerClient.GetBlobClient(dest);
             var uri = sourceBlob.Uri;
             await destBlob.StartCopyFromUriAsync(uri);
+        }
+
+        public static async Task UpdateToCloudFlareR2(string apiKey, string url, byte[] bytesData, string mimeType)
+        {
+            // Upload to Cloudflare Worker
+            using (var httpClient = new HttpClient())
+            using (var content = new ByteArrayContent(bytesData))
+            {
+                // Set headers
+                httpClient.DefaultRequestHeaders.Add("authorization", $"Bearer {apiKey}");
+                content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(mimeType);
+
+                // Make the request
+                var response = await httpClient.PutAsync(url, content);
+
+                // Ensure success
+                response.EnsureSuccessStatusCode();
+
+                await response.Content.ReadAsStringAsync();
+            }
         }
     }
 }

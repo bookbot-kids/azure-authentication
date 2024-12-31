@@ -225,6 +225,10 @@ namespace Authentication.Shared
             public static string AnalyticsUrl => Configuration["AnalyticsUrl"];
 
             public static string AnalyticsToken => Configuration["AnalyticsToken"];
+
+            public static string SendyUrl => Configuration["SendyUrl"];
+            public static string SendyKey => Configuration["SendyKey"];
+            public static string SendyRegisteredListId => Configuration["SendyRegisteredListId"];
         }
 
         public static class Cognito
