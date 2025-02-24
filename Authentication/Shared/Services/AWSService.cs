@@ -140,10 +140,17 @@ namespace Authentication.Shared.Services
 
         public async Task<UserType> FindUserByCustomId(string customId)
         {
+            if (string.IsNullOrWhiteSpace(customId))
+            {
+                Logger.Log?.LogError($"FindUserByCustomId: customId {customId} is null or empty.");
+                return null; 
+            }
+
+            var sanitizedCustomId = customId.Replace("\"", "").Trim();
             var request = new ListUsersRequest
             {
                 UserPoolId = Configurations.Cognito.CognitoPoolId,
-                Filter = $"preferred_username = \"{customId}\"",
+                Filter = $"preferred_username = \"{sanitizedCustomId}\"",
             };
             var usersResponse = await provider.ListUsersAsync(request);
             if (usersResponse.Users.Count > 0)
