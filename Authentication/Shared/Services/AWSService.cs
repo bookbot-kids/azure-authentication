@@ -201,7 +201,8 @@ namespace Authentication.Shared.Services
             return (false, "Token is invalid", null, null);
         }
 
-        public async Task<(bool, UserType)> FindOrCreateUser(string email, string name, string country, string ipAddress, string phone = null, bool forceCreate = false)
+        public async Task<(bool, UserType)> FindOrCreateUser(string email, string name,
+            string country, string ipAddress, string phone = null, bool forceCreate = false, string language = "", string os = "")
         {
             email = email.ToLower();
             var listRequest = new ListUsersRequest
@@ -217,6 +218,13 @@ namespace Authentication.Shared.Services
                 if (!string.IsNullOrWhiteSpace(name))
                 {
                     attributes.Add(new AttributeType() { Name = "name", Value = name });
+                } else
+                {
+                    name = await LLMService.Instance.GetNameFromEmail(email);
+                    if (!string.IsNullOrWhiteSpace(name))
+                    {
+                        attributes.Add(new AttributeType() { Name = "name", Value = name });
+                    }
                 }
 
                 if (!string.IsNullOrWhiteSpace(country))
@@ -232,6 +240,16 @@ namespace Authentication.Shared.Services
                 if (!string.IsNullOrWhiteSpace(phone))
                 {
                     attributes.Add(new AttributeType() { Name = "phone_number", Value = phone });
+                }
+
+                if (!string.IsNullOrWhiteSpace(language))
+                {
+                    attributes.Add(new AttributeType() { Name = "custom:language", Value = language });
+                }
+
+                if (!string.IsNullOrWhiteSpace(os))
+                {
+                    attributes.Add(new AttributeType() { Name = "custom:os", Value = os });
                 }
 
                 var userId = Guid.NewGuid().ToString();
@@ -269,7 +287,7 @@ namespace Authentication.Shared.Services
                     }
                     else
                     {
-                        throw ex;
+                        throw;
                     }
                 } catch (Amazon.Runtime.Internal.HttpErrorResponseException ex)
                 {
@@ -285,7 +303,7 @@ namespace Authentication.Shared.Services
                     else
                     {
                         Logger.Log?.LogError($"user name {phone} {email} has error {ex.Message}");
-                        throw ex;
+                        throw;
                     }
                 }
 
@@ -334,7 +352,7 @@ namespace Authentication.Shared.Services
             }
         }
 
-        public async Task UpdateUser(string id, Dictionary<string, string> attributes, bool setEable = false)
+        public async Task UpdateUser(string id, Dictionary<string, string> attributes, bool setEnable = false)
         {
             if(attributes.Count > 0)
             {
@@ -349,7 +367,7 @@ namespace Authentication.Shared.Services
                 await provider.AdminUpdateUserAttributesAsync(request);
             }
             
-            if(setEable)
+            if(setEnable)
             {
                 await SetAccountEable(id, true);
             }
@@ -474,7 +492,7 @@ namespace Authentication.Shared.Services
             {
                 if(ex.StatusCode != System.Net.HttpStatusCode.Unauthorized)
                 {
-                    throw ex;
+                    throw;
                 }
             }
 

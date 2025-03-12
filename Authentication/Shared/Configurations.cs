@@ -229,6 +229,7 @@ namespace Authentication.Shared
             public static string SendyUrl => Configuration["SendyUrl"];
             public static string SendyKey => Configuration["SendyKey"];
             public static string SendyRegisteredListId => Configuration["SendyRegisteredListId"];
+            public static string SendyTipsListId => Configuration["SendyTipsListId"];
         }
 
         public static class Cognito
@@ -280,6 +281,12 @@ namespace Authentication.Shared
         public static class DeepLink
         {
             public static string Key => Configuration["DeepLinkKey"];
+        }
+
+        public static class OpenAI
+        {
+            public static string Key => Configuration["OpenAIKey"];
+            public static string Model => Configuration["OpenAIModel"];
         }
     }
 }

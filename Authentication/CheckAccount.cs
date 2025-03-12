@@ -10,8 +10,6 @@ using System.Collections.Generic;
 using Authentication.Shared.Services;
 using System;
 using Authentication.Shared;
-using QRCoder;
-using System.IO;
 
 namespace Authentication
 {
@@ -47,13 +45,17 @@ namespace Authentication
             var ipAddress = HttpHelper.GetIpFromRequestHeaders(req);
             string country = req.Query["country"];
             email = email?.NormalizeEmail();
-
-            string name = email?.GetNameFromEmail();
+            string firstName = req.Query["first_name"];
+            string lastName = req.Query["last_name"];
+            var name = string.IsNullOrWhiteSpace(firstName) ?
+                       (string.IsNullOrWhiteSpace(lastName) ? "" : lastName) :
+                       (string.IsNullOrWhiteSpace(lastName) ? firstName : $"{firstName} {lastName}");
             string appId = req.Query["app_id"];
 
             string source = req.Query["source"];
             string language = req.Query["language"];
             string linkType = req.Query["link_type"];
+            string os = req.Query["os"];
             log.LogInformation($"Check account for user {email}, source: {source}");
             string signInToken = req.Query["sign_in_token"];
             var autoSignInTokenValid = false;
@@ -116,7 +118,7 @@ namespace Authentication
                         }
 
                         bool requestPasscode = req.Query["request_passcode"] == "true";
-                        return await ProcessCognitoRequest(log, email, name, country, ipAddress, requestPasscode, language, appId, signInToken, autoSignInTokenValid, linkType);
+                        return await ProcessCognitoRequest(log, email, name, country, ipAddress, requestPasscode, language, appId, signInToken, autoSignInTokenValid, linkType, os);
                     }
                 case "whatsapp":
                     {
@@ -138,14 +140,14 @@ namespace Authentication
                         }
 
                         log.LogInformation($"Check account for user {phone}, source: {source}");
-                        return await ProcessWhatsappRequest(log, phone, email, name, country, ipAddress, language, appId, signInToken, autoSignInTokenValid, linkType);
+                        return await ProcessWhatsappRequest(log, phone, email, name, country, ipAddress, language, appId, signInToken, autoSignInTokenValid, linkType, os);
                     }
                 default:
                     throw new Exception($"{email} has invalid source {source}");
             }
         }
 
-        private async Task<IActionResult> ProcessWhatsappRequest(ILogger log, string phone, string email, string name, string country, string ipAddress, string language, string appId, string signInToken, bool autoSignInTokenValid, string linkType)
+        private async Task<IActionResult> ProcessWhatsappRequest(ILogger log, string phone, string email, string name, string country, string ipAddress, string language, string appId, string signInToken, bool autoSignInTokenValid, string linkType, string os)
         {
             var user = await AWSService.Instance.FindUserByPhone(phone);
             var existing = true;
@@ -176,6 +178,16 @@ namespace Authentication
                     if (!string.IsNullOrWhiteSpace(phone) && AWSService.Instance.GetUserAttributeValue(user, "phone_number") != phone)
                     {
                         updateParams["phone_number"] = phone;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(language) && AWSService.Instance.GetUserAttributeValue(user, "custom:language") != language)
+                    {
+                        updateParams["custom:language"] = language;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(os) && AWSService.Instance.GetUserAttributeValue(user, "custom:os") != os)
+                    {
+                        updateParams["custom:os"] = os;
                     }
 
                     await AWSService.Instance.UpdateUser(user.Username, updateParams, !user.Enabled);
@@ -214,9 +226,9 @@ namespace Authentication
             return new JsonResult(new { success = true, exist = existing, user }) { StatusCode = StatusCodes.Status200OK };
         }
 
-        private async Task<IActionResult> ProcessCognitoRequest(ILogger log, string email, string name, string country, string ipAddress, bool requestPasscode, string language, string appId, string signInToken, bool autoSignInTokenValid, string linkType)
+        private async Task<IActionResult> ProcessCognitoRequest(ILogger log, string email, string name, string country, string ipAddress, bool requestPasscode, string language, string appId, string signInToken, bool autoSignInTokenValid, string linkType, string os)
         {
-            var (exist, user) = await AWSService.Instance.FindOrCreateUser(email, name, country, ipAddress);
+            var (exist, user) = await AWSService.Instance.FindOrCreateUser(email, name, country, ipAddress,language: language, os: os);
             // there is an error when creating user
             if (user == null)
             {
@@ -226,7 +238,7 @@ namespace Authentication
             // if user already has account
             if (exist)
             {
-                // update country and ipadress if needed
+                // update properties if needed
                 var updateParams = new Dictionary<string, string>();
                 if (!string.IsNullOrWhiteSpace(country) && AWSService.Instance.GetUserAttributeValue(user, "custom:country") != country)
                 {
@@ -236,6 +248,16 @@ namespace Authentication
                 if (!string.IsNullOrWhiteSpace(ipAddress) && AWSService.Instance.GetUserAttributeValue(user, "custom:ipAddress") != ipAddress)
                 {
                     updateParams["custom:ipAddress"] = ipAddress;
+                }
+
+                if (!string.IsNullOrWhiteSpace(language) && AWSService.Instance.GetUserAttributeValue(user, "custom:language") != language)
+                {
+                    updateParams["custom:language"] = language;
+                }
+
+                if (!string.IsNullOrWhiteSpace(os) && AWSService.Instance.GetUserAttributeValue(user, "custom:os") != os)
+                {
+                    updateParams["custom:os"] = os;
                 }
 
                 await AWSService.Instance.UpdateUser(user.Username, updateParams, !user.Enabled);
@@ -267,7 +289,25 @@ namespace Authentication
             {
                 if (!email.EndsWith(Configurations.AzureB2C.EmailTestDomain))
                 {
-                    await SubscribeToEmailList(log, email, name, ipAddress, appId);
+                    if (string.IsNullOrWhiteSpace(name))
+                    {
+                        // get from cognito first
+                        name = AWSService.Instance.GetUserAttributeValue(user, "name");
+                        if (string.IsNullOrWhiteSpace(name))
+                        {
+                            // get from LLM
+                            name = await LLMService.Instance.GetNameFromEmail(email);
+                            if (!string.IsNullOrWhiteSpace(name))
+                            {
+                                var updateParams = new Dictionary<string, string>();
+                                updateParams["name"] = name;
+                                await AWSService.Instance.UpdateUser(user.Username, updateParams);
+                            }
+                        }
+                    }
+
+                    await AnalyticsService.Instance.SubscribeToEmailList(Configurations.Analytics.SendyRegisteredListId, email, name, ipAddress, appId, language: language, country: country, os: os, role: "new");
+                    await AnalyticsService.Instance.SubscribeToEmailList(Configurations.Analytics.SendyTipsListId, email, name, ipAddress, appId, language: language, country: country, os: os, role: "new");
 
                     // Send analytics tracking
                     try
@@ -310,53 +350,6 @@ namespace Authentication
             // Success, return user info
             AWSService.Instance.RemoveAttribute(user, "custom:tokens");
             return new JsonResult(new { success = true, exist, user }) { StatusCode = StatusCodes.Status200OK };
-        }
-
-        private static async Task SubscribeToEmailList(ILogger log, string email, string name, string ipAddress, string appId)
-        {
-            // create deeplink and add to sendy
-            var expiry = DateTime.Now.AddDays(35).ToString("yyyy-MM-dd HH:mm:ss.fff");
-            var branchIOKey = Configurations.Configuration[$"BranchIOKey_{appId}"];
-            if (!string.IsNullOrWhiteSpace(branchIOKey))
-            {
-                var data = new Dictionary<string, object>
-                        {
-                             {"branch_key", branchIOKey},
-                             {"channel", Configurations.Apple.AppleServiceId},
-                             {"feature", "email"},
-                             {"campaign", "offer"},
-                             {"tags", new List<string> { "Discount" } },
-                             {"data", new Dictionary<string, object> {
-                                 {"offer", Configurations.Configuration["OfferPackage"]},
-                                 {"$canonical_url", Configurations.JWTToken.TokenIssuer},
-                                 {"expiry", expiry},
-
-                             } },
-                        };
-
-                var deepLink = await AnalyticsService.Instance.CreateDeepLink(data);
-
-                // create QRCode image
-                var filename = Guid.NewGuid().ToString() + ".png";
-                var qrcodeUrl = $"{Configurations.Configuration["CloudFlareR2Url"]}/qrcode/{filename}";
-
-                log.LogInformation($"Generate link {deepLink}, qrcode url {qrcodeUrl} for user ${email}");
-                using (QRCodeGenerator qrGenerator = new QRCodeGenerator())
-                using (QRCodeData qrCodeData = qrGenerator.CreateQrCode(deepLink, QRCodeGenerator.ECCLevel.Q))
-                using (PngByteQRCode qrCode = new PngByteQRCode(qrCodeData))
-                {
-                    byte[] qrCodeImage = qrCode.GetGraphic(10);
-                    // upload qrcode to cloudflare r2
-                    await StorageService.UpdateToCloudFlareR2(Configurations.Configuration["CloudFlareR2Key"], qrcodeUrl, qrCodeImage, "image/png");
-
-                    // Send to sendy
-                    await AnalyticsService.Instance.SubscribeToSendyList(Configurations.Analytics.SendyRegisteredListId, email, name: name, ipAddress: ipAddress, offer: deepLink, qrcode: qrcodeUrl);
-                }
-            }
-            else
-            {
-                log.LogError($"Ignore invalid appid {appId}");
-            }
         }
     }    
 }
