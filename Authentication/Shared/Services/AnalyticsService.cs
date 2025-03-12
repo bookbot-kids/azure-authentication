@@ -105,7 +105,8 @@ namespace Authentication.Shared.Services
         }
 
         public async Task SubscribeToSendyList(string listId, string email, string name = "", string ipAddress = "",
-            string offer = "", string qrcode = "", string role = "", string language = "", string country = "", string os = "")
+            string offer = "", string qrcode = "", string role = "", string language = "", string country = "", string os = "",
+            string inviteEducatorName = "", string inviteUrl = "", string inviteChildFirstName = "", string inviteChildLastName = "")
         {
             InitSendy();
             var data = new Dictionary<string, object> {
@@ -154,6 +155,26 @@ namespace Authentication.Shared.Services
                 data["OS"] = os;
             }
 
+            if (!string.IsNullOrWhiteSpace(inviteEducatorName))
+            {
+                data["Educator Name"] = inviteEducatorName;
+            }
+
+            if (!string.IsNullOrWhiteSpace(inviteChildFirstName))
+            {
+                data["Child First Name"] = inviteChildFirstName;
+            }
+
+            if (!string.IsNullOrWhiteSpace(inviteChildLastName))
+            {
+                data["Child Last Name"] = inviteChildLastName;
+            }
+
+            if (!string.IsNullOrWhiteSpace(inviteUrl))
+            {
+                data["URL"] = inviteUrl;
+            }
+
             await sendyApi.Subscribe(data);
         }
 
@@ -167,25 +188,8 @@ namespace Authentication.Shared.Services
             return url;
         }
 
-        /// <summary>
-        /// Subscribe user to sendy list.
-        /// If subscribe list not defined, it will use registered list
-        /// </summary>
-        /// <param name="subscribeList"></param>
-        /// <param name="email"></param>
-        /// <param name="name"></param>
-        /// <param name="ipAddress"></param>
-        /// <param name="appId"></param>
-        /// <param name="language"></param>
-        /// <param name="country"></param>
-        /// <param name="os"></param>
-        /// <param name="role"></param>
-        /// <returns></returns>
-        public async Task SubscribeToEmailList(
-            string subscribeList, string email, string name,
-            string ipAddress, string appId, string language, string country, string os, string role)
+        public async Task<string> CreateOfferLink(string appId)
         {
-            // create deeplink and add to sendy
             var expiry = DateTime.Now.AddDays(35).ToString("yyyy-MM-dd HH:mm:ss.fff");
             var branchIOKey = Configurations.Configuration[$"BranchIOKey_{appId}"];
             if (!string.IsNullOrWhiteSpace(branchIOKey))
@@ -205,8 +209,35 @@ namespace Authentication.Shared.Services
                              } },
                         };
 
-                var deepLink = await AnalyticsService.Instance.CreateDeepLink(data);
+                var deepLink = await CreateDeepLink(data);
+                return deepLink;
+            }
 
+            return null;
+        }
+
+        /// <summary>
+        /// Subscribe user to sendy list.
+        /// If subscribe list not defined, it will use registered list
+        /// </summary>
+        /// <param name="subscribeList"></param>
+        /// <param name="email"></param>
+        /// <param name="name"></param>
+        /// <param name="ipAddress"></param>
+        /// <param name="appId"></param>
+        /// <param name="language"></param>
+        /// <param name="country"></param>
+        /// <param name="os"></param>
+        /// <param name="role"></param>
+        /// <returns></returns>
+        public async Task<string> SubscribeNewUser(
+           string email, string name,
+            string ipAddress, string appId, string language, string country, string os, string role)
+        {
+            // create deeplink and add to sendy
+            var deepLink = await CreateOfferLink(appId);
+            if (!string.IsNullOrWhiteSpace(deepLink))
+            {
                 // create QRCode image
                 var filename = Guid.NewGuid().ToString() + ".png";
                 var qrcodeUrl = $"{Configurations.Configuration["CloudFlareR2Url"]}/qrcode/{filename}";
@@ -220,15 +251,20 @@ namespace Authentication.Shared.Services
                     // upload qrcode to cloudflare r2
                     await StorageService.UpdateToCloudFlareR2(Configurations.Configuration["CloudFlareR2Key"], qrcodeUrl, qrCodeImage, "image/png");
 
-                    // Send to sendy
-                    await AnalyticsService.Instance.SubscribeToSendyList(subscribeList, email, name: name,
+                    // Send to sendy registered and tips list
+                    await AnalyticsService.Instance.SubscribeToSendyList(Configurations.Analytics.SendyRegisteredListId, email, name: name,
                         ipAddress: ipAddress, offer: deepLink, qrcode: qrcodeUrl, language: language, country: country, os: os, role: role);
+                    await AnalyticsService.Instance.SubscribeToSendyList(Configurations.Analytics.SendyTipsListId, email, name: name,
+                       ipAddress: ipAddress, offer: deepLink, qrcode: qrcodeUrl, language: language, country: country, os: os, role: role);
+                    return qrcodeUrl;
                 }
             }
             else
             {
                 Logger.Log?.LogError($"Ignore invalid appid {appId}");
             }
+
+            return null;
         }
     }
 }

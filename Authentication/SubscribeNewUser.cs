@@ -12,11 +12,11 @@ using Microsoft.Extensions.Logging;
 namespace Authentication
 {
     /// <summary>
-    /// Subscribe to sendy list
+    /// Subscribe new user to sendy list
     /// </summary>
-    public class SubscribeList : BaseFunction
+    public class SubscribeNewUser : BaseFunction
     {
-        [FunctionName("SubscribeList")]
+        [FunctionName("SubscribeNewUser")]
         public async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
             ILogger log)
@@ -35,13 +35,6 @@ namespace Authentication
             var name = string.IsNullOrWhiteSpace(firstName) ?
                       (string.IsNullOrWhiteSpace(lastName) ? "" : lastName) :
                       (string.IsNullOrWhiteSpace(lastName) ? firstName : $"{firstName} {lastName}");
-            string subscribeList = req.Query["subscribe_list"];
-            log.LogInformation($"Subcribe user {email}, {firstName} {lastName}");
-            if (string.IsNullOrWhiteSpace(subscribeList))
-            {
-                return CreateErrorResponse("subscribe_list is invalid");
-            }
-
             if (string.IsNullOrWhiteSpace(name))
             {
                 return CreateErrorResponse("Must provide first_name or last_name");
@@ -56,7 +49,10 @@ namespace Authentication
             if(user == null)
             {
                 return CreateErrorResponse($"User $email is invalid");
-            }
+            }           
+
+            var group = await AWSService.Instance.GetUserGroup(user.Username);
+            var qrcodeUrl = await AnalyticsService.Instance.SubscribeNewUser(email, name, ipAddress, appId, language: language, country: country, os: os, role: group);
 
             // update user info
             var updateParams = new Dictionary<string, string>();
@@ -80,10 +76,12 @@ namespace Authentication
                 updateParams["custom:os"] = os;
             }
 
-            await AWSService.Instance.UpdateUser(user.Username, updateParams, false);
+            if (!string.IsNullOrWhiteSpace(qrcodeUrl) && AWSService.Instance.GetUserAttributeValue(user, "custom:qrcode") != qrcodeUrl)
+            {
+                updateParams["custom:qrcode"] = qrcodeUrl;
+            }
 
-            var group = await AWSService.Instance.GetUserGroup(user.Username);
-            await AnalyticsService.Instance.SubscribeToEmailList(subscribeList, email, name, ipAddress, appId, language: language, country: country, os: os, role: group);
+            await AWSService.Instance.UpdateUser(user.Username, updateParams, false);
             return CreateSuccessResponse();
         }
     }

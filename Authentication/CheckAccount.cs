@@ -306,8 +306,13 @@ namespace Authentication
                         }
                     }
 
-                    await AnalyticsService.Instance.SubscribeToEmailList(Configurations.Analytics.SendyRegisteredListId, email, name, ipAddress, appId, language: language, country: country, os: os, role: "new");
-                    await AnalyticsService.Instance.SubscribeToEmailList(Configurations.Analytics.SendyTipsListId, email, name, ipAddress, appId, language: language, country: country, os: os, role: "new");
+                    var qrcodeUrl = await AnalyticsService.Instance.SubscribeNewUser(email, name, ipAddress, appId, language: language, country: country, os: os, role: "new");
+                    if(!string.IsNullOrWhiteSpace(qrcodeUrl))
+                    {
+                        var updateParams = new Dictionary<string, string>();
+                        updateParams["custom:qrcode"] = qrcodeUrl;
+                        await AWSService.Instance.UpdateUser(user.Username, updateParams);
+                    }
 
                     // Send analytics tracking
                     try
