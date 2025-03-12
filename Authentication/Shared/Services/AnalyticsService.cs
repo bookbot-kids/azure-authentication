@@ -181,11 +181,37 @@ namespace Authentication.Shared.Services
         public async Task<string> CreateDeepLink(Dictionary<string, object> data)
         {
             InitBranchIO();
-            var response = await branchIOApi.CreateLink(data);
-            var jsonString = await response.Content.ReadAsStringAsync();
-            var jsonObject = JObject.Parse(jsonString);
-            string url = jsonObject["url"].ToString();
-            return url;
+            int maxRetries = 3;
+            int currentAttempt = 0;
+
+            while (currentAttempt < maxRetries)
+            {
+                try
+                {
+                    var response = await branchIOApi.CreateLink(data);
+                    var jsonString = await response.Content.ReadAsStringAsync();
+                    var jsonObject = JObject.Parse(jsonString);
+                    string url = jsonObject["url"].ToString();
+                    return url;
+                }
+                catch (Exception ex)
+                {
+                    currentAttempt++;
+
+                    if (currentAttempt >= maxRetries)
+                    {
+                        // If we've exhausted all retries, rethrow the exception
+                        throw new Exception($"Failed to create deep link after {maxRetries} attempts", ex);
+                    }
+
+                    // Add exponential backoff delay
+                    int delayMilliseconds = 1000 * (int)Math.Pow(2, currentAttempt - 1);
+                    await Task.Delay(delayMilliseconds);
+                }
+            }
+
+            // This should never be reached due to the throw in the catch block, but compiler requires it
+            throw new Exception("Unexpected code path in CreateDeepLink");
         }
 
         public async Task<string> CreateOfferLink(string appId, string prefixKey = "BranchIOKey", int days = 35)
