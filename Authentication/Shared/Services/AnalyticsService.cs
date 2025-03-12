@@ -188,10 +188,10 @@ namespace Authentication.Shared.Services
             return url;
         }
 
-        public async Task<string> CreateOfferLink(string appId)
+        public async Task<string> CreateOfferLink(string appId, string prefixKey = "BranchIOKey", int days = 35)
         {
-            var expiry = DateTime.Now.AddDays(35).ToString("yyyy-MM-dd HH:mm:ss.fff");
-            var branchIOKey = Configurations.Configuration[$"BranchIOKey_{appId}"];
+            var expiry = DateTime.Now.AddDays(days).ToString("yyyy-MM-dd HH:mm:ss.fff");
+            var branchIOKey = Configurations.Configuration[$"{prefixKey}_{appId}"];
             if (!string.IsNullOrWhiteSpace(branchIOKey))
             {
                 var data = new Dictionary<string, object>
