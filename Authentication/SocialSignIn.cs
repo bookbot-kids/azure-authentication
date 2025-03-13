@@ -46,9 +46,7 @@ namespace Authentication
             string os = req.Query["os"];
             string firstName = req.Query["first_name"];
             string lastName = req.Query["last_name"];
-            var name = string.IsNullOrWhiteSpace(firstName) ?
-                       (string.IsNullOrWhiteSpace(lastName) ? "" : lastName) :
-                       (string.IsNullOrWhiteSpace(lastName) ? firstName : $"{firstName} {lastName}");
+            var name = StringHelper.CombineName(firstName, lastName);
 
             string source = req.Query["source"];
             log.LogInformation($"Check account for user {email}, source: {source}");

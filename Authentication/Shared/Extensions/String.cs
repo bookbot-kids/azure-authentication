@@ -127,4 +127,14 @@ namespace Extensions
             return phoneRegex.IsMatch(str);
         }
     }
+
+    public static class StringHelper
+    {
+        public static string CombineName(string firstName, string lastName)
+        {
+            return string.IsNullOrWhiteSpace(firstName) ?
+                      (string.IsNullOrWhiteSpace(lastName) ? "" : lastName) :
+                      (string.IsNullOrWhiteSpace(lastName) ? firstName : $"{firstName} {lastName}");
+        }
+    }
 }

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Authentication.Shared.Library;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
+using Extensions;
 
 namespace Authentication.Shared.Services
 {
@@ -59,7 +60,7 @@ first_name: ""Kelly"",
 last_name: ""Hart""
 }}
 What is the output of this email address: {email}?
-No explanation. Only show a json response.
+It must be a real name, otherwise keep it empty. No explanation. Only show a json response.
 "
 )
             };
@@ -81,10 +82,7 @@ No explanation. Only show a json response.
                         // Extract the first name and last name
                         string firstName = root.GetProperty("first_name").GetString();
                         string lastName = root.GetProperty("last_name").GetString();
-                        var name = string.IsNullOrWhiteSpace(firstName) ?
-                       (string.IsNullOrWhiteSpace(lastName) ? "" : lastName) :
-                       (string.IsNullOrWhiteSpace(lastName) ? firstName : $"{firstName} {lastName}");
-                        return name;
+                        return StringHelper.CombineName(firstName, lastName);
                     }
                 }
                 catch (Exception ex)

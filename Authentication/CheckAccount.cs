@@ -47,9 +47,7 @@ namespace Authentication
             email = email?.NormalizeEmail();
             string firstName = req.Query["first_name"];
             string lastName = req.Query["last_name"];
-            var name = string.IsNullOrWhiteSpace(firstName) ?
-                       (string.IsNullOrWhiteSpace(lastName) ? "" : lastName) :
-                       (string.IsNullOrWhiteSpace(lastName) ? firstName : $"{firstName} {lastName}");
+            var name = StringHelper.CombineName(firstName, lastName);
             string appId = req.Query["app_id"];
 
             string source = req.Query["source"];
