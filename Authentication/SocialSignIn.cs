@@ -24,7 +24,7 @@ namespace Authentication
             // Set the logger instance
             Logger.Log = log;
 
-            string email = req.Query["email"];
+            string email = req.Query["email"];           
 
             // validate email address
             if (string.IsNullOrWhiteSpace(email))
@@ -41,7 +41,14 @@ namespace Authentication
             string country = req.Query["country"];
             email = email.NormalizeEmail();
 
-            string name = email.GetNameFromEmail();
+            string appId = req.Query["app_id"];
+            string language = req.Query["language"];
+            string os = req.Query["os"];
+            string firstName = req.Query["first_name"];
+            string lastName = req.Query["last_name"];
+            var name = string.IsNullOrWhiteSpace(firstName) ?
+                       (string.IsNullOrWhiteSpace(lastName) ? "" : lastName) :
+                       (string.IsNullOrWhiteSpace(lastName) ? firstName : $"{firstName} {lastName}");
 
             string source = req.Query["source"];
             log.LogInformation($"Check account for user {email}, source: {source}");
@@ -55,7 +62,7 @@ namespace Authentication
                     return CreateErrorResponse($"token is missing");
                 }
 
-                return await ProcessGoogleRequest(log,token, idToken, email, name, country, ipAddress);
+                return await ProcessGoogleRequest(log,token, idToken, email, name, country, ipAddress, language, os, appId);
             }
             else if (source == "apple")
             {
@@ -70,14 +77,14 @@ namespace Authentication
                 {
                     return CreateErrorResponse($"id_token is missing");
                 }
-                return await ProcessAppleRequest(log, token, idToken, email, name, country, ipAddress);
+                return await ProcessAppleRequest(log, token, idToken, email, name, country, ipAddress, language, os, appId);
             } else
             {
                 return CreateErrorResponse("Sign in source is invalid");
             }
         }
 
-        private async Task<IActionResult> ProcessGoogleRequest(ILogger log, string token, string idToken, string email, string name, string country, string ipAddress)
+        private async Task<IActionResult> ProcessGoogleRequest(ILogger log, string token, string idToken, string email, string name, string country, string ipAddress, string language, string os, string appId)
         {
             // validate token from client
             var isValid = await GoogleService.Instance.ValidateAccessToken(email, token, idToken);
@@ -87,10 +94,10 @@ namespace Authentication
             }
 
             // then create or get cognito/b2c user
-            return await CreateOrGetCognito(log, email, name, country, ipAddress);
+            return await CreateOrGetCognito(log, email, name, country, ipAddress, language, os, appId);
         }
 
-        private async Task<IActionResult> ProcessAppleRequest(ILogger log, string token, string idToken, string email, string name, string country, string ipAddress)
+        private async Task<IActionResult> ProcessAppleRequest(ILogger log, string token, string idToken, string email, string name, string country, string ipAddress, string language, string os, string appId)
         {
             // validate token from client
             var isValid = await AppleService.Instance.ValidateToken(email, token, idToken);
@@ -100,12 +107,12 @@ namespace Authentication
             }
 
             // then create or get cognito/b2c user
-            return await CreateOrGetCognito(log, email, name, country, ipAddress);
+            return await CreateOrGetCognito(log, email, name, country, ipAddress, language, os, appId);
         }
 
-        private async Task<IActionResult> CreateOrGetCognito(ILogger log, string email, string name, string country, string ipAddress)
+        private async Task<IActionResult> CreateOrGetCognito(ILogger log, string email, string name, string country, string ipAddress, string language, string os, string appId)
         {
-            var (exist, user) = await AWSService.Instance.FindOrCreateUser(email, name, country, ipAddress);
+            var (exist, user) = await AWSService.Instance.FindOrCreateUser(email, name, country, ipAddress, language: language, os:os);
             // there is an error when creating user
             if (user == null)
             {
@@ -136,6 +143,31 @@ namespace Authentication
             {
                 if (!email.EndsWith(Configurations.AzureB2C.EmailTestDomain))
                 {
+                    if (string.IsNullOrWhiteSpace(name))
+                    {
+                        // get from cognito first
+                        name = AWSService.Instance.GetUserAttributeValue(user, "name");
+                        if (string.IsNullOrWhiteSpace(name))
+                        {
+                            // get from LLM
+                            name = await LLMService.Instance.GetNameFromEmail(email);
+                            if (!string.IsNullOrWhiteSpace(name))
+                            {
+                                var updateParams = new Dictionary<string, string>();
+                                updateParams["name"] = name;
+                                await AWSService.Instance.UpdateUser(user.Username, updateParams);
+                            }
+                        }
+                    }
+
+                    var qrcodeUrl = await AnalyticsService.Instance.SubscribeNewUser(email, name, ipAddress, appId, language: language, country: country, os: os, role: "new");
+                    if (!string.IsNullOrWhiteSpace(qrcodeUrl))
+                    {
+                        var updateParams = new Dictionary<string, string>();
+                        updateParams["custom:qrcode"] = qrcodeUrl;
+                        await AWSService.Instance.UpdateUser(user.Username, updateParams);
+                    }
+
                     try
                     {
                         await SendAnalytics(email, user.Username, country, ipAddress, name);

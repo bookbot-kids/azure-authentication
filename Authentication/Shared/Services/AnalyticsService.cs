@@ -134,7 +134,7 @@ namespace Authentication.Shared.Services
 
             if (!string.IsNullOrWhiteSpace(name))
             {
-                data["Name"] = name;
+                data["name"] = name;
             }
 
             if (!string.IsNullOrWhiteSpace(ipAddress))
