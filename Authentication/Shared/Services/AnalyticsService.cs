@@ -28,6 +28,9 @@ namespace Authentication.Shared.Services
         {
             [Post("/subscribe")]
             Task<HttpResponseMessage> Subscribe([Body(BodySerializationMethod.UrlEncoded)] Dictionary<string, object> data);
+
+            [Post("/api/subscribers/delete.php")]
+            Task<HttpResponseMessage> DeleteSubscriber([Body(BodySerializationMethod.UrlEncoded)] Dictionary<string, object> data);
         }
 
         public interface IBranchIOApi
@@ -104,6 +107,20 @@ namespace Authentication.Shared.Services
             catch (TimeoutException) { }
         }
 
+        public async Task DeleteFromSendyList(string listId, string email)
+        {
+            InitSendy();
+            await HttpHelper.ExecuteWithRetryAsync(async () =>
+            {
+                var data = new Dictionary<string, object> {
+                    {"api_key", Configurations.Analytics.SendyKey},
+                    {"email", email},
+                    {"list_id", listId},
+                };
+                await sendyApi.DeleteSubscriber(data);
+            }, comment: "delete from sendy");
+        }
+
         public async Task SubscribeToSendyList(string listId, string email, string name = "", string ipAddress = "",
             string offer = "", string qrcode = "", string role = "", string language = "", string country = "", string os = "",
             string inviteEducatorName = "", string inviteUrl = "", string inviteChildFirstName = "", string inviteChildLastName = "")
@@ -117,7 +134,7 @@ namespace Authentication.Shared.Services
 
             if (!string.IsNullOrWhiteSpace(name))
             {
-                data["name"] = name;
+                data["Name"] = name;
             }
 
             if (!string.IsNullOrWhiteSpace(ipAddress))
@@ -157,17 +174,17 @@ namespace Authentication.Shared.Services
 
             if (!string.IsNullOrWhiteSpace(inviteEducatorName))
             {
-                data["Educator Name"] = inviteEducatorName;
+                data["EducatorName"] = inviteEducatorName;
             }
 
             if (!string.IsNullOrWhiteSpace(inviteChildFirstName))
             {
-                data["Child First Name"] = inviteChildFirstName;
+                data["ChildFirstName"] = inviteChildFirstName;
             }
 
             if (!string.IsNullOrWhiteSpace(inviteChildLastName))
             {
-                data["Child Last Name"] = inviteChildLastName;
+                data["ChildLastName"] = inviteChildLastName;
             }
 
             if (!string.IsNullOrWhiteSpace(inviteUrl))
@@ -175,43 +192,24 @@ namespace Authentication.Shared.Services
                 data["URL"] = inviteUrl;
             }
 
-            await sendyApi.Subscribe(data);
+            await HttpHelper.ExecuteWithRetryAsync(async () =>
+            {
+                await sendyApi.Subscribe(data);
+            }, comment: "Subscribe sendy");
         }
 
         public async Task<string> CreateDeepLink(Dictionary<string, object> data)
         {
             InitBranchIO();
-            int maxRetries = 3;
-            int currentAttempt = 0;
 
-            while (currentAttempt < maxRetries)
+            return await HttpHelper.ExecuteWithRetryAsync(async () =>
             {
-                try
-                {
-                    var response = await branchIOApi.CreateLink(data);
-                    var jsonString = await response.Content.ReadAsStringAsync();
-                    var jsonObject = JObject.Parse(jsonString);
-                    string url = jsonObject["url"].ToString();
-                    return url;
-                }
-                catch (Exception ex)
-                {
-                    currentAttempt++;
-
-                    if (currentAttempt >= maxRetries)
-                    {
-                        // If we've exhausted all retries, rethrow the exception
-                        throw new Exception($"Failed to create deep link after {maxRetries} attempts", ex);
-                    }
-
-                    // Add exponential backoff delay
-                    int delayMilliseconds = 1000 * (int)Math.Pow(2, currentAttempt - 1);
-                    await Task.Delay(delayMilliseconds);
-                }
-            }
-
-            // This should never be reached due to the throw in the catch block, but compiler requires it
-            throw new Exception("Unexpected code path in CreateDeepLink");
+                var response = await branchIOApi.CreateLink(data);
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var jsonObject = JObject.Parse(jsonString);
+                string url = jsonObject["url"].ToString();
+                return url;
+            }, comment: "CreateDeepLink");
         }
 
         public async Task<string> CreateOfferLink(string appId, string prefixKey = "BranchIOKey", int days = 35)
@@ -275,12 +273,15 @@ namespace Authentication.Shared.Services
                 {
                     byte[] qrCodeImage = qrCode.GetGraphic(10);
                     // upload qrcode to cloudflare r2
-                    await StorageService.UpdateToCloudFlareR2(Configurations.Configuration["CloudFlareR2Key"], qrcodeUrl, qrCodeImage, "image/png");
+                    await HttpHelper.ExecuteWithRetryAsync(async () =>
+                    {
+                        await StorageService.UpdateToCloudFlareR2(Configurations.Configuration["CloudFlareR2Key"], qrcodeUrl, qrCodeImage, "image/png");
+                    }, comment: "Upload qrcode to cloudflare");                    
 
                     // Send to sendy registered and tips list
-                    await AnalyticsService.Instance.SubscribeToSendyList(Configurations.Analytics.SendyRegisteredListId, email, name: name,
+                    await SubscribeToSendyList(Configurations.Analytics.SendyRegisteredListId, email, name: name,
                         ipAddress: ipAddress, offer: deepLink, qrcode: qrcodeUrl, language: language, country: country, os: os, role: role);
-                    await AnalyticsService.Instance.SubscribeToSendyList(Configurations.Analytics.SendyTipsListId, email, name: name,
+                    await SubscribeToSendyList(Configurations.Analytics.SendyTipsListId, email, name: name,
                        ipAddress: ipAddress, offer: deepLink, qrcode: qrcodeUrl, language: language, country: country, os: os, role: role);
                     return qrcodeUrl;
                 }
@@ -291,6 +292,26 @@ namespace Authentication.Shared.Services
             }
 
             return null;
+        }
+
+        public async Task<string> GenerateQRCode2Cloud(string deepLink, string imagePath = "qrcode")
+        {
+            var filename = Guid.NewGuid().ToString() + ".png";
+            var qrcodeUrl = $"{Configurations.Configuration["CloudFlareR2Url"]}/{imagePath}/{filename}";
+            using (QRCodeGenerator qrGenerator = new QRCodeGenerator())
+            using (QRCodeData qrCodeData = qrGenerator.CreateQrCode(deepLink, QRCodeGenerator.ECCLevel.Q))
+            using (PngByteQRCode qrCode = new PngByteQRCode(qrCodeData))
+            {
+                
+                byte[] qrCodeImage = qrCode.GetGraphic(10);
+                // upload qrcode to cloudflare r2
+                await HttpHelper.ExecuteWithRetryAsync(async () =>
+                {
+                    await StorageService.UpdateToCloudFlareR2(Configurations.Configuration["CloudFlareR2Key"], qrcodeUrl, qrCodeImage, "image/png");
+                }, comment: "Upload qrcode to cloudflare");
+            }
+
+            return qrcodeUrl;
         }
     }
 }
