@@ -52,7 +52,7 @@ namespace Authentication.Shared.Services
             var messages = new List<ChatMessage>
             {
                 new UserChatMessage($@"
-I'd like you to extract the name from this email address {{email}} in a json response. Here is an example:
+I'd like you to extract the name from this email address email in a json response. Here is an example:
 Input: kellydhart@yahoo.com
 Output:
 {{

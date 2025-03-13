@@ -304,7 +304,8 @@ namespace Authentication
                         }
                     }
 
-                    var qrcodeUrl = await AnalyticsService.Instance.SubscribeNewUser(email, name, ipAddress, appId, language: language, country: country, os: os, role: "new");
+                    var group = await AWSService.Instance.GetUserGroup(user.Username);
+                    var qrcodeUrl = await AnalyticsService.Instance.SubscribeNewUser(email, name, ipAddress, appId, language: language, country: country, os: os, role: group);
                     if(!string.IsNullOrWhiteSpace(qrcodeUrl))
                     {
                         var updateParams = new Dictionary<string, string>();
