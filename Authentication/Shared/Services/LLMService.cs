@@ -59,7 +59,7 @@ first_name: ""Kelly"",
 last_name: ""Hart""
 }}
 What is the output of this email address: {email}?
-No explaination.
+No explanation. Only show a json response.
 "
 )
             };
