@@ -32,6 +32,7 @@ namespace Authentication
             string language = req.Query["language"];
             string os = req.Query["os"];
             string appId = req.Query["app_id"];
+            string userType = req.Query["user_type"];
             var name = string.IsNullOrWhiteSpace(firstName) ?
                       (string.IsNullOrWhiteSpace(lastName) ? "" : lastName) :
                       (string.IsNullOrWhiteSpace(lastName) ? firstName : $"{firstName} {lastName}");
@@ -51,8 +52,7 @@ namespace Authentication
                 return CreateErrorResponse($"User $email is invalid");
             }           
 
-            var group = await AWSService.Instance.GetUserGroup(user.Username);
-            var qrcodeUrl = await AnalyticsService.Instance.SubscribeNewUser(email, name, ipAddress, appId, language: language, country: country, os: os, role: group);
+            var qrcodeUrl = await AnalyticsService.Instance.SubscribeNewUser(email, name, ipAddress, appId, language: language, country: country, os: os, userType: userType);
 
             // update user info
             var updateParams = new Dictionary<string, string>();
@@ -79,6 +79,16 @@ namespace Authentication
             if (!string.IsNullOrWhiteSpace(qrcodeUrl) && AWSService.Instance.GetUserAttributeValue(user, "custom:qrcode") != qrcodeUrl)
             {
                 updateParams["custom:qrcode"] = qrcodeUrl;
+            }
+
+            if (!string.IsNullOrWhiteSpace(userType) && AWSService.Instance.GetUserAttributeValue(user, "custom:type") != userType)
+            {
+                updateParams["custom:type"] = userType;
+            }
+
+            if (!string.IsNullOrWhiteSpace(appId) && AWSService.Instance.GetUserAttributeValue(user, "custom:appId") != appId)
+            {
+                updateParams["custom:appId"] = appId;
             }
 
             await AWSService.Instance.UpdateUser(user.Username, updateParams, false);

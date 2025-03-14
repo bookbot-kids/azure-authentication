@@ -202,7 +202,7 @@ namespace Authentication.Shared.Services
         }
 
         public async Task<(bool, UserType)> FindOrCreateUser(string email, string name,
-            string country, string ipAddress, string phone = null, bool forceCreate = false, string language = "", string os = "")
+            string country, string ipAddress, string phone = null, bool forceCreate = false, string language = "", string os = "", string appId = "", string userType = "")
         {
             email = email.ToLower();
             var listRequest = new ListUsersRequest
@@ -250,6 +250,16 @@ namespace Authentication.Shared.Services
                 if (!string.IsNullOrWhiteSpace(os))
                 {
                     attributes.Add(new AttributeType() { Name = "custom:os", Value = os });
+                }
+
+                if (!string.IsNullOrWhiteSpace(appId))
+                {
+                    attributes.Add(new AttributeType() { Name = "custom:appId", Value = appId });
+                }
+
+                if (!string.IsNullOrWhiteSpace(userType))
+                {
+                    attributes.Add(new AttributeType() { Name = "custom:type", Value = userType });
                 }
 
                 var userId = Guid.NewGuid().ToString();

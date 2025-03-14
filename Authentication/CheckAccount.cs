@@ -54,6 +54,7 @@ namespace Authentication
             string language = req.Query["language"];
             string linkType = req.Query["link_type"];
             string os = req.Query["os"];
+            string userType = req.Query["user_type"];
             log.LogInformation($"Check account for user {email}, source: {source}");
             string signInToken = req.Query["sign_in_token"];
             var autoSignInTokenValid = false;
@@ -116,7 +117,7 @@ namespace Authentication
                         }
 
                         bool requestPasscode = req.Query["request_passcode"] == "true";
-                        return await ProcessCognitoRequest(log, email, name, country, ipAddress, requestPasscode, language, appId, signInToken, autoSignInTokenValid, linkType, os);
+                        return await ProcessCognitoRequest(log, email, name, country, ipAddress, requestPasscode, language, appId, signInToken, autoSignInTokenValid, linkType, os, userType);
                     }
                 case "whatsapp":
                     {
@@ -138,14 +139,14 @@ namespace Authentication
                         }
 
                         log.LogInformation($"Check account for user {phone}, source: {source}");
-                        return await ProcessWhatsappRequest(log, phone, email, name, country, ipAddress, language, appId, signInToken, autoSignInTokenValid, linkType, os);
+                        return await ProcessWhatsappRequest(log, phone, email, name, country, ipAddress, language, appId, signInToken, autoSignInTokenValid, linkType, os, userType);
                     }
                 default:
                     throw new Exception($"{email} has invalid source {source}");
             }
         }
 
-        private async Task<IActionResult> ProcessWhatsappRequest(ILogger log, string phone, string email, string name, string country, string ipAddress, string language, string appId, string signInToken, bool autoSignInTokenValid, string linkType, string os)
+        private async Task<IActionResult> ProcessWhatsappRequest(ILogger log, string phone, string email, string name, string country, string ipAddress, string language, string appId, string signInToken, bool autoSignInTokenValid, string linkType, string os, string userType)
         {
             var user = await AWSService.Instance.FindUserByPhone(phone);
             var existing = true;
@@ -155,7 +156,7 @@ namespace Authentication
             if (user == null)
             {
                 // if user with phone not exist, then create a new one with place holder email
-                var (exist, newUser) = await AWSService.Instance.FindOrCreateUser(userEmail, name, country, ipAddress, phone: phone, forceCreate: string.IsNullOrWhiteSpace(email));
+                var (exist, newUser) = await AWSService.Instance.FindOrCreateUser(userEmail, name, country, ipAddress, phone: phone, forceCreate: string.IsNullOrWhiteSpace(email), language: language, userType: userType, os: os, appId: appId);
                 user = newUser;
                 existing = exist;
 
@@ -186,6 +187,16 @@ namespace Authentication
                     if (!string.IsNullOrWhiteSpace(os) && AWSService.Instance.GetUserAttributeValue(user, "custom:os") != os)
                     {
                         updateParams["custom:os"] = os;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(userType) && AWSService.Instance.GetUserAttributeValue(user, "custom:type") != userType)
+                    {
+                        updateParams["custom:type"] = userType;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(appId) && AWSService.Instance.GetUserAttributeValue(user, "custom:appId") != appId)
+                    {
+                        updateParams["custom:appId"] = appId;
                     }
 
                     await AWSService.Instance.UpdateUser(user.Username, updateParams, !user.Enabled);
@@ -224,9 +235,9 @@ namespace Authentication
             return new JsonResult(new { success = true, exist = existing, user }) { StatusCode = StatusCodes.Status200OK };
         }
 
-        private async Task<IActionResult> ProcessCognitoRequest(ILogger log, string email, string name, string country, string ipAddress, bool requestPasscode, string language, string appId, string signInToken, bool autoSignInTokenValid, string linkType, string os)
+        private async Task<IActionResult> ProcessCognitoRequest(ILogger log, string email, string name, string country, string ipAddress, bool requestPasscode, string language, string appId, string signInToken, bool autoSignInTokenValid, string linkType, string os, string userType)
         {
-            var (exist, user) = await AWSService.Instance.FindOrCreateUser(email, name, country, ipAddress,language: language, os: os);
+            var (exist, user) = await AWSService.Instance.FindOrCreateUser(email, name, country, ipAddress,language: language, os: os, appId: appId, userType: userType);
             // there is an error when creating user
             if (user == null)
             {
@@ -256,6 +267,16 @@ namespace Authentication
                 if (!string.IsNullOrWhiteSpace(os) && AWSService.Instance.GetUserAttributeValue(user, "custom:os") != os)
                 {
                     updateParams["custom:os"] = os;
+                }
+
+                if (!string.IsNullOrWhiteSpace(userType) && AWSService.Instance.GetUserAttributeValue(user, "custom:type") != userType)
+                {
+                    updateParams["custom:type"] = userType;
+                }
+
+                if (!string.IsNullOrWhiteSpace(appId) && AWSService.Instance.GetUserAttributeValue(user, "custom:appId") != appId)
+                {
+                    updateParams["custom:appId"] = appId;
                 }
 
                 await AWSService.Instance.UpdateUser(user.Username, updateParams, !user.Enabled);
@@ -304,8 +325,7 @@ namespace Authentication
                         }
                     }
 
-                    var group = await AWSService.Instance.GetUserGroup(user.Username);
-                    var qrcodeUrl = await AnalyticsService.Instance.SubscribeNewUser(email, name, ipAddress, appId, language: language, country: country, os: os, role: group);
+                    var qrcodeUrl = await AnalyticsService.Instance.SubscribeNewUser(email, name, ipAddress, appId, language: language, country: country, os: os, userType: userType);
                     if(!string.IsNullOrWhiteSpace(qrcodeUrl))
                     {
                         var updateParams = new Dictionary<string, string>();

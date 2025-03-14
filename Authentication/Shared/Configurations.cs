@@ -230,6 +230,8 @@ namespace Authentication.Shared
             public static string SendyKey => Configuration["SendyKey"];
             public static string SendyRegisteredListId => Configuration["SendyRegisteredListId"];
             public static string SendyTipsListId => Configuration["SendyTipsListId"];
+
+            public static string ReoonKey => Configuration["ReoonKey"];
         }
 
         public static class Cognito

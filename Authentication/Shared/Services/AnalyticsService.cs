@@ -39,10 +39,17 @@ namespace Authentication.Shared.Services
             Task<HttpResponseMessage> CreateLink([Body(BodySerializationMethod.Serialized)] Dictionary<string, object> data);
         }
 
+        public interface IReoonApi
+        {
+            [Get("/api/v1/verify")]
+            Task<HttpResponseMessage> Verify([Query("email")]  string email, [Query("key")] string key);
+        }
+
         public static AnalyticsService Instance { get; } = new AnalyticsService();
         private IAnalyticsApi analyticsApi;
         private ISendyApi sendyApi;
         private IBranchIOApi branchIOApi;
+        private IReoonApi reoonApi;
         private DataService dataService;
 
         private AnalyticsService()
@@ -50,6 +57,8 @@ namespace Authentication.Shared.Services
             var analyticsHttpClient = new HttpClient(new HttpLoggingHandler()) { BaseAddress = new Uri(Configurations.Analytics.AnalyticsUrl) };
             analyticsApi = RestService.For<IAnalyticsApi>(analyticsHttpClient, new RefitSettings(new NewtonsoftJsonContentSerializer()));
             dataService = new DataService();
+
+            reoonApi = RestService.For<IReoonApi>(new HttpClient(new HttpLoggingHandler()) { BaseAddress = new Uri("https://emailverifier.reoon.com") }, new RefitSettings(new NewtonsoftJsonContentSerializer()));
         }
 
         private void InitSendy()
@@ -122,9 +131,25 @@ namespace Authentication.Shared.Services
         }
 
         public async Task SubscribeToSendyList(string listId, string email, string name = "", string ipAddress = "",
-            string offer = "", string qrcode = "", string role = "", string language = "", string country = "", string os = "",
+            string offer = "", string qrcode = "", string userType = "", string language = "", string country = "", string os = "",
             string inviteEducatorName = "", string inviteUrl = "", string inviteChildFirstName = "", string inviteChildLastName = "")
         {
+            // validate email status
+            var status = await HttpHelper.ExecuteWithRetryAsync(async () =>
+            {
+                var response = await reoonApi.Verify(email, Configurations.Analytics.ReoonKey);
+                string jsonString = await response.Content.ReadAsStringAsync();
+                var jsonObject = JObject.Parse(jsonString);
+                string status = jsonObject["status"]?.ToString();
+                return status;
+            }, comment: "Verify email");
+
+            if(status != "valid" && status != "disposable")
+            {
+                Logger.Log?.LogWarning($"ignore {email} with invalid status {status}");
+                return;
+            }
+
             InitSendy();
             var data = new Dictionary<string, object> {
                 {"api_key", Configurations.Analytics.SendyKey},
@@ -152,9 +177,9 @@ namespace Authentication.Shared.Services
                 data["QRCode"] = qrcode;
             }
 
-            if (!string.IsNullOrWhiteSpace(role))
+            if (!string.IsNullOrWhiteSpace(userType))
             {
-                data["Role"] = role;
+                data["UserType"] = userType;
             }
 
             if (!string.IsNullOrWhiteSpace(language))
@@ -256,7 +281,7 @@ namespace Authentication.Shared.Services
         /// <returns></returns>
         public async Task<string> SubscribeNewUser(
            string email, string name,
-            string ipAddress, string appId, string language, string country, string os, string role)
+            string ipAddress, string appId, string language, string country, string os, string userType)
         {
             // create deeplink and add to sendy
             var deepLink = await CreateOfferLink(appId);
@@ -280,9 +305,9 @@ namespace Authentication.Shared.Services
 
                     // Send to sendy registered and tips list
                     await SubscribeToSendyList(Configurations.Analytics.SendyRegisteredListId, email, name: name,
-                        ipAddress: ipAddress, offer: deepLink, qrcode: qrcodeUrl, language: language, country: country, os: os, role: role);
+                        ipAddress: ipAddress, offer: deepLink, qrcode: qrcodeUrl, language: language, country: country, os: os, userType: userType);
                     await SubscribeToSendyList(Configurations.Analytics.SendyTipsListId, email, name: name,
-                       ipAddress: ipAddress, offer: deepLink, qrcode: qrcodeUrl, language: language, country: country, os: os, role: role);
+                       ipAddress: ipAddress, offer: deepLink, qrcode: qrcodeUrl, language: language, country: country, os: os, userType: userType);
                     return qrcodeUrl;
                 }
             }

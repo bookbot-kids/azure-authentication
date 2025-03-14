@@ -46,6 +46,7 @@ namespace Authentication
             string os = req.Query["os"];
             string firstName = req.Query["first_name"];
             string lastName = req.Query["last_name"];
+            string userType = req.Query["user_type"];
             var name = StringHelper.CombineName(firstName, lastName);
 
             string source = req.Query["source"];
@@ -60,7 +61,7 @@ namespace Authentication
                     return CreateErrorResponse($"token is missing");
                 }
 
-                return await ProcessGoogleRequest(log,token, idToken, email, name, country, ipAddress, language, os, appId);
+                return await ProcessGoogleRequest(log,token, idToken, email, name, country, ipAddress, language, os, appId, userType);
             }
             else if (source == "apple")
             {
@@ -75,14 +76,14 @@ namespace Authentication
                 {
                     return CreateErrorResponse($"id_token is missing");
                 }
-                return await ProcessAppleRequest(log, token, idToken, email, name, country, ipAddress, language, os, appId);
+                return await ProcessAppleRequest(log, token, idToken, email, name, country, ipAddress, language, os, appId, userType);
             } else
             {
                 return CreateErrorResponse("Sign in source is invalid");
             }
         }
 
-        private async Task<IActionResult> ProcessGoogleRequest(ILogger log, string token, string idToken, string email, string name, string country, string ipAddress, string language, string os, string appId)
+        private async Task<IActionResult> ProcessGoogleRequest(ILogger log, string token, string idToken, string email, string name, string country, string ipAddress, string language, string os, string appId, string userType)
         {
             // validate token from client
             var isValid = await GoogleService.Instance.ValidateAccessToken(email, token, idToken);
@@ -92,10 +93,10 @@ namespace Authentication
             }
 
             // then create or get cognito/b2c user
-            return await CreateOrGetCognito(log, email, name, country, ipAddress, language, os, appId);
+            return await CreateOrGetCognito(log, email, name, country, ipAddress, language, os, appId, userType);
         }
 
-        private async Task<IActionResult> ProcessAppleRequest(ILogger log, string token, string idToken, string email, string name, string country, string ipAddress, string language, string os, string appId)
+        private async Task<IActionResult> ProcessAppleRequest(ILogger log, string token, string idToken, string email, string name, string country, string ipAddress, string language, string os, string appId, string userType)
         {
             // validate token from client
             var isValid = await AppleService.Instance.ValidateToken(email, token, idToken);
@@ -105,12 +106,12 @@ namespace Authentication
             }
 
             // then create or get cognito/b2c user
-            return await CreateOrGetCognito(log, email, name, country, ipAddress, language, os, appId);
+            return await CreateOrGetCognito(log, email, name, country, ipAddress, language, os, appId, userType);
         }
 
-        private async Task<IActionResult> CreateOrGetCognito(ILogger log, string email, string name, string country, string ipAddress, string language, string os, string appId)
+        private async Task<IActionResult> CreateOrGetCognito(ILogger log, string email, string name, string country, string ipAddress, string language, string os, string appId, string userType)
         {
-            var (exist, user) = await AWSService.Instance.FindOrCreateUser(email, name, country, ipAddress, language: language, os:os);
+            var (exist, user) = await AWSService.Instance.FindOrCreateUser(email, name, country, ipAddress, language: language, os:os, userType: userType);
             // there is an error when creating user
             if (user == null)
             {
@@ -158,7 +159,7 @@ namespace Authentication
                         }
                     }
 
-                    var qrcodeUrl = await AnalyticsService.Instance.SubscribeNewUser(email, name, ipAddress, appId, language: language, country: country, os: os, role: "new");
+                    var qrcodeUrl = await AnalyticsService.Instance.SubscribeNewUser(email, name, ipAddress, appId, language: language, country: country, os: os, userType: userType);
                     if (!string.IsNullOrWhiteSpace(qrcodeUrl))
                     {
                         var updateParams = new Dictionary<string, string>();
