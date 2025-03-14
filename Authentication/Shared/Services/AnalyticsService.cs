@@ -132,23 +132,26 @@ namespace Authentication.Shared.Services
 
         public async Task SubscribeToSendyList(string listId, string email, string name = "", string ipAddress = "",
             string offer = "", string qrcode = "", string userType = "", string language = "", string country = "", string os = "",
-            string inviteEducatorName = "", string inviteUrl = "", string inviteChildFirstName = "", string inviteChildLastName = "")
+            string inviteEducatorName = "", string inviteUrl = "", string inviteChildFirstName = "", string inviteChildLastName = "", bool ignoreSpamEmailCheck = false)
         {
-            // validate email status
-            var status = await HttpHelper.ExecuteWithRetryAsync(async () =>
+            if(!ignoreSpamEmailCheck)
             {
-                var response = await reoonApi.Verify(email, Configurations.Analytics.ReoonKey);
-                string jsonString = await response.Content.ReadAsStringAsync();
-                var jsonObject = JObject.Parse(jsonString);
-                string status = jsonObject["status"]?.ToString();
-                return status;
-            }, comment: "Verify email");
+                // validate email status
+                var status = await HttpHelper.ExecuteWithRetryAsync(async () =>
+                {
+                    var response = await reoonApi.Verify(email, Configurations.Analytics.ReoonKey);
+                    string jsonString = await response.Content.ReadAsStringAsync();
+                    var jsonObject = JObject.Parse(jsonString);
+                    string status = jsonObject["status"]?.ToString();
+                    return status;
+                }, comment: "Verify email");
 
-            if(status != "valid" && status != "disposable")
-            {
-                Logger.Log?.LogWarning($"ignore {email} with invalid status {status}");
-                return;
-            }
+                if (status != "valid" && status != "disposable")
+                {
+                    Logger.Log?.LogWarning($"ignore {email} with invalid status {status}");
+                    return;
+                }
+            }            
 
             InitSendy();
             var data = new Dictionary<string, object> {
