@@ -136,5 +136,21 @@ namespace Extensions
                       (string.IsNullOrWhiteSpace(lastName) ? "" : lastName) :
                       (string.IsNullOrWhiteSpace(lastName) ? firstName : $"{firstName} {lastName}");
         }
+
+        public static string ExtractFirstName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return "";
+
+            // Split by whitespace and filter out empty entries
+            string[] parts = name.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+            // If there's only one part or no parts, return the original name
+            if (parts.Length <= 1)
+                return name.Trim();
+
+            // Return the first part as the first name
+            return parts[0].Trim();
+        }
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Authentication.Shared.Library;
+using Extensions;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using QRCoder;
@@ -130,6 +131,19 @@ namespace Authentication.Shared.Services
             }, comment: "delete from sendy");
         }
 
+        public async Task<string> ValidateEmailStatus(string email)
+        {
+            var status = await HttpHelper.ExecuteWithRetryAsync(async () =>
+            {
+                var response = await reoonApi.Verify(email, Configurations.Analytics.ReoonKey);
+                string jsonString = await response.Content.ReadAsStringAsync();
+                var jsonObject = JObject.Parse(jsonString);
+                string status = jsonObject["status"]?.ToString();
+                return status;
+            }, comment: "Verify email");
+            return status;
+        }
+
         public async Task SubscribeToSendyList(string listId, string email, string name = "", string ipAddress = "",
             string offer = "", string qrcode = "", string userType = "", string language = "", string country = "", string os = "",
             string inviteEducatorName = "", string inviteUrl = "", string inviteChildFirstName = "", string inviteChildLastName = "", bool ignoreSpamEmailCheck = false)
@@ -137,14 +151,7 @@ namespace Authentication.Shared.Services
             if(!ignoreSpamEmailCheck)
             {
                 // validate email status
-                var status = await HttpHelper.ExecuteWithRetryAsync(async () =>
-                {
-                    var response = await reoonApi.Verify(email, Configurations.Analytics.ReoonKey);
-                    string jsonString = await response.Content.ReadAsStringAsync();
-                    var jsonObject = JObject.Parse(jsonString);
-                    string status = jsonObject["status"]?.ToString();
-                    return status;
-                }, comment: "Verify email");
+                var status = await ValidateEmailStatus(email);
 
                 if (status != "valid" && status != "disposable")
                 {
@@ -162,7 +169,8 @@ namespace Authentication.Shared.Services
 
             if (!string.IsNullOrWhiteSpace(name))
             {
-                data["name"] = name;
+                // always send first name into sendy
+                data["name"] = StringHelper.ExtractFirstName(name);
             }
 
             if (!string.IsNullOrWhiteSpace(ipAddress))
