@@ -143,7 +143,7 @@ namespace Extensions
                 return "";
 
             // Split by whitespace and filter out empty entries
-            string[] parts = name.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] parts = name.Split(new[] { ' ', '.' }, StringSplitOptions.RemoveEmptyEntries);
 
             // If there's only one part or no parts, return the original name
             if (parts.Length <= 1)
