@@ -153,7 +153,7 @@ namespace Authentication.Shared.Services
                 // validate email status
                 var status = await ValidateEmailStatus(email);
 
-                if (status != "valid" && status != "disposable")
+                if (status != "valid")
                 {
                     Logger.Log?.LogWarning($"ignore {email} with invalid status {status}");
                     return;
