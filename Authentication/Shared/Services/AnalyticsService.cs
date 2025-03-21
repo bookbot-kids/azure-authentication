@@ -148,7 +148,13 @@ namespace Authentication.Shared.Services
             string offer = "", string qrcode = "", string userType = "", string language = "", string country = "", string os = "",
             string inviteEducatorName = "", string inviteUrl = "", string inviteChildFirstName = "", string inviteChildLastName = "", bool ignoreSpamEmailCheck = false)
         {
-            if(!ignoreSpamEmailCheck)
+            if (email.EndsWith(Configurations.AzureB2C.EmailTestDomain))
+            {
+                Logger.Log?.LogWarning($"ignore test email {email}");
+                return;
+            }
+
+            if (!ignoreSpamEmailCheck)
             {
                 // validate email status
                 var status = await ValidateEmailStatus(email);
