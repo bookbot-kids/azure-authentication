@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Net.Mail;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -151,6 +152,16 @@ namespace Extensions
 
             // Return the first part as the first name
             return parts[0].Trim();
+        }
+
+        public static bool IsTestEmail(string domains, string email)
+        {
+            if (string.IsNullOrEmpty(domains) || string.IsNullOrEmpty(email))
+                return false;
+
+            return domains.Split(';')
+                .Any(domain => !string.IsNullOrEmpty(domain) &&
+                     email.ToLower().EndsWith(domain.Trim().ToLower()));
         }
     }
 }

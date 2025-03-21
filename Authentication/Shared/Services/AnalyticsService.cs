@@ -148,7 +148,7 @@ namespace Authentication.Shared.Services
             string offer = "", string qrcode = "", string userType = "", string language = "", string country = "", string os = "",
             string inviteEducatorName = "", string inviteUrl = "", string inviteChildFirstName = "", string inviteChildLastName = "", bool ignoreSpamEmailCheck = false)
         {
-            if (email.EndsWith(Configurations.AzureB2C.EmailTestDomain))
+            if (StringHelper.IsTestEmail(Configurations.AzureB2C.EmailTestDomain, email))
             {
                 Logger.Log?.LogWarning($"ignore test email {email}");
                 return;

@@ -140,7 +140,7 @@ namespace Authentication
             }
             else
             {
-                if (!email.EndsWith(Configurations.AzureB2C.EmailTestDomain))
+                if (!StringHelper.IsTestEmail(Configurations.AzureB2C.EmailTestDomain, email))
                 {
                     if (string.IsNullOrWhiteSpace(name))
                     {

@@ -51,7 +51,7 @@ namespace Authentication
             }
 
             // only delete user from special domain
-            if (!email.EndsWith(Configurations.AzureB2C.EmailTestDomain))
+            if (!StringHelper.IsTestEmail(Configurations.AzureB2C.EmailTestDomain, email))
             {
                 return CreateErrorResponse($"email {email} is invalid");
             }

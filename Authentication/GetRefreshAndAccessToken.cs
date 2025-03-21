@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Authentication.Shared.Services;
 using System.Collections.Generic;
 using Authentication.Shared;
+using Extensions;
 
 namespace Authentication
 {
@@ -75,7 +76,7 @@ namespace Authentication
                 Logger.Log?.LogInformation($"Find user by email {email}");
                 var user = await ADUser.FindByEmail(email);
                 var group = await user.GroupName();
-                if(!email.EndsWith(Configurations.AzureB2C.EmailTestDomain)) {
+                if(!StringHelper.IsTestEmail(Configurations.AzureB2C.EmailTestDomain, email)) {
                     try
                     {
                         Logger.Log?.LogInformation($"Found user {user.ObjectId} {email}, group = {group}");
