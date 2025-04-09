@@ -315,7 +315,7 @@ namespace Authentication
                         if (string.IsNullOrWhiteSpace(name))
                         {
                             // get from LLM
-                            name = await LLMService.Instance.GetNameFromEmail(email);
+                            name = await LLMService.Instance.GetNameFromEmail(email, country);
                             if (!string.IsNullOrWhiteSpace(name))
                             {
                                 var updateParams = new Dictionary<string, string>();

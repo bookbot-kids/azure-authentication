@@ -47,20 +47,17 @@ namespace Authentication.Shared.Services
             }
         }
 
-        public async Task<string> GetNameFromEmail(string email)
+        public async Task<string> GetNameFromEmail(string email, string country = "")
         {
             var messages = new List<ChatMessage>
             {
                 new UserChatMessage($@"
-I'd like you to extract the name from this email address email in a json response. Here is an example:
-Input: kellydhart@yahoo.com
-Output:
-{{
-first_name: ""Kelly"",
-last_name: ""Hart""
-}}
-What is the output of this email address: {email}?
-It must be a real name, otherwise keep it empty. No explanation. Only show a json response.
+    For the following email entry, provide the likely first name (only the first name) by inferring from the part before the '@' in the email address. Use the provided Country as context. Answer with ONLY the first name without numbers or prefixes.
+    Email: {email} Country: {country}
+    Answers (first names only) in json format:
+    {{
+      ""first_name"": """"
+    }}
 "
 )
             };
@@ -81,8 +78,7 @@ It must be a real name, otherwise keep it empty. No explanation. Only show a jso
 
                         // Extract the first name and last name
                         string firstName = root.GetProperty("first_name").GetString();
-                        string lastName = root.GetProperty("last_name").GetString();
-                        return StringHelper.CombineName(firstName, lastName);
+                        return firstName ?? "";
                     }
                 }
                 catch (Exception ex)

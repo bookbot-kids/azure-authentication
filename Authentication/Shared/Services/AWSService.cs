@@ -220,7 +220,7 @@ namespace Authentication.Shared.Services
                     attributes.Add(new AttributeType() { Name = "name", Value = name });
                 } else
                 {
-                    name = await LLMService.Instance.GetNameFromEmail(email);
+                    name = await LLMService.Instance.GetNameFromEmail(email, country);
                     if (!string.IsNullOrWhiteSpace(name))
                     {
                         attributes.Add(new AttributeType() { Name = "name", Value = name });
