@@ -273,8 +273,7 @@ namespace Authentication.Shared.Services
                                  {"offer", Configurations.Configuration["OfferPackage"]},
                                  {"$canonical_url", Configurations.JWTToken.TokenIssuer},
                                  {"expiry", expiry},
-                                 {"$desktop_deepview",  Configurations.Configuration["BranchIODeepView"]},
-
+                                 {"$desktop_deepview",  Configurations.Configuration["BranchIODeepView"]}
                              } },
                         };
 
