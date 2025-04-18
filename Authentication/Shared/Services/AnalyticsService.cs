@@ -256,7 +256,7 @@ namespace Authentication.Shared.Services
             }, comment: "CreateDeepLink");
         }
 
-        public async Task<string> CreateOfferLink(string appId, string prefixKey = "BranchIOKey", int days = 35)
+        public async Task<string> CreateOfferLink(string appId, string prefixKey = "BranchIOKey", int days = 10)
         {
             var expiry = DateTime.Now.AddDays(days).ToString("yyyy-MM-dd HH:mm:ss.fff");
             var branchIOKey = Configurations.Configuration[$"{prefixKey}_{appId}"];
