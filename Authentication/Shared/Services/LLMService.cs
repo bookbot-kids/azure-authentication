@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Authentication.Shared.Library;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
-using Extensions;
 
 namespace Authentication.Shared.Services
 {

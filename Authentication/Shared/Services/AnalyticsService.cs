@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 using Authentication.Shared.Library;
 using Extensions;
@@ -271,6 +273,7 @@ namespace Authentication.Shared.Services
                                  {"offer", Configurations.Configuration["OfferPackage"]},
                                  {"$canonical_url", Configurations.JWTToken.TokenIssuer},
                                  {"expiry", expiry},
+                                 {"$desktop_deepview",  Configurations.Configuration["BranchIODeepView"]},
 
                              } },
                         };
@@ -336,9 +339,9 @@ namespace Authentication.Shared.Services
             return null;
         }
 
-        public async Task<string> GenerateQRCode2Cloud(string deepLink, string imagePath = "qrcode")
+        public async Task<string> GenerateQRCode2Cloud(string deepLink, string imagePath = "qrcode", string name = null)
         {
-            var filename = Guid.NewGuid().ToString() + ".png";
+            var filename = name ?? Guid.NewGuid().ToString() + ".png";
             var qrcodeUrl = $"{Configurations.Configuration["CloudFlareR2Url"]}/{imagePath}/{filename}";
             using (QRCodeGenerator qrGenerator = new QRCodeGenerator())
             using (QRCodeData qrCodeData = qrGenerator.CreateQrCode(deepLink, QRCodeGenerator.ECCLevel.Q))
@@ -354,6 +357,35 @@ namespace Authentication.Shared.Services
             }
 
             return qrcodeUrl;
+        }
+
+        public async Task GenerateQRCode(string deepLink, string filePath)
+        {
+            using (QRCodeGenerator qrGenerator = new QRCodeGenerator())
+            using (QRCodeData qrCodeData = qrGenerator.CreateQrCode(deepLink, QRCodeGenerator.ECCLevel.Q))
+            using (PngByteQRCode qrCode = new PngByteQRCode(qrCodeData))
+            {
+
+                byte[] qrCodeImage = qrCode.GetGraphic(10);
+                await File.WriteAllBytesAsync(filePath, qrCodeImage);
+            }
+        }
+
+        public async Task SendSlackMessageAsync(string webhookUrl, string message)
+        {
+            using (HttpClient client = new HttpClient())
+            {
+                string json = $"{{\"text\":\"{message}\"}}";
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                HttpResponseMessage response = await client.PostAsync(webhookUrl, content);
+                // Check if the request was successful
+                if (!response.IsSuccessStatusCode)
+                {
+                    string errorContent = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"Failed to send message to Slack. Status: {response.StatusCode}, Response: {errorContent}");
+                }
+            }
         }
     }
 }
