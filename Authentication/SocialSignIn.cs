@@ -133,7 +133,7 @@ namespace Authentication
                     updateParams["custom:ipAddress"] = ipAddress;
                 }
 
-                await AWSService.Instance.UpdateUser(user.Username, updateParams, !user.Enabled);
+                await AWSService.Instance.UpdateUser(user.Username, updateParams, user.Enabled != true);
                 log.LogInformation($"User {email} exists, {ipAddress}, {country}");
                 var passcode = await AWSService.Instance.RequestPasscode(email, "en", disableEmail: true);
                 return new JsonResult(new { success = true, exist, user, passcode = passcode }) { StatusCode = StatusCodes.Status200OK };

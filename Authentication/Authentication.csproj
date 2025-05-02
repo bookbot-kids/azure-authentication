@@ -18,8 +18,8 @@
     <PackageReference Include="Azure.Storage.Blobs" Version="12.16.0" />
     <PackageReference Include="AsyncEnumerator" Version="4.0.2" />
     <PackageReference Include="JWT" Version="9.0.0" />
-    <PackageReference Include="AWSSDK.CognitoIdentityProvider" Version="3.7.304.3" />
-    <PackageReference Include="AWSSDK.S3" Version="3.7.310.7" />
+    <PackageReference Include="AWSSDK.CognitoIdentityProvider" Version="4.0.0.1" />
+    <PackageReference Include="AWSSDK.S3" Version="4.0.0.1" />
     <PackageReference Include="Refit.Newtonsoft.Json" Version="8.0.0" />
     <PackageReference Include="QRCoder" Version="1.6.0" />
     <PackageReference Include="OpenAI" Version="2.0.0" />

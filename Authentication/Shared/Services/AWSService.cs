@@ -38,7 +38,8 @@ namespace Authentication.Shared.Services
         }
 
         private ICognitoRestApi cognitoRestApi;
-        public static AWSService Instance { get; } = new AWSService();
+        private static readonly Lazy<AWSService> _instance = new Lazy<AWSService>(() => new AWSService());
+        public static AWSService Instance => _instance.Value;
         private AmazonCognitoIdentityProviderClient provider;
         private AmazonS3Client amazonS3Client;
 
@@ -46,6 +47,7 @@ namespace Authentication.Shared.Services
         private static List<string> secureAttributes = new List<string>() { "custom:authChallenge" };
         private AWSService()
         {
+            // init rest api
             cognitoRestApi = RestService.For<ICognitoRestApi>(new HttpClient(new HttpLoggingHandler())
             {
                 BaseAddress = new Uri(Configurations.Cognito.CognitoUrl)
@@ -56,10 +58,33 @@ namespace Authentication.Shared.Services
                 BaseAddress = new Uri(Configurations.Cognito.AWSRestUrl)
             }, new RefitSettings(new NewtonsoftJsonContentSerializer()));
 
-            var awsCredentials = new BasicAWSCredentials(Configurations.Cognito.CognitoKey, Configurations.Cognito.CognitoSecret);
-            provider = new AmazonCognitoIdentityProviderClient(awsCredentials, RegionEndpoint.GetBySystemName(Configurations.Cognito.CognitoRegion));
-            var regionEndpoint = RegionEndpoint.GetBySystemName(Configurations.Cognito.AWSS3MainRegion);
-            amazonS3Client = new AmazonS3Client(Configurations.Cognito.CognitoKey, Configurations.Cognito.CognitoSecret, regionEndpoint);
+            try
+            {
+                // Explicitly set credentials
+                var awsCredentials = new BasicAWSCredentials(Configurations.Cognito.CognitoKey, Configurations.Cognito.CognitoSecret);
+
+                // Configure AWS SDK to avoid file system access
+                var cognitoConfig = new AmazonCognitoIdentityProviderConfig
+                {
+                    RegionEndpoint = RegionEndpoint.GetBySystemName(Configurations.Cognito.CognitoRegion),
+                    IgnoreConfiguredEndpointUrls = true
+                };
+
+                var s3Config = new AmazonS3Config
+                {
+                    RegionEndpoint = RegionEndpoint.GetBySystemName(Configurations.Cognito.AWSS3MainRegion),
+                    IgnoreConfiguredEndpointUrls = true,
+                };
+
+                // Initialize clients with explicit credentials and config
+                provider = new AmazonCognitoIdentityProviderClient(awsCredentials, cognitoConfig);
+                amazonS3Client = new AmazonS3Client(awsCredentials, s3Config);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to initialize AWSService: {ex}");
+                throw;
+            }
         }
 
         #region Cognito

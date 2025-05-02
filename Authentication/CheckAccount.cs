@@ -199,7 +199,7 @@ namespace Authentication
                         updateParams["custom:appId"] = appId;
                     }
 
-                    await AWSService.Instance.UpdateUser(user.Username, updateParams, !user.Enabled);
+                    await AWSService.Instance.UpdateUser(user.Username, updateParams, user.Enabled != true);
                 }
             }
             else
@@ -279,7 +279,7 @@ namespace Authentication
                     updateParams["custom:appId"] = appId;
                 }
 
-                await AWSService.Instance.UpdateUser(user.Username, updateParams, !user.Enabled);
+                await AWSService.Instance.UpdateUser(user.Username, updateParams, user.Enabled != true);
                 log.LogInformation($"User ${email} exists, {ipAddress}, {country}");
 
                 if (autoSignInTokenValid)

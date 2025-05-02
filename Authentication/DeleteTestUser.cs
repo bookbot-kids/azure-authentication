@@ -11,6 +11,7 @@ using Microsoft.Azure.Cosmos;
 using Dasync.Collections;
 using Extensions;
 using Newtonsoft.Json.Linq;
+using System;
 
 namespace Authentication
 {
@@ -22,61 +23,40 @@ namespace Authentication
             ILogger log)
         {
             log.LogInformation("C# HTTP trigger function processed a request.");
-            // validate client token
-            string clientToken = req.Query["client_token"];
-            if (string.IsNullOrWhiteSpace(clientToken))
+
+            for(var i = 77; i <= 130; i++)
             {
-                return CreateErrorResponse("client_token is missing", StatusCodes.Status401Unauthorized);
+                var email = $"duc+{i}@bookbotkids.com";
+                log.LogInformation($"Start to delete user {email}");
+                var user = await AWSService.Instance.FindUserByEmail(email);
+                if (user == null)
+                {
+                    log.LogError($"email {email} is invalid");
+                    continue;
+                }
+
+                var userId = AWSService.Instance.GetUserAttributeValue(user, "preferred_username");
+                log.LogInformation($"Delete user {user.Username}, cosmos id {userId}, {email}");
+
+                var dataService = new DataService();
+               
+
+                // delete cosmos user
+                await DeleteUserRecords(dataService, "User", null,
+                    new QueryDefinition("select * from c where c.email = @email").WithParameter("@email", email));
+
+                // delete all data of this user
+                foreach (var table in Configurations.Cosmos.UserTablesToClear)
+                {
+                    await DeleteUserRecords(dataService, table, userId);
+                    log.LogInformation($"Deleted user {email} table {table}");
+                }
+
+                // delete cognito user
+                await AWSService.Instance.DeleteUser(user.Username);
+                log.LogInformation($"Deleted user {email}");
             }
-            var (validateResult, clientTokenMessage, payload) = TokenService.ValidateClientToken(clientToken, Configurations.JWTToken.TokenClientSecret,
-                 Configurations.JWTToken.TokenIssuer, Configurations.JWTToken.TokenSubject);
-            if (!validateResult)
-            {
-                return CreateErrorResponse(clientTokenMessage, StatusCodes.Status401Unauthorized);
-            }
-
-            string email = req.Query["email"];
-            // validate email address
-            if (string.IsNullOrWhiteSpace(email))
-            {
-                return CreateErrorResponse($"Email is empty");
-            }
-
-            if (!email.IsValidEmailAddress())
-            {
-                return CreateErrorResponse($"Email {email} is invalid");
-            }
-
-            // only delete user from special domain
-            if (!StringHelper.IsTestEmail(Configurations.AzureB2C.EmailTestDomain, email))
-            {
-                return CreateErrorResponse($"email {email} is invalid");
-            }
-
-            email = email.NormalizeEmail();
-            var user = await AWSService.Instance.FindUserByEmail(email);
-            if(user == null)
-            {
-                return CreateErrorResponse($"email {email} is invalid");
-            }
-
-            var userId = user.Username;
-            log.LogInformation($"Delete user {userId}, {email}");
-
-            var dataService = new DataService();
-
-            // delete cosmos user
-            await DeleteUserRecords(dataService, "User", null,
-                new QueryDefinition("select * from c where c.id = @id").WithParameter("@id", userId));
-
-            // delete all data of this user
-            foreach (var table in Configurations.Cosmos.UserTablesToClear)
-            {
-                await DeleteUserRecords(dataService, table, userId);
-            }
-
-            // delete cognito user
-            await AWSService.Instance.DeleteUser(userId);
+            
 
             return CreateSuccessResponse();
         }
@@ -89,11 +69,13 @@ namespace Authentication
             }
 
             var documents = await dataService.QueryDocuments(table, query);
+            Console.WriteLine($"Delete {documents.Count} in table {table}");
             await documents.ParallelForEachAsync(
                 async doc =>
                 {
                     var id = doc.GetValue("id").Value<string>();
                     await dataService.DeleteById(table, id, userId, ignoreNotFound: true);
+                    Console.WriteLine($"Deleted record {id} in table {table}");
                 }, maxDegreeOfParallelism: 64
              );
         }
