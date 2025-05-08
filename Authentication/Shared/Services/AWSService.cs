@@ -60,6 +60,18 @@ namespace Authentication.Shared.Services
 
             try
             {
+                // create temp dir
+                string tempPath = Path.Combine(Path.GetTempPath(), ".aws");
+                Directory.CreateDirectory(tempPath); 
+                Environment.SetEnvironmentVariable("HOME", tempPath); 
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine($"Failed to create home dir: {ex}");
+            }
+
+            try
+            {
                 // Explicitly set credentials
                 var awsCredentials = new BasicAWSCredentials(Configurations.Cognito.CognitoKey, Configurations.Cognito.CognitoSecret);
 
