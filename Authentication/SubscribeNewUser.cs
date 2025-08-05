@@ -36,6 +36,8 @@ namespace Authentication
             var name = string.IsNullOrWhiteSpace(firstName) ?
                       (string.IsNullOrWhiteSpace(lastName) ? "" : lastName) :
                       (string.IsNullOrWhiteSpace(lastName) ? firstName : $"{firstName} {lastName}");
+            string gclid = req.Query["gclid"];
+            string fbc = req.Query["fbc"];
             if (string.IsNullOrWhiteSpace(name))
             {
                 return CreateErrorResponse("Must provide first_name or last_name");
@@ -89,6 +91,16 @@ namespace Authentication
             if (!string.IsNullOrWhiteSpace(appId) && AWSService.Instance.GetUserAttributeValue(user, "custom:appId") != appId)
             {
                 updateParams["custom:appId"] = appId;
+            }
+
+            if (!string.IsNullOrWhiteSpace(gclid) && AWSService.Instance.GetUserAttributeValue(user, "custom:gclid") != gclid)
+            {
+                updateParams["custom:gclid"] = gclid;
+            }
+
+            if (!string.IsNullOrWhiteSpace(fbc) && AWSService.Instance.GetUserAttributeValue(user, "custom:fbc") != fbc)
+            {
+                updateParams["custom:fbc"] = fbc;
             }
 
             await AWSService.Instance.UpdateUser(user.Username, updateParams, false);

@@ -126,7 +126,7 @@ namespace Authentication.Shared.Library
             }
         }
 
-        protected async Task SendAnalytics(string email, string id, string country, string ipAddress, string name)
+        protected async Task SendAnalytics(string email, string id, string country, string ipAddress, string name, string gclid, string fbc)
         {
             // log event for new user
             var body = new Dictionary<string, object>
@@ -166,6 +166,16 @@ namespace Authentication.Shared.Library
                             }
                     },
                 };
+
+            if (!string.IsNullOrWhiteSpace(gclid))
+            {
+                ((Dictionary<string, string>)body["googleAnalytics"]).Add("gclid", gclid);
+            }
+
+            if (!string.IsNullOrWhiteSpace(fbc))
+            {
+                ((Dictionary<string, string>)body["facebookPixel"]).Add("fbc", fbc);
+            }
 
             // don't need to wait for this event, just make it timeout after few seconds
             var task = AnalyticsService.Instance.SendEvent(body);

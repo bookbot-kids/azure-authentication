@@ -57,6 +57,9 @@ namespace Authentication
             string userType = req.Query["user_type"];
             log.LogInformation($"Check account for user {email}, source: {source}");
             string signInToken = req.Query["sign_in_token"];
+            string gclid = req.Query["gclid"];
+            string fbc = req.Query["fbc"];
+
             var autoSignInTokenValid = false;
             if (!string.IsNullOrWhiteSpace(signInToken))
             {
@@ -117,7 +120,7 @@ namespace Authentication
                         }
 
                         bool requestPasscode = req.Query["request_passcode"] == "true";
-                        return await ProcessCognitoRequest(log, email, name, country, ipAddress, requestPasscode, language, appId, signInToken, autoSignInTokenValid, linkType, os, userType);
+                        return await ProcessCognitoRequest(log, email, name, country, ipAddress, requestPasscode, language, appId, signInToken, autoSignInTokenValid, linkType, os, userType, gclid, fbc);
                     }
                 case "whatsapp":
                     {
@@ -139,14 +142,14 @@ namespace Authentication
                         }
 
                         log.LogInformation($"Check account for user {phone}, source: {source}");
-                        return await ProcessWhatsappRequest(log, phone, email, name, country, ipAddress, language, appId, signInToken, autoSignInTokenValid, linkType, os, userType);
+                        return await ProcessWhatsappRequest(log, phone, email, name, country, ipAddress, language, appId, signInToken, autoSignInTokenValid, linkType, os, userType, gclid, fbc);
                     }
                 default:
                     throw new Exception($"{email} has invalid source {source}");
             }
         }
 
-        private async Task<IActionResult> ProcessWhatsappRequest(ILogger log, string phone, string email, string name, string country, string ipAddress, string language, string appId, string signInToken, bool autoSignInTokenValid, string linkType, string os, string userType)
+        private async Task<IActionResult> ProcessWhatsappRequest(ILogger log, string phone, string email, string name, string country, string ipAddress, string language, string appId, string signInToken, bool autoSignInTokenValid, string linkType, string os, string userType, string gclid, string fbc)
         {
             var user = await AWSService.Instance.FindUserByPhone(phone);
             var existing = true;
@@ -156,7 +159,7 @@ namespace Authentication
             if (user == null)
             {
                 // if user with phone not exist, then create a new one with place holder email
-                var (exist, newUser) = await AWSService.Instance.FindOrCreateUser(userEmail, name, country, ipAddress, phone: phone, forceCreate: string.IsNullOrWhiteSpace(email), language: language, userType: userType, os: os, appId: appId);
+                var (exist, newUser) = await AWSService.Instance.FindOrCreateUser(userEmail, name, country, ipAddress, phone: phone, forceCreate: string.IsNullOrWhiteSpace(email), language: language, userType: userType, os: os, appId: appId, gclid: gclid, fbc: fbc);
                 user = newUser;
                 existing = exist;
 
@@ -199,6 +202,16 @@ namespace Authentication
                         updateParams["custom:appId"] = appId;
                     }
 
+                    if (!string.IsNullOrWhiteSpace(gclid) && AWSService.Instance.GetUserAttributeValue(user, "custom:gclid") != gclid)
+                    {
+                        updateParams["custom:gclid"] = gclid;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(fbc) && AWSService.Instance.GetUserAttributeValue(user, "custom:fbc") != fbc)
+                    {
+                        updateParams["custom:fbc"] = fbc;
+                    }
+
                     await AWSService.Instance.UpdateUser(user.Username, updateParams, user.Enabled != true);
                 }
             }
@@ -235,9 +248,9 @@ namespace Authentication
             return new JsonResult(new { success = true, exist = existing, user }) { StatusCode = StatusCodes.Status200OK };
         }
 
-        private async Task<IActionResult> ProcessCognitoRequest(ILogger log, string email, string name, string country, string ipAddress, bool requestPasscode, string language, string appId, string signInToken, bool autoSignInTokenValid, string linkType, string os, string userType)
+        private async Task<IActionResult> ProcessCognitoRequest(ILogger log, string email, string name, string country, string ipAddress, bool requestPasscode, string language, string appId, string signInToken, bool autoSignInTokenValid, string linkType, string os, string userType, string gclid, string fbc)
         {
-            var (exist, user) = await AWSService.Instance.FindOrCreateUser(email, name, country, ipAddress,language: language, os: os, appId: appId, userType: userType);
+            var (exist, user) = await AWSService.Instance.FindOrCreateUser(email, name, country, ipAddress,language: language, os: os, appId: appId, userType: userType, gclid: gclid, fbc: fbc);
             // there is an error when creating user
             if (user == null)
             {
@@ -277,6 +290,16 @@ namespace Authentication
                 if (!string.IsNullOrWhiteSpace(appId) && AWSService.Instance.GetUserAttributeValue(user, "custom:appId") != appId)
                 {
                     updateParams["custom:appId"] = appId;
+                }
+
+                if (!string.IsNullOrWhiteSpace(gclid) && AWSService.Instance.GetUserAttributeValue(user, "custom:gclid") != gclid)
+                {
+                    updateParams["custom:gclid"] = gclid;
+                }
+
+                if (!string.IsNullOrWhiteSpace(fbc) && AWSService.Instance.GetUserAttributeValue(user, "custom:fbc") != fbc)
+                {
+                    updateParams["custom:fbc"] = fbc;
                 }
 
                 await AWSService.Instance.UpdateUser(user.Username, updateParams, user.Enabled != true);
@@ -336,7 +359,7 @@ namespace Authentication
                     // Send analytics tracking
                     try
                     {
-                        await SendAnalytics(email, user.Username, country, ipAddress, name);
+                        await SendAnalytics(email, user.Username, country, ipAddress, name, gclid, fbc);
                     }
                     catch (Exception ex)
                     {

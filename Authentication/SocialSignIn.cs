@@ -48,6 +48,8 @@ namespace Authentication
             string lastName = req.Query["last_name"];
             string userType = req.Query["user_type"];
             var name = StringHelper.CombineName(firstName, lastName);
+            string gclid = req.Query["gclid"];
+            string fbc = req.Query["fbc"];
 
             string source = req.Query["source"];
             log.LogInformation($"Check account for user {email}, source: {source}");
@@ -61,7 +63,7 @@ namespace Authentication
                     return CreateErrorResponse($"token is missing");
                 }
 
-                return await ProcessGoogleRequest(log,token, idToken, email, name, country, ipAddress, language, os, appId, userType);
+                return await ProcessGoogleRequest(log,token, idToken, email, name, country, ipAddress, language, os, appId, userType, gclid, fbc);
             }
             else if (source == "apple")
             {
@@ -76,14 +78,14 @@ namespace Authentication
                 {
                     return CreateErrorResponse($"id_token is missing");
                 }
-                return await ProcessAppleRequest(log, token, idToken, email, name, country, ipAddress, language, os, appId, userType);
+                return await ProcessAppleRequest(log, token, idToken, email, name, country, ipAddress, language, os, appId, userType, gclid, fbc);
             } else
             {
                 return CreateErrorResponse("Sign in source is invalid");
             }
         }
 
-        private async Task<IActionResult> ProcessGoogleRequest(ILogger log, string token, string idToken, string email, string name, string country, string ipAddress, string language, string os, string appId, string userType)
+        private async Task<IActionResult> ProcessGoogleRequest(ILogger log, string token, string idToken, string email, string name, string country, string ipAddress, string language, string os, string appId, string userType, string gclid, string fbc)
         {
             // validate token from client
             var isValid = await GoogleService.Instance.ValidateAccessToken(email, token, idToken);
@@ -93,10 +95,10 @@ namespace Authentication
             }
 
             // then create or get cognito/b2c user
-            return await CreateOrGetCognito(log, email, name, country, ipAddress, language, os, appId, userType);
+            return await CreateOrGetCognito(log, email, name, country, ipAddress, language, os, appId, userType, gclid, fbc);
         }
 
-        private async Task<IActionResult> ProcessAppleRequest(ILogger log, string token, string idToken, string email, string name, string country, string ipAddress, string language, string os, string appId, string userType)
+        private async Task<IActionResult> ProcessAppleRequest(ILogger log, string token, string idToken, string email, string name, string country, string ipAddress, string language, string os, string appId, string userType, string gclid, string fbc)
         {
             // validate token from client
             var isValid = await AppleService.Instance.ValidateToken(email, token, idToken);
@@ -106,10 +108,10 @@ namespace Authentication
             }
 
             // then create or get cognito/b2c user
-            return await CreateOrGetCognito(log, email, name, country, ipAddress, language, os, appId, userType);
+            return await CreateOrGetCognito(log, email, name, country, ipAddress, language, os, appId, userType, gclid, fbc);
         }
 
-        private async Task<IActionResult> CreateOrGetCognito(ILogger log, string email, string name, string country, string ipAddress, string language, string os, string appId, string userType)
+        private async Task<IActionResult> CreateOrGetCognito(ILogger log, string email, string name, string country, string ipAddress, string language, string os, string appId, string userType, string gclid, string fbc)
         {
             var (exist, user) = await AWSService.Instance.FindOrCreateUser(email, name, country, ipAddress, language: language, os:os, userType: userType);
             // there is an error when creating user
@@ -131,6 +133,16 @@ namespace Authentication
                 if (!string.IsNullOrWhiteSpace(ipAddress))
                 {
                     updateParams["custom:ipAddress"] = ipAddress;
+                }
+
+                if (!string.IsNullOrWhiteSpace(gclid) && AWSService.Instance.GetUserAttributeValue(user, "custom:gclid") != gclid)
+                {
+                    updateParams["custom:gclid"] = gclid;
+                }
+
+                if (!string.IsNullOrWhiteSpace(fbc) && AWSService.Instance.GetUserAttributeValue(user, "custom:fbc") != fbc)
+                {
+                    updateParams["custom:fbc"] = fbc;
                 }
 
                 await AWSService.Instance.UpdateUser(user.Username, updateParams, user.Enabled != true);
@@ -169,7 +181,7 @@ namespace Authentication
 
                     try
                     {
-                        await SendAnalytics(email, user.Username, country, ipAddress, name);
+                        await SendAnalytics(email, user.Username, country, ipAddress, name, gclid, fbc);
                     }
                     catch (Exception ex)
                     {
