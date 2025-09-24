@@ -159,12 +159,20 @@ namespace Authentication.Shared.Services
             if (!ignoreSpamEmailCheck)
             {
                 // validate email status
-                var status = await ValidateEmailStatus(email);
-
-                if (status != "valid")
+                try
                 {
-                    Logger.Log?.LogWarning($"ignore {email} with invalid status {status}");
-                    return;
+                    var status = await ValidateEmailStatus(email);
+
+                    if (status != "valid")
+                    {
+                        Logger.Log?.LogWarning($"ignore {email} with invalid status {status}");
+                        return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // ignore in case error
+                    Logger.Log?.LogError($"Check email status error {ex.Message}");
                 }
             }            
 
