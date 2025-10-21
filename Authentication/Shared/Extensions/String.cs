@@ -56,8 +56,16 @@ namespace Extensions
         {
             try
             {
-                new MailAddress(email);
-                return true;
+                // Basic email format validation using regex
+                var emailPattern = @"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$";
+
+                if (!Regex.IsMatch(email, emailPattern))
+                {
+                    return false;
+                }                   
+
+                var mailAddress = new MailAddress(email);
+                return mailAddress.Address == email;
             }
             catch (Exception)
             {

@@ -145,7 +145,7 @@ namespace Authentication
                         return await ProcessWhatsappRequest(log, phone, email, name, country, ipAddress, language, appId, signInToken, autoSignInTokenValid, linkType, os, userType, gclid, fbc);
                     }
                 default:
-                    throw new Exception($"{email} has invalid source {source}");
+                    return CreateErrorResponse($"{email} has invalid source {source}");
             }
         }
 
