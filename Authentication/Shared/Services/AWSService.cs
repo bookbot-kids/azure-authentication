@@ -248,6 +248,7 @@ namespace Authentication.Shared.Services
                 Filter = $"email = \"{email}\"",
             };
 
+            var existingUserFoundDuringCreate = false;
             Func<ListUsersResponse, Task<UserType>> createCallback = async (ListUsersResponse usersResponse) =>
             {
                 // then create cognito user
@@ -331,21 +332,25 @@ namespace Authentication.Shared.Services
                     var createUserResponse = await provider.AdminCreateUserAsync(createRequest);
                     newUser = createUserResponse.User;
                 }
-                catch (UsernameExistsException ex)
+                catch (UsernameExistsException)
                 {
-                    // TODO will remove later (after fixing from client)
-                    Logger.Log?.LogError($"user name {phone} {email} exist {ex.Message}");
-                    if (usersResponse != null)
+                    Logger.Log?.LogWarning($"User {email} already exists while creating the account");
+                    var existingUserResponse = await provider.AdminGetUserAsync(new AdminGetUserRequest
                     {
-                        // user exist in other request, just get it from cognito after few second
-                        Task.Delay(5 * 1000).Wait();
-                        usersResponse = await provider.ListUsersAsync(listRequest);
-                        newUser = usersResponse.Users.First();
-                    }
-                    else
+                        UserPoolId = Configurations.Cognito.CognitoPoolId,
+                        Username = email
+                    });
+                    newUser = new UserType
                     {
-                        throw;
-                    }
+                        Username = existingUserResponse.Username,
+                        Attributes = existingUserResponse.UserAttributes,
+                        Enabled = existingUserResponse.Enabled,
+                        UserCreateDate = existingUserResponse.UserCreateDate,
+                        UserLastModifiedDate = existingUserResponse.UserLastModifiedDate,
+                        UserStatus = existingUserResponse.UserStatus,
+                        MFAOptions = existingUserResponse.MFAOptions
+                    };
+                    existingUserFoundDuringCreate = true;
                 } catch (Amazon.Runtime.Internal.HttpErrorResponseException ex)
                 {
                     // TODO will remove later (after fixing from client)
@@ -364,19 +369,22 @@ namespace Authentication.Shared.Services
                     }
                 }
 
-                // then change its password
-                var changePasswordRequest = new AdminSetUserPasswordRequest
+                if (!existingUserFoundDuringCreate)
                 {
-                    UserPoolId = Configurations.Cognito.CognitoPoolId,
-                    Username = newUser.Username,
-                    Password = TokenService.GeneratePassword(email),
-                    Permanent = true
-                };
+                    // then change its password
+                    var changePasswordRequest = new AdminSetUserPasswordRequest
+                    {
+                        UserPoolId = Configurations.Cognito.CognitoPoolId,
+                        Username = newUser.Username,
+                        Password = TokenService.GeneratePassword(email),
+                        Permanent = true
+                    };
 
-                await provider.AdminSetUserPasswordAsync(changePasswordRequest);
+                    await provider.AdminSetUserPasswordAsync(changePasswordRequest);
 
-                // add cognito user into group new
-                await UpdateUserGroup(newUser.Username, "new");
+                    // add cognito user into group new
+                    await UpdateUserGroup(newUser.Username, "new");
+                }
 
                 // dont return passcode property to client
                 newUser.Attributes.Remove(newUser.Attributes.Find(x => secureAttributes.Contains(x.Name)));
@@ -386,7 +394,7 @@ namespace Authentication.Shared.Services
             if(forceCreate)
             {
                 var newUser = await createCallback(null);
-                return (false, newUser);
+                return (existingUserFoundDuringCreate, newUser);
             }
 
             var usersResponse = await provider.ListUsersAsync(listRequest);
@@ -405,7 +413,7 @@ namespace Authentication.Shared.Services
             else
             {
                 var newUser = await createCallback(usersResponse);
-                return (false, newUser);
+                return (existingUserFoundDuringCreate, newUser);
             }
         }
 
@@ -605,4 +613,3 @@ namespace Authentication.Shared.Services
         #endregion
     }
 }
-
