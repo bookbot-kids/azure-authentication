@@ -59,9 +59,34 @@ namespace Authentication
             string clientUserId = req.Query["user_id"];
             string syncTablesParams = req.Query["sync_tables"];
             List<string> syncTables;
+
+            // A sync_tables entry may carry a qualifier - "Book:bookbot" - meaning
+            // "the Book container, scoped to the bookbot partition". The table name
+            // is what the role check filters on, so qualifiers are stripped here and
+            // applied afterwards when the permission is minted.
+            var qualifiedTables = new Dictionary<string, string>();
             if(!string.IsNullOrWhiteSpace(syncTablesParams))
             {
-                syncTables = syncTablesParams.Split(",").ToList();
+                syncTables = new List<string>();
+                foreach (var entry in syncTablesParams.Split(","))
+                {
+                    var parts = entry.Split(":");
+                    var table = parts[0].Trim();
+                    if (string.IsNullOrWhiteSpace(table))
+                    {
+                        continue;
+                    }
+
+                    if (parts.Length > 1 && !string.IsNullOrWhiteSpace(parts[1]))
+                    {
+                        qualifiedTables[table] = parts[1].Trim();
+                    }
+
+                    if (!syncTables.Contains(table))
+                    {
+                        syncTables.Add(table);
+                    }
+                }
             } else
             {
                 syncTables = new List<string>();
@@ -131,6 +156,41 @@ namespace Authentication
             {
                 var p = task.Result;
                 permissions.AddRange(p);
+            }
+
+            // Swap each qualified table's permission for one scoped to the requested
+            // partition. The unqualified permission has to exist first: that is the
+            // role check, so a qualifier can never widen what a role may read.
+            foreach (var qualified in qualifiedTables)
+            {
+                var table = qualified.Key;
+                var partition = qualified.Value;
+                var granted = permissions.FirstOrDefault(p => p.Id == table);
+                if (granted == null)
+                {
+                    log.LogInformation($"role {userGroup.Name} has no permission for table {table}, skip partition {partition}");
+                    continue;
+                }
+
+                var permissionId = $"{table}-{partition}";
+                var scoped = await CosmosService.Instance.GetPermission(userGroup.Name, permissionId)
+                    ?? await CosmosService.Instance.CreatePermission(
+                        userGroup.Name,
+                        permissionId,
+                        granted.PermissionMode == PermissionMode.Read,
+                        table,
+                        partition);
+
+                if (scoped == null)
+                {
+                    log.LogWarning($"can not create permission {permissionId} for {userGroup.Name}");
+                    continue;
+                }
+
+                // The default-partition token for this table is of no use to a
+                // client that asked for a specific partition.
+                permissions.Remove(granted);
+                permissions.Add(scoped);
             }
 
             // return list of permissions
