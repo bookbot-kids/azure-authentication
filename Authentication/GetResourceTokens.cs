@@ -34,6 +34,64 @@ namespace Authentication
         /// <param name="req">HttpRequest type. It does contains parameters, headers...</param>
         /// <param name="log">The logger instance</param>
         /// <returns>Cosmos resource tokens result with http code 200 if no error, otherwise return http error</returns> 
+        /// <summary>
+        /// Swaps each qualified table's permission for one scoped to the requested
+        /// partition, in place.
+        /// </summary>
+        /// <remarks>
+        /// The unqualified permission has to exist first: that is the role check, so
+        /// a qualifier can never widen what a role may read. Shared by the guest and
+        /// signed-in paths - a signed-out child reads the same books as a signed-in
+        /// one, and having two copies of this would mean only one of them stayed
+        /// correct.
+        /// </remarks>
+        private static async Task ApplyPartitionQualifiers(
+            List<PermissionProperties> permissions,
+            Dictionary<string, string> qualifiedTables,
+            string roleName,
+            ILogger log)
+        {
+            if (permissions == null || qualifiedTables.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var qualified in qualifiedTables)
+            {
+                var table = qualified.Key;
+                var partition = qualified.Value;
+                var granted = permissions.FirstOrDefault(p => p.Id == table);
+                if (granted == null)
+                {
+                    log.LogInformation($"role {roleName} has no permission for table {table}, skip partition {partition}");
+                    continue;
+                }
+
+                var permissionId = $"{table}-{partition}";
+                var scoped = await CosmosService.Instance.GetPermission(roleName, permissionId)
+                    ?? await CosmosService.Instance.CreatePermission(
+                        roleName,
+                        permissionId,
+                        granted.PermissionMode == PermissionMode.Read,
+                        table,
+                        partition);
+
+                if (scoped == null)
+                {
+                    // Leaving the unscoped permission in place is not a safe
+                    // fallback: it reads a different partition, so the client sees
+                    // an empty table rather than an error.
+                    log.LogWarning($"can not create permission {permissionId} for {roleName}, {table} will read partition {granted.ResourcePartitionKey} instead of {partition}");
+                    continue;
+                }
+
+                // The default-partition token for this table is of no use to a
+                // client that asked for a specific partition.
+                permissions.Remove(granted);
+                permissions.Add(scoped);
+            }
+        }
+
         [FunctionName("GetResourceTokens")]
         public static async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
@@ -41,22 +99,6 @@ namespace Authentication
         {
             Logger.Log = log;
 
-            // validate b2c refresh token
-            string refreshToken = req.Query["refresh_token"];
-            if (string.IsNullOrWhiteSpace(refreshToken))
-            {
-                // default is guest
-                var guestGroup = new ADGroup() { Name = Configurations.AzureB2C.GuestGroup };
-
-                // If the refresh token is missing, then return permissions for guest
-                var guestPermissions = await guestGroup.GetPermissions(new List<string>());
-                return new JsonResult(new { success = true, permissions = guestPermissions, group = guestGroup.Name }) { StatusCode = StatusCodes.Status200OK };
-            }
-
-            string source = req.Query["source"];
-            ADUser user;
-            ADToken adToken;
-            string clientUserId = req.Query["user_id"];
             string syncTablesParams = req.Query["sync_tables"];
             List<string> syncTables;
 
@@ -64,6 +106,9 @@ namespace Authentication
             // "the Book container, scoped to the bookbot partition". The table name
             // is what the role check filters on, so qualifiers are stripped here and
             // applied afterwards when the permission is minted.
+            //
+            // Parsed before the guest branch below, because a signed-out child
+            // reads the same books as a signed-in one.
             var qualifiedTables = new Dictionary<string, string>();
             if(!string.IsNullOrWhiteSpace(syncTablesParams))
             {
@@ -91,6 +136,31 @@ namespace Authentication
             {
                 syncTables = new List<string>();
             }
+
+            // validate b2c refresh token
+            string refreshToken = req.Query["refresh_token"];
+            if (string.IsNullOrWhiteSpace(refreshToken))
+            {
+                // default is guest
+                var guestGroup = new ADGroup() { Name = Configurations.AzureB2C.GuestGroup };
+
+                // If the refresh token is missing, then return permissions for guest.
+                //
+                // Deliberately unfiltered. Filtering by syncTables here would be
+                // consistent with the signed-in path below, but it would also stop
+                // sending existing clients permissions they receive today - and a
+                // guest permission that quietly stops arriving shows up as a table
+                // that syncs nothing, not as an error. The qualifier below is the
+                // part that was actually missing.
+                var guestPermissions = await guestGroup.GetPermissions(new List<string>());
+                await ApplyPartitionQualifiers(guestPermissions, qualifiedTables, guestGroup.Name, log);
+                return new JsonResult(new { success = true, permissions = guestPermissions, group = guestGroup.Name }) { StatusCode = StatusCodes.Status200OK };
+            }
+
+            string source = req.Query["source"];
+            ADUser user;
+            ADToken adToken;
+            string clientUserId = req.Query["user_id"];
 
             if (source != "cognito")
             {
@@ -158,40 +228,7 @@ namespace Authentication
                 permissions.AddRange(p);
             }
 
-            // Swap each qualified table's permission for one scoped to the requested
-            // partition. The unqualified permission has to exist first: that is the
-            // role check, so a qualifier can never widen what a role may read.
-            foreach (var qualified in qualifiedTables)
-            {
-                var table = qualified.Key;
-                var partition = qualified.Value;
-                var granted = permissions.FirstOrDefault(p => p.Id == table);
-                if (granted == null)
-                {
-                    log.LogInformation($"role {userGroup.Name} has no permission for table {table}, skip partition {partition}");
-                    continue;
-                }
-
-                var permissionId = $"{table}-{partition}";
-                var scoped = await CosmosService.Instance.GetPermission(userGroup.Name, permissionId)
-                    ?? await CosmosService.Instance.CreatePermission(
-                        userGroup.Name,
-                        permissionId,
-                        granted.PermissionMode == PermissionMode.Read,
-                        table,
-                        partition);
-
-                if (scoped == null)
-                {
-                    log.LogWarning($"can not create permission {permissionId} for {userGroup.Name}");
-                    continue;
-                }
-
-                // The default-partition token for this table is of no use to a
-                // client that asked for a specific partition.
-                permissions.Remove(granted);
-                permissions.Add(scoped);
-            }
+            await ApplyPartitionQualifiers(permissions, qualifiedTables, userGroup.Name, log);
 
             // return list of permissions
             return new JsonResult(new { success = true, permissions, group = userGroup.Name, refreshToken = adToken.RefreshToken }) { StatusCode = StatusCodes.Status200OK };
