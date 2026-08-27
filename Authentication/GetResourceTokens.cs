@@ -47,7 +47,7 @@ namespace Authentication
         /// </remarks>
         private static async Task ApplyPartitionQualifiers(
             List<PermissionProperties> permissions,
-            Dictionary<string, string> qualifiedTables,
+            Dictionary<string, List<string>> qualifiedTables,
             string roleName,
             ILogger log)
         {
@@ -59,36 +59,41 @@ namespace Authentication
             foreach (var qualified in qualifiedTables)
             {
                 var table = qualified.Key;
-                var partition = qualified.Value;
                 var granted = permissions.FirstOrDefault(p => p.Id == table);
                 if (granted == null)
                 {
-                    log.LogInformation($"role {roleName} has no permission for table {table}, skip partition {partition}");
+                    log.LogInformation($"role {roleName} has no permission for table {table}, skip qualified partitions");
                     continue;
                 }
 
-                var permissionId = $"{table}-{partition}";
-                var scoped = await CosmosService.Instance.GetPermission(roleName, permissionId)
-                    ?? await CosmosService.Instance.CreatePermission(
-                        roleName,
-                        permissionId,
-                        granted.PermissionMode == PermissionMode.Read,
-                        table,
-                        partition);
-
-                if (scoped == null)
+                var scopedPermissions = new List<PermissionProperties>();
+                foreach (var partition in qualified.Value)
                 {
-                    // Leaving the unscoped permission in place is not a safe
-                    // fallback: it reads a different partition, so the client sees
-                    // an empty table rather than an error.
-                    log.LogWarning($"can not create permission {permissionId} for {roleName}, {table} will read partition {granted.ResourcePartitionKey} instead of {partition}");
-                    continue;
+                    var permissionId = $"{table}-{partition}";
+                    var scoped = await CosmosService.Instance.GetPermission(roleName, permissionId)
+                        ?? await CosmosService.Instance.CreatePermission(
+                            roleName,
+                            permissionId,
+                            granted.PermissionMode == PermissionMode.Read,
+                            table,
+                            partition);
+
+                    if (scoped == null)
+                    {
+                        log.LogWarning($"can not create permission {permissionId} for {roleName}, skip partition {partition}");
+                        continue;
+                    }
+
+                    scopedPermissions.Add(scoped);
                 }
 
-                // The default-partition token for this table is of no use to a
-                // client that asked for a specific partition.
-                permissions.Remove(granted);
-                permissions.Add(scoped);
+                if (scopedPermissions.Count > 0)
+                {
+                    // The default-partition token for this table is of no use to a
+                    // client that asked for specific partitions.
+                    permissions.Remove(granted);
+                    permissions.AddRange(scopedPermissions);
+                }
             }
         }
 
@@ -110,7 +115,7 @@ namespace Authentication
             //
             // Parsed before the guest branch below, because a signed-out child
             // reads the same books as a signed-in one.
-            var qualifiedTables = new Dictionary<string, string>();
+            var qualifiedTables = new Dictionary<string, List<string>>();
             if(!string.IsNullOrWhiteSpace(syncTablesParams))
             {
                 syncTables = new List<string>();
@@ -125,7 +130,17 @@ namespace Authentication
 
                     if (parts.Length > 1 && !string.IsNullOrWhiteSpace(parts[1]))
                     {
-                        qualifiedTables[table] = parts[1].Trim();
+                        var partition = parts[1].Trim();
+                        if (!qualifiedTables.TryGetValue(table, out var partitions))
+                        {
+                            partitions = new List<string>();
+                            qualifiedTables[table] = partitions;
+                        }
+
+                        if (!partitions.Contains(partition))
+                        {
+                            partitions.Add(partition);
+                        }
                     }
 
                     if (!syncTables.Contains(table))

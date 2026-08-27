@@ -93,6 +93,7 @@ ___
 - Parameters:
 	+ refresh_token: The B2C refresh token from [GetRefreshAndAccessToken](#GetRefreshAndAccessToken)
 	+ nocache: Optional. Set to `true` to bypass the resource-token cache and return newly fetched tokens
+	+ sync_tables: Optional comma-separated tables. Repeat a table with different qualifiers to request multiple partitions, for example `Book:jolly_phonics,Book:bookbot`
 -  Response:
 	+ Success (200)	 
 	```
