@@ -92,6 +92,7 @@ ___
 - Http GET
 - Parameters:
 	+ refresh_token: The B2C refresh token from [GetRefreshAndAccessToken](#GetRefreshAndAccessToken)
+	+ nocache: Optional. Set to `true` to bypass the resource-token cache and return newly fetched tokens
 -  Response:
 	+ Success (200)	 
 	```

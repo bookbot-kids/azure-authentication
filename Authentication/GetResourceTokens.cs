@@ -99,6 +99,7 @@ namespace Authentication
         {
             Logger.Log = log;
 
+            var noCache = bool.TryParse(req.Query["nocache"], out var parsedNoCache) && parsedNoCache;
             string syncTablesParams = req.Query["sync_tables"];
             List<string> syncTables;
 
@@ -152,7 +153,7 @@ namespace Authentication
                 // guest permission that quietly stops arriving shows up as a table
                 // that syncs nothing, not as an error. The qualifier below is the
                 // part that was actually missing.
-                var guestPermissions = await guestGroup.GetPermissions(new List<string>());
+                var guestPermissions = await guestGroup.GetPermissions(new List<string>(), useCache: !noCache);
                 await ApplyPartitionQualifiers(guestPermissions, qualifiedTables, guestGroup.Name, log);
                 return new JsonResult(new { success = true, permissions = guestPermissions, group = guestGroup.Name }) { StatusCode = StatusCodes.Status200OK };
             }
@@ -215,7 +216,7 @@ namespace Authentication
 
             var tasks = new List<Task<List<PermissionProperties>>>();
             // get group permissions
-            tasks.Add(userGroup.GetPermissions(syncTables));
+            tasks.Add(userGroup.GetPermissions(syncTables, useCache: !noCache));
 
             // get user permissions
             tasks.Add(user.GetPermissions(userGroup.Name, syncTables));

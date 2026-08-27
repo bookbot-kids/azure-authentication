@@ -167,7 +167,7 @@ namespace Authentication.Shared.Models
         /// If the permission list is in the cache, then return it. Otherwise refresh cache and return
         /// </summary>
         /// <returns>List of permissions</returns>
-        public async Task<List<PermissionProperties>> GetPermissions(List<string> definedTables)
+        public async Task<List<PermissionProperties>> GetPermissions(List<string> definedTables, bool useCache = true)
         {
             var result = new List<PermissionProperties>();
             if (string.IsNullOrWhiteSpace(Name))
@@ -176,7 +176,7 @@ namespace Authentication.Shared.Models
             }
 
             var cacheKey = $"groupPermission{Name}-{string.Join(",", definedTables)}";
-            var cacheItems = cacheStore.GetCacheItem(cacheKey);
+            var cacheItems = useCache ? cacheStore.GetCacheItem(cacheKey) : null;
             if (cacheItems != null)
             {
                 return (List<PermissionProperties>)cacheItems.Value;
@@ -221,7 +221,10 @@ namespace Authentication.Shared.Models
 
                 }
 
-                cacheStore.Set(cacheKey, result, new CacheItemPolicy { SlidingExpiration = TimeSpan.FromMinutes(20) });
+                if (useCache)
+                {
+                    cacheStore.Set(cacheKey, result, new CacheItemPolicy { SlidingExpiration = TimeSpan.FromMinutes(20) });
+                }
                 return result;
             }
 
@@ -259,7 +262,10 @@ namespace Authentication.Shared.Models
 
             }
 
-            cacheStore.Set(cacheKey, result, new CacheItemPolicy { SlidingExpiration = TimeSpan.FromMinutes(20) });
+            if (useCache)
+            {
+                cacheStore.Set(cacheKey, result, new CacheItemPolicy { SlidingExpiration = TimeSpan.FromMinutes(20) });
+            }
             return result;
         }
 
