@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Formats.Asn1;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Threading;
@@ -218,9 +219,7 @@ namespace Authentication.Shared.Services
 
         public static string GenerateAppleToken(string secret, string keyId, string sub, string iss, string aud, DateTime expires)
         {
-            ReadOnlySpan<byte> keyAsSpan = Convert.FromBase64String(secret);
-            var prvKey = ECDsa.Create();
-            prvKey.ImportPkcs8PrivateKey(keyAsSpan, out _);
+            var prvKey = ImportEcPrivateKey(Convert.FromBase64String(secret));
             var tokenHandler = new JwtSecurityTokenHandler();
             var securityKey = new ECDsaSecurityKey(prvKey);
             var tokenDescriptor = new SecurityTokenDescriptor
@@ -235,6 +234,62 @@ namespace Authentication.Shared.Services
             var token = tokenHandler.CreateJwtSecurityToken(tokenDescriptor);
             token.Header.Add("kid", keyId);
             return tokenHandler.WriteToken(token);
+        }
+
+        /// <summary>
+        /// Load an EC private key from PKCS#8 (the Apple .p8 key) without ImportPkcs8PrivateKey.
+        /// On Windows, CNG persists PKCS#8 imports to the user profile, which the Azure Functions isolated
+        /// worker cannot access ("The system cannot find the file specified"). Importing the raw parameters
+        /// keeps the key in memory.
+        /// </summary>
+        /// <param name="pkcs8">PKCS#8 PrivateKeyInfo bytes</param>
+        /// <returns>EC key</returns>
+        private static ECDsa ImportEcPrivateKey(byte[] pkcs8)
+        {
+            try
+            {
+                return ReadEcPrivateKey(pkcs8);
+            }
+            catch (AsnContentException e)
+            {
+                throw new CryptographicException("The key is not a valid PKCS#8 private key", e);
+            }
+        }
+
+        private static ECDsa ReadEcPrivateKey(byte[] pkcs8)
+        {
+            // PrivateKeyInfo ::= SEQUENCE { version, AlgorithmIdentifier { id-ecPublicKey, namedCurve }, privateKey OCTET STRING }
+            var privateKeyInfo = new AsnReader(pkcs8, AsnEncodingRules.DER).ReadSequence();
+            privateKeyInfo.ReadInteger();
+            var algorithm = privateKeyInfo.ReadSequence();
+            if (algorithm.ReadObjectIdentifier() != "1.2.840.10045.2.1")
+            {
+                throw new CryptographicException("The key is not an EC private key");
+            }
+
+            var curve = ECCurve.CreateFromValue(algorithm.ReadObjectIdentifier());
+
+            // ECPrivateKey ::= SEQUENCE { version, privateKey OCTET STRING, [0] parameters OPTIONAL, [1] publicKey BIT STRING OPTIONAL }
+            var ecPrivateKey = new AsnReader(privateKeyInfo.ReadOctetString(), AsnEncodingRules.DER).ReadSequence();
+            ecPrivateKey.ReadInteger();
+            var d = ecPrivateKey.ReadOctetString();
+            var parameters = new ECParameters { Curve = curve, D = d };
+            var publicKeyTag = new Asn1Tag(TagClass.ContextSpecific, 1, isConstructed: true);
+            while (ecPrivateKey.HasData)
+            {
+                if (ecPrivateKey.PeekTag() != publicKeyTag)
+                {
+                    ecPrivateKey.ReadEncodedValue();
+                    continue;
+                }
+
+                // uncompressed point: 0x04 || X || Y
+                var point = ecPrivateKey.ReadSequence(publicKeyTag).ReadBitString(out _);
+                var size = (point.Length - 1) / 2;
+                parameters.Q = new ECPoint { X = point[1..(1 + size)], Y = point[(1 + size)..] };
+            }
+
+            return ECDsa.Create(parameters);
         }
 
         public static IDictionary<string, object> DecodeJWTToken(string jwtToken)

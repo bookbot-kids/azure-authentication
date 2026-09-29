@@ -1,4 +1,5 @@
 using System;
+using System.Formats.Asn1;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Cryptography;
@@ -110,6 +111,73 @@ namespace Authentication.MockTests
         [Fact]
         public void RejectsAnRsaKey() =>
             Assert.ThrowsAny<CryptographicException>(() => Generate(Convert.ToBase64String(RSA.Create(2048).ExportPkcs8PrivateKey())));
+
+        // Throwaway key made by OpenSSL (openssl ecparam -genkey | openssl pkcs8 -topk8 -nocrypt), an independent PKCS#8 writer
+        const string OpenSslPkcs8 = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgSNQkrNWIodJfTzSMJIjxv7c2BNy871/q3hICJhW9GNShRANCAATFib1VYweExoqpRnYSHC6UBvETRoxeg/vHnDRmEy+8q/KyaBKaqx6ygxdIEF/ojUs5/XEWj1f61/uN44fbdQrU";
+        const string OpenSslPublicKey = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAExYm9VWMHhMaKqUZ2EhwulAbxE0aMXoP7x5w0ZhMvvKvysmgSmqsesoMXSBBf6I1LOf1xFo9X+tf7jeOH23UK1A==";
+
+        [Fact]
+        public void SignsWithAnOpenSslKeyAndVerifiesWithOpenSslsPublicKey()
+        {
+            var publicKey = ECDsa.Create();
+            publicKey.ImportSubjectPublicKeyInfo(Convert.FromBase64String(OpenSslPublicKey), out _);
+            var parts = Generate(OpenSslPkcs8).Split('.');
+
+            Assert.True(publicKey.VerifyData(Encoding.ASCII.GetBytes(parts[0] + "." + parts[1]), FromB64Url(parts[2]),
+                HashAlgorithmName.SHA256, DSASignatureFormat.IeeeP1363FixedFieldConcatenation));
+        }
+
+        [Theory]
+        [InlineData(true, true)]   // Apple .p8 layout: curve repeated inside ECPrivateKey [0], public key [1]
+        [InlineData(false, true)]  // OpenSSL / .NET layout
+        [InlineData(true, false)]  // no public key: it is derived from the private key
+        public void AcceptsEveryEcPrivateKeyLayout(bool curveInside, bool publicKeyInside)
+        {
+            var parts = Generate(Convert.ToBase64String(Pkcs8(AppleKey.ExportParameters(true), curveInside, publicKeyInside))).Split('.');
+            Assert.True(PublicKey().VerifyData(Encoding.ASCII.GetBytes(parts[0] + "." + parts[1]), FromB64Url(parts[2]),
+                HashAlgorithmName.SHA256, DSASignatureFormat.IeeeP1363FixedFieldConcatenation));
+        }
+
+        // RFC 5208 PrivateKeyInfo wrapping an RFC 5915 ECPrivateKey
+        static byte[] Pkcs8(ECParameters key, bool curveInside, bool publicKeyInside)
+        {
+            var ecPrivateKey = new AsnWriter(AsnEncodingRules.DER);
+            using (ecPrivateKey.PushSequence())
+            {
+                ecPrivateKey.WriteInteger(1);
+                ecPrivateKey.WriteOctetString(key.D);
+                if (curveInside)
+                {
+                    using (ecPrivateKey.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true)))
+                    {
+                        ecPrivateKey.WriteObjectIdentifier("1.2.840.10045.3.1.7");
+                    }
+                }
+
+                if (publicKeyInside)
+                {
+                    using (ecPrivateKey.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 1, isConstructed: true)))
+                    {
+                        ecPrivateKey.WriteBitString(new byte[] { 0x04 }.Concat(key.Q.X).Concat(key.Q.Y).ToArray());
+                    }
+                }
+            }
+
+            var privateKeyInfo = new AsnWriter(AsnEncodingRules.DER);
+            using (privateKeyInfo.PushSequence())
+            {
+                privateKeyInfo.WriteInteger(0);
+                using (privateKeyInfo.PushSequence())
+                {
+                    privateKeyInfo.WriteObjectIdentifier("1.2.840.10045.2.1");
+                    privateKeyInfo.WriteObjectIdentifier("1.2.840.10045.3.1.7");
+                }
+
+                privateKeyInfo.WriteOctetString(ecPrivateKey.Encode());
+            }
+
+            return privateKeyInfo.Encode();
+        }
 
         static string[] Chunk(string text, int size) =>
             Enumerable.Range(0, (text.Length + size - 1) / size).Select(i => text.Substring(i * size, Math.Min(size, text.Length - i * size))).ToArray();
