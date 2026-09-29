@@ -3,8 +3,7 @@ using Authentication.Shared.Library;
 using Extensions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Authentication.Shared.Services;
 
@@ -12,10 +11,13 @@ namespace Authentication
 {
     public class VerifyPasscode: BaseFunction
     {
-        [FunctionName("VerifyPasscode")]
-        public async Task<IActionResult> Run(
+        [Function("VerifyPasscode")]
+        public Task<IActionResult> RunFunction(
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
-            ILogger log)
+            FunctionContext executionContext) =>
+            Run(req, executionContext.GetLogger<VerifyPasscode>());
+
+        public async Task<IActionResult> Run(HttpRequest req, ILogger log)
         {
             Logger.Log = log;
             string email = req.Query["email"];

@@ -1,7 +1,6 @@
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Authentication.Shared.Library;
@@ -27,10 +26,13 @@ namespace Authentication
         /// <param name="req">HttpRequest type. It does contains parameters, headers...</param>
         /// <param name="log">The logger instance</param>
         /// <returns>A cosmos User record</returns>
-        [FunctionName("GetUserInfo")]
-        public static async Task<IActionResult> Run(
+        [Function("GetUserInfo")]
+        public static Task<IActionResult> RunFunction(
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
-            ILogger log)
+            FunctionContext executionContext) =>
+            Run(req, executionContext.GetLogger<GetUserInfo>());
+
+        public static async Task<IActionResult> Run(HttpRequest req, ILogger log)
         {
             // Set the logger instance
             Logger.Log = log;

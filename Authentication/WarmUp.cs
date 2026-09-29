@@ -1,7 +1,6 @@
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Authentication.Shared.Library;
@@ -29,10 +28,13 @@ namespace Authentication
         /// <param name="req">HttpRequest type. It does contains parameters, headers...</param>
         /// <param name="log">The logger instance</param>
         /// <returns>User result with http code 200 if no error, otherwise return http error</returns>
-        [FunctionName("WarmUp")]
-        public static IActionResult Run(
+        [Function("WarmUp")]
+        public static IActionResult RunFunction(
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
-            ILogger log)
+            FunctionContext executionContext) =>
+            Run(req, executionContext.GetLogger<WarmUp>());
+
+        public static IActionResult Run(HttpRequest req, ILogger log)
         {
             Logger.Log = log;
 

@@ -5,18 +5,20 @@ using Authentication.Shared.Services;
 using Extensions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 
 namespace Authentication
 {
     public class SubscribeTestUser : BaseFunction
     {
-        [FunctionName("SubscribeTestUser")]
-        public async Task<IActionResult> Run(
+        [Function("SubscribeTestUser")]
+        public Task<IActionResult> RunFunction(
             [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
-            ILogger log)
+            FunctionContext executionContext) =>
+            Run(req, executionContext.GetLogger<SubscribeTestUser>());
+
+        public async Task<IActionResult> Run(HttpRequest req, ILogger log)
         {
             log.LogInformation("C# HTTP trigger function processed a request.");
             string clientToken = req.Query["client_token"];

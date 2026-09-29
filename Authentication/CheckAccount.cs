@@ -3,8 +3,7 @@ using Authentication.Shared.Library;
 using Extensions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using Authentication.Shared.Services;
@@ -32,10 +31,13 @@ namespace Authentication
         /// <param name="req">HttpRequest type. It does contains parameters, headers...</param>
         /// <param name="log">The logger instance</param>
         /// <returns>User result with http code 200 if no error, otherwise return http error</returns>
-        [FunctionName("CheckAccount")]
-        public async Task<IActionResult> Run(
+        [Function("CheckAccount")]
+        public Task<IActionResult> RunFunction(
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
-            ILogger log)
+            FunctionContext executionContext) =>
+            Run(req, executionContext.GetLogger<CheckAccount>());
+
+        public async Task<IActionResult> Run(HttpRequest req, ILogger log)
         {
             // Set the logger instance
             Logger.Log = log;

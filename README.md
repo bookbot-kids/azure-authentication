@@ -21,6 +21,14 @@
 - After publish these functions, go to azure function portal to add environment variables from local.settings.json https://docs.microsoft.com/en-us/azure/azure-functions/functions-how-to-use-azure-function-app-settings#settings
 - Go to function manages to set code for all functions, we will use param code=[function_key] to call APIs https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-http-webhook?tabs=csharp#obtaining-keys
 
+## Tests
+The functions run on .NET 10 with the Azure Functions isolated worker model (`FUNCTIONS_WORKER_RUNTIME=dotnet-isolated`).
+- `Authentication.MockTests` is safe to run anywhere: it uses fixed test configuration with unreachable endpoints and never reads `local.settings.json`.
+  ```sh
+  dotnet test Authentication.MockTests/Authentication.MockTests.csproj
+  ```
+- Do not run the legacy `Authentication.Tests` suite: it loads `local.settings.json` and calls the live Cognito, Cosmos and B2C services (it creates users and changes roles).
+
 ## Documentation
 ### Notices
 - All azure functions must be secured by [API key](https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-http-webhook-trigger?tabs=csharp#api-key-authorization), so all functions must include `code` parameter

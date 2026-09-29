@@ -7,18 +7,20 @@ using Authentication.Shared.Services;
 using Extensions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 
 namespace Authentication
 {
     public class ExpireToken : BaseFunction
     {
-        [FunctionName("ExpireToken")]
-        public async Task<IActionResult> Run(
+        [Function("ExpireToken")]
+        public Task<IActionResult> RunFunction(
             [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
-            ILogger log)
+            FunctionContext executionContext) =>
+            Run(req, executionContext.GetLogger<ExpireToken>());
+
+        public async Task<IActionResult> Run(HttpRequest req, ILogger log)
         {
             // Set the logger instance
             Logger.Log = log;

@@ -4,8 +4,7 @@ using Authentication.Shared.Models;
 using Authentication.Shared.Library;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Authentication.Shared.Services;
 using System.Collections.Generic;
@@ -34,10 +33,13 @@ namespace Authentication
         /// <param name="req">HttpRequest type. It does contains parameters, headers...</param>
         /// <param name="log">The logger instance</param>
         /// <returns>access token and refresh token result with http code 200 if no error, otherwise return http error</returns> 
-        [FunctionName("GetRefreshAndAccessToken")]
-        public async Task<IActionResult> Run(
+        [Function("GetRefreshAndAccessToken")]
+        public Task<IActionResult> RunFunction(
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
-            ILogger log)
+            FunctionContext executionContext) =>
+            Run(req, executionContext.GetLogger<GetRefreshAndAccessToken>());
+
+        public async Task<IActionResult> Run(HttpRequest req, ILogger log)
         {
             Logger.Log = log;
 

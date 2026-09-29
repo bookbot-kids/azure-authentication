@@ -1,7 +1,6 @@
 ﻿using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Authentication.Shared.Library;
@@ -19,10 +18,13 @@ namespace Authentication
 {
     public class DeleteUser: BaseFunction
     {
-        [FunctionName("DeleteUser")]
-        public  async Task<IActionResult> Run(
+        [Function("DeleteUser")]
+        public Task<IActionResult> RunFunction(
             [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
-            ILogger log)
+            FunctionContext executionContext) =>
+            Run(req, executionContext.GetLogger<DeleteUser>());
+
+        public async Task<IActionResult> Run(HttpRequest req, ILogger log)
         {
             log.LogInformation("C# HTTP trigger function processed a request.");
             // validate client token

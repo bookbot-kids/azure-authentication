@@ -5,8 +5,7 @@ using Authentication.Shared.Services;
 using Extensions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 
 namespace Authentication
@@ -16,10 +15,13 @@ namespace Authentication
     /// </summary>
     public class SubscribeNewUser : BaseFunction
     {
-        [FunctionName("SubscribeNewUser")]
-        public async Task<IActionResult> Run(
+        [Function("SubscribeNewUser")]
+        public Task<IActionResult> RunFunction(
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
-            ILogger log)
+            FunctionContext executionContext) =>
+            Run(req, executionContext.GetLogger<SubscribeNewUser>());
+
+        public async Task<IActionResult> Run(HttpRequest req, ILogger log)
         {
             // Set the logger instance
             Logger.Log = log;

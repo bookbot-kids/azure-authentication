@@ -3,18 +3,20 @@ using Authentication.Shared.Library;
 using Authentication.Shared.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 
 namespace Authentication
 {
     public class GetS3StorageUploadUrl : BaseFunction
     {
-        [FunctionName("GetS3StorageUploadUrl")]
-        public static IActionResult Run(
-          [HttpTrigger(AuthorizationLevel.Function, "get", Route = null)] HttpRequest req,
-          ILogger log)
+        [Function("GetS3StorageUploadUrl")]
+        public static IActionResult RunFunction(
+            [HttpTrigger(AuthorizationLevel.Function, "get", Route = null)] HttpRequest req,
+            FunctionContext executionContext) =>
+            Run(req, executionContext.GetLogger<GetS3StorageUploadUrl>());
+
+        public static IActionResult Run(HttpRequest req, ILogger log)
         {
             log.LogInformation("GetS3StorageUploadUrl processed a request.");
 

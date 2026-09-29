@@ -5,8 +5,7 @@ using Authentication.Shared.Services;
 using Extensions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Logger = Authentication.Shared.Library.Logger;
@@ -16,10 +15,13 @@ namespace Authentication
 {
     public class SocialSignIn: BaseFunction
     {
-        [FunctionName("SocialSignIn")]
-        public async Task<IActionResult> Run(
+        [Function("SocialSignIn")]
+        public Task<IActionResult> RunFunction(
             [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
-            ILogger log)
+            FunctionContext executionContext) =>
+            Run(req, executionContext.GetLogger<SocialSignIn>());
+
+        public async Task<IActionResult> Run(HttpRequest req, ILogger log)
         {
             // Set the logger instance
             Logger.Log = log;

@@ -1,7 +1,6 @@
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Authentication.Shared.Services;
@@ -16,10 +15,13 @@ namespace Authentication
 {
     public class GetStorageToken: BaseFunction
     {
-        [FunctionName("GetStorageToken")]
-        public static async Task<IActionResult> Run(
+        [Function("GetStorageToken")]
+        public static Task<IActionResult> RunFunction(
             [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
-            ILogger log)
+            FunctionContext executionContext) =>
+            Run(req, executionContext.GetLogger<GetStorageToken>());
+
+        public static async Task<IActionResult> Run(HttpRequest req, ILogger log)
         {
             string refreshToken = req.Query["refresh_token"];
             if (string.IsNullOrWhiteSpace(refreshToken))
