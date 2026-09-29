@@ -80,7 +80,10 @@ namespace Authentication
                 {
                     return CreateErrorResponse($"id_token is missing");
                 }
-                return await ProcessAppleRequest(log, token, idToken, email, name, country, ipAddress, language, os, appId, userType, gclid, fbc);
+
+                // web sign-in (Apple JS) sends the redirect URI its authorization code was issued to
+                string redirectUri = req.Query["redirect_uri"];
+                return await ProcessAppleRequest(log, token, idToken, redirectUri, email, name, country, ipAddress, language, os, appId, userType, gclid, fbc);
             } else
             {
                 return CreateErrorResponse("Sign in source is invalid");
@@ -100,10 +103,10 @@ namespace Authentication
             return await CreateOrGetCognito(log, email, name, country, ipAddress, language, os, appId, userType, gclid, fbc);
         }
 
-        private async Task<IActionResult> ProcessAppleRequest(ILogger log, string token, string idToken, string email, string name, string country, string ipAddress, string language, string os, string appId, string userType, string gclid, string fbc)
+        private async Task<IActionResult> ProcessAppleRequest(ILogger log, string token, string idToken, string redirectUri, string email, string name, string country, string ipAddress, string language, string os, string appId, string userType, string gclid, string fbc)
         {
             // validate token from client
-            var isValid = await AppleService.Instance.ValidateToken(email, token, idToken);
+            var isValid = await AppleService.Instance.ValidateToken(email, token, idToken, redirectUri);
             if (!isValid.Item1)
             {
                 return CreateErrorResponse(isValid.Item2, 401);

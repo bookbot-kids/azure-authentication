@@ -18,16 +18,20 @@ namespace Authentication.Shared.Services
             [Post("/token")]
             Task<AppleTokenResponse> ValidateIdToken([Body(BodySerializationMethod.UrlEncoded)] Dictionary<string, object> data);
         }
-        private AppleService()
-        {
-            appleRestApi = RestService.For<IAppleRestApi>(new HttpClient(new HttpLoggingHandler())
+        private AppleService() : this(RestService.For<IAppleRestApi>(new HttpClient(new HttpLoggingHandler())
             {
                 BaseAddress = new Uri("https://appleid.apple.com/auth")
-            }, new RefitSettings(new NewtonsoftJsonContentSerializer()));
+            }, new RefitSettings(new NewtonsoftJsonContentSerializer())))
+        {
+        }
+
+        internal AppleService(IAppleRestApi appleRestApi)
+        {
+            this.appleRestApi = appleRestApi;
         }
 
         public static AppleService Instance { get; } = new AppleService();
-        private IAppleRestApi appleRestApi;
+        private readonly IAppleRestApi appleRestApi;
 
         private string GenerateSecretToken(string clientId)
         {
@@ -42,61 +46,65 @@ namespace Authentication.Shared.Services
             }
         }
 
-        public async Task<(bool, string)> ValidateToken(string email, string authCode, string idToken)
+        /// <summary>
+        /// Validate Sign in with Apple: the id token must be signed by Apple for this email and one of our client ids,
+        /// and Apple must accept the authorization code
+        /// </summary>
+        /// <param name="redirectUri">
+        /// Redirect URI the code was issued to, sent by web sign-in; the configured Cognito URI otherwise (apps).
+        /// Apple only redeems a code with the exact URI it was issued for.
+        /// </param>
+        public async Task<(bool, string)> ValidateToken(string email, string authCode, string idToken, string redirectUri = null)
         {
-            Logger.Log?.LogInformation($"validate apple sign in {email} {authCode} {idToken}");
-            var validation = TokenService.ValidatePublicJWTToken(idToken, new Dictionary<string, string>
+            Logger.Log?.LogInformation($"validate apple sign in {email}");
+            if (!string.IsNullOrWhiteSpace(redirectUri)
+                && !(Uri.TryCreate(redirectUri, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps && redirectUri.Length <= 2048))
             {
-                {"email", email },
-                {"iss", "https://appleid.apple.com" }
-
-            });
-
-            var clientId = "";
-            if (!validation.Item1)
-            {
-                return (false, "Id token is invalid");
-            } else
-            {
-                clientId = validation.Item2.GetOrDefault("aud", "").ToString();
-                if (!Configurations.Apple.AppleClientIds.Contains(clientId))
-                {
-                    return (false, "id_token is invalid");
-                }
-
-                Logger.Log?.LogInformation($"client id aud {clientId} is valid from id_token");
+                return (false, "redirect_uri is invalid");
             }
 
-            var secret = "";
+            var (valid, payload) = await TokenService.ValidateIdToken(idToken, email, TokenService.OpenIdProvider.Apple);
+            if (!valid)
+            {
+                return (false, "Id token is invalid");
+            }
+
+            var clientId = payload.GetOrDefault("aud", "").ToString();
+            if (!Configurations.Apple.AppleClientIds.Contains(clientId))
+            {
+                return (false, "id_token is invalid");
+            }
+
+            Logger.Log?.LogInformation($"client id aud {clientId} is valid from id_token");
+
             try
             {
-                secret = GenerateSecretToken(clientId);
                 var response = await appleRestApi.ValidateIdToken(new Dictionary<string, object>
                 {
                     {"client_id", clientId },
-                    {"client_secret", secret },
+                    {"client_secret", GenerateSecretToken(clientId) },
                     {"code", authCode },
                     {"grant_type", "authorization_code" },
-                    {"redirect_uri", Configurations.Apple.AppleRedirectUrl },
+                    {"redirect_uri", string.IsNullOrWhiteSpace(redirectUri) ? Configurations.Apple.AppleRedirectUrl : redirectUri },
                 });
 
-                Logger.Log?.LogInformation($"request access token {response?.AccessToken}");
-                if(!string.IsNullOrWhiteSpace(response?.AccessToken))
+                var redeemed = !string.IsNullOrWhiteSpace(response?.AccessToken);
+                Logger.Log?.LogInformation($"request access token issued {redeemed}");
+                if (redeemed)
                 {
                     return (true, "");
                 }
             }
+            catch (ApiException ex)
+            {
+                Logger.Log?.LogError($"Request apple token for client {clientId} error {ex.Message} {ex.Content}");
+            }
             catch (Exception ex)
             {
-                //if (ex.StatusCode != System.Net.HttpStatusCode.BadRequest)
-                //{
-                //    throw ex;
-                //}
-                Logger.Log?.LogError($"Request apple token, secret {secret}, code {authCode}, client id {clientId} error {ex.Message}");
+                Logger.Log?.LogError($"Request apple token for client {clientId} error {ex.Message}");
             }
 
-            return (true, "");
-            //return (false, "Auth code is invalid");
+            return (false, "Auth code is invalid");
         }
     }
 }

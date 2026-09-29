@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
+using System.Threading.Tasks;
 using Authentication.Shared;
+using Authentication.Shared.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -48,7 +50,7 @@ namespace Authentication.MockTests
             // Social sign-in
             { "AppleClientIds", "com.bookbot.test.app;com.bookbot.test.web" }, { "AppleClientId", "TESTKEY123" },
             { "AppleTeamId", "TESTTEAM01" },
-            { "GoogleClientIds", "google-client-1.apps.test;google-client-2.apps.test" },
+            { "GoogleClientIds", "123456789012-abc123def.apps.googleusercontent.com;123456789012-ghi456jkl.apps.googleusercontent.com;com.googleusercontent.apps.123456789012-mno789pqr" },
         };
 
         /// <summary>Throwaway P-256 key standing in for the Apple .p8 key (AppleSecret is its PKCS#8, base64)</summary>
@@ -58,6 +60,10 @@ namespace Authentication.MockTests
         {
             Values["AppleSecret"] = Convert.ToBase64String(AppleKey.ExportPkcs8PrivateKey());
             Configurations.Configuration = new ConfigurationBuilder().AddInMemoryCollection(Values).Build();
+
+            // Apple/Google id tokens are verified against a local test key instead of the providers' published keys
+            TokenService.OpenIdProvider.Apple.SigningKeys = _ => Task.FromResult(TestTokens.ProviderKeys());
+            TokenService.OpenIdProvider.Google.SigningKeys = _ => Task.FromResult(TestTokens.ProviderKeys());
         }
 
         /// <summary>Ensures the test configuration is in place (runs once per test run).</summary>

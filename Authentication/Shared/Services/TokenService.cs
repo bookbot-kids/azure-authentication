@@ -17,7 +17,6 @@ using JWT.Exceptions;
 using JWT.Algorithms;
 using System.Text;
 using System.Security.Cryptography;
-using JWT.Serializers;
 using System.IO;
 
 namespace Authentication.Shared.Services
@@ -305,39 +304,97 @@ namespace Authentication.Shared.Services
             }
         }
 
-        public static (bool, IDictionary<string, object>) ValidatePublicJWTToken(string jwtToken, IDictionary<string, string> claims)
+        /// <summary>
+        /// An OpenID Connect provider (Sign in with Apple, Google) whose id tokens are verified against its published signing keys
+        /// </summary>
+        public sealed class OpenIdProvider
         {
-            try
+            public static readonly OpenIdProvider Apple = new OpenIdProvider(
+                "https://appleid.apple.com/.well-known/openid-configuration", "https://appleid.apple.com");
+
+            // Google documents both issuer forms
+            public static readonly OpenIdProvider Google = new OpenIdProvider(
+                "https://accounts.google.com/.well-known/openid-configuration", "https://accounts.google.com", "accounts.google.com");
+
+            private OpenIdProvider(string metadataUrl, params string[] issuers)
             {
-                var validationParameters = ValidationParameters.None;
-                validationParameters.ValidateExpirationTime = true;
-                var data = JwtBuilder.Create()
-                    .WithDateTimeProvider(new UtcDateTimeProvider())
-                    .WithValidationParameters(validationParameters)
-                    .WithSerializer(new JsonNetSerializer())
-                    .WithUrlEncoder(new JwtBase64UrlEncoder())
-                    .Decode<IDictionary<string, object>>(jwtToken);
-                foreach(var claim in claims)
+                Issuers = issuers;
+
+                // cached; refreshed periodically and on request when a token uses an unknown key (key rotation)
+                var configurationManager = new ConfigurationManager<OpenIdConnectConfiguration>(metadataUrl,
+                    new OpenIdConnectConfigurationRetriever(), new HttpDocumentRetriever { RequireHttps = true });
+                SigningKeys = async refresh =>
                 {
-                    var value = data.GetOrDefault(claim.Key, "").ToString();
-                    if (value != claim.Value)
+                    if (refresh)
                     {
+                        configurationManager.RequestRefresh();
+                    }
+
+                    return (await configurationManager.GetConfigurationAsync(CancellationToken.None)).SigningKeys;
+                };
+            }
+
+            public string[] Issuers { get; }
+
+            /// <summary>
+            /// Source of the provider's signing keys (tests replace it). The argument asks for a refresh.
+            /// </summary>
+            internal Func<bool, Task<ICollection<SecurityKey>>> SigningKeys { get; set; }
+        }
+
+        /// <summary>
+        /// Validate an id token from Sign in with Apple or Google: signature against the provider's published keys,
+        /// issuer, expiry and email. The caller checks the audience against its configured client ids.
+        /// </summary>
+        /// <param name="idToken">id token from the client</param>
+        /// <param name="email">email the client signs in with; must match the token</param>
+        /// <param name="provider">provider that issued the token</param>
+        /// <returns>result and the token payload</returns>
+        public static async Task<(bool, IDictionary<string, object>)> ValidateIdToken(string idToken, string email, OpenIdProvider provider)
+        {
+            if (string.IsNullOrWhiteSpace(idToken))
+            {
+                return (false, null);
+            }
+
+            for (var attempt = 0; attempt < 2; attempt++)
+            {
+                try
+                {
+                    var handler = new JwtSecurityTokenHandler();
+                    handler.InboundClaimTypeMap.Clear();
+                    handler.ValidateToken(idToken, new TokenValidationParameters
+                    {
+                        RequireSignedTokens = true,
+                        RequireExpirationTime = true,
+                        ValidateLifetime = true,
+                        ValidateIssuer = true,
+                        ValidIssuers = provider.Issuers,
+                        ValidateAudience = false,
+                        IssuerSigningKeys = await provider.SigningKeys(attempt > 0),
+                    }, out var validatedToken);
+
+                    var payload = ((JwtSecurityToken)validatedToken).Payload;
+                    if (!payload.TryGetValue("email", out var tokenEmail) || tokenEmail?.ToString() != email)
+                    {
+                        Logger.Log?.LogError($"Id token email does not match {email}");
                         return (false, null);
                     }
-                }
 
-                return (true, data);
+                    return (true, payload);
+                }
+                catch (SecurityTokenSignatureKeyNotFoundException) when (attempt == 0)
+                {
+                    // the provider may have rotated its keys: refresh them and try once more
+                }
+                catch (Exception e)
+                {
+                    Logger.Log?.LogError($"Id token for {email} is invalid: {e.GetType().Name}");
+                    return (false, null);
+                }
             }
-            catch (TokenExpiredException)
-            {
-                Logger.Log?.LogError($"Token {jwtToken} is expired");
-                return (false, null);
-            }
-            catch (Exception ex)
-            {
-                Logger.Log?.LogError($"Parsing token {jwtToken} error {ex.Message}");
-                return (false, null);
-            }
+
+            return (false, null);
         }
 
             /// <summary>

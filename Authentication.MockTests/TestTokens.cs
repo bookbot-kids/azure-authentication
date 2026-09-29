@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -52,6 +54,10 @@ namespace Authentication.MockTests
 
         public static readonly RSA IdTokenKey = RSA.Create(2048);
 
+        /// <summary>The provider's published signing keys (JWKS) as the validator sees them</summary>
+        public static ICollection<SecurityKey> ProviderKeys() =>
+            new List<SecurityKey> { new RsaSecurityKey(IdTokenKey.ExportParameters(false)) { KeyId = "test-kid" } };
+
         /// <summary>RS256 id token like the ones Apple and Google issue</summary>
         public static string IdToken(JObject claims, RSA key = null)
         {
@@ -68,9 +74,10 @@ namespace Authentication.MockTests
             ["email_verified"] = "true", ["is_private_email"] = "false", ["auth_time"] = Now, ["nonce_supported"] = true,
         };
 
-        public static JObject GoogleClaims(string email, string aud = "google-client-1.apps.test", long? exp = null) => new()
+        public static JObject GoogleClaims(string email, string aud = "123456789012-abc123def.apps.googleusercontent.com", long? exp = null,
+            string iss = "https://accounts.google.com") => new()
         {
-            ["iss"] = "https://accounts.google.com", ["azp"] = aud, ["aud"] = aud, ["sub"] = "110169484474386276334",
+            ["iss"] = iss, ["azp"] = aud, ["aud"] = aud, ["sub"] = "110169484474386276334",
             ["email"] = email, ["email_verified"] = true, ["at_hash"] = "abc", ["name"] = "Pat Test",
             ["iat"] = Now, ["exp"] = exp ?? Now + 600,
         };

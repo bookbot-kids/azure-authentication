@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Dynamic;
 using System.Linq;
 using System.Net.Http;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Authentication.Shared.Library;
 using Authentication.Shared.Services.Responses;
@@ -27,49 +28,51 @@ namespace Authentication.Shared.Services
             Task<DeepLink> GenerateShortLink([AliasAs("key")] string key, [Body(BodySerializationMethod.Serialized)] ExpandoObject body);
         }
 
-        private GoogleService()
-        {
-            googleRestApi = RestService.For<IGoogleRestApi>(new HttpClient(new HttpLoggingHandler())
+        private GoogleService() : this(
+            RestService.For<IGoogleRestApi>(new HttpClient(new HttpLoggingHandler())
             {
                 BaseAddress = new Uri("https://www.googleapis.com/oauth2/v3")
-            });
-
-            firebaseRestApi = RestService.For<IFirebaseRestApi>(new HttpClient(new HttpLoggingHandler())
+            }),
+            RestService.For<IFirebaseRestApi>(new HttpClient(new HttpLoggingHandler())
             {
                 BaseAddress = new Uri("https://firebasedynamiclinks.googleapis.com/v1")
-            });
+            }))
+        {
+        }
+
+        internal GoogleService(IGoogleRestApi googleRestApi, IFirebaseRestApi firebaseRestApi)
+        {
+            this.googleRestApi = googleRestApi;
+            this.firebaseRestApi = firebaseRestApi;
         }
 
         public static GoogleService Instance { get; } = new GoogleService();
-        private IGoogleRestApi googleRestApi;
-        private IFirebaseRestApi firebaseRestApi;
+        private readonly IGoogleRestApi googleRestApi;
+        private readonly IFirebaseRestApi firebaseRestApi;
 
+        /// <summary>
+        /// Validate Google sign in: the id token (when sent) must be signed by Google for this email and one of our
+        /// client ids, and Google must confirm the access token belongs to this email and to our Google project
+        /// </summary>
         public async Task<(bool, string)> ValidateAccessToken(string email, string accessToken, string idToken)
         {
-            Logger.Log?.LogInformation($"validate google sign in {email} {accessToken} {idToken}");
+            Logger.Log?.LogInformation($"validate google sign in {email}");
             if (!string.IsNullOrWhiteSpace(idToken))
             {
-                var validation = TokenService.ValidatePublicJWTToken(idToken, new Dictionary<string, string>
-                {
-                    {"email", email },
-                    {"iss", "https://accounts.google.com" },
-
-                });
-
-                if(!validation.Item1)
+                var (valid, payload) = await TokenService.ValidateIdToken(idToken, email, TokenService.OpenIdProvider.Google);
+                if (!valid)
                 {
                     return (false, "id_token is invalid");
-                } else
-                {
-                    // claim client id
-                    var aud = validation.Item2.GetOrDefault("aud", "").ToString();
-                    if(!Configurations.Google.GoogleClientIds.Contains(aud))
-                    {
-                        return (false, "id_token is invalid");
-                    }
-
-                    Logger.Log?.LogInformation($"client id aud {aud} is valid from id_token");
                 }
+
+                // claim client id
+                var aud = payload.GetOrDefault("aud", "").ToString();
+                if (!Configurations.Google.GoogleClientIds.Contains(aud))
+                {
+                    return (false, "id_token is invalid");
+                }
+
+                Logger.Log?.LogInformation($"client id aud {aud} is valid from id_token");
             }
 
             try
@@ -77,10 +80,11 @@ namespace Authentication.Shared.Services
                 var response = await googleRestApi.ValidateAccessToken(accessToken);
                 var expiredIn = int.Parse(response.Exp);
                 var time = DateTime.UnixEpoch.AddSeconds(expiredIn);
-                var now = DateTime.Now;
+                var now = DateTime.UtcNow;
                 Logger.Log?.LogInformation($"validate access token google sign aud {response.Aud}, email {response.Email}");
                 var isAccessTokenValid = now < time // not expired
-                    && response.Email == email; // email is matched with token
+                    && response.Email == email // email is matched with token
+                    && IsOurGoogleClient(response.Aud); // issued to one of our apps, not another app's token
                 if(isAccessTokenValid)
                 {
                     return (isAccessTokenValid, "");
@@ -95,6 +99,34 @@ namespace Authentication.Shared.Services
             }
 
             return (false, "access_token is invalid");
+        }
+
+        /// <summary>
+        /// Access tokens can be issued to OAuth clients that are not in GoogleClientIds (e.g. the iOS/Android client
+        /// of the same app), so accept any client of the Google Cloud projects our configured client ids belong to
+        /// </summary>
+        internal static bool IsOurGoogleClient(string clientId)
+        {
+            if (string.IsNullOrWhiteSpace(clientId))
+            {
+                return false;
+            }
+
+            var clientIds = Configurations.Google.GoogleClientIds;
+            if (clientIds.Contains(clientId))
+            {
+                return true;
+            }
+
+            var project = GoogleProjectNumber(clientId);
+            return project != null && clientIds.Any(id => GoogleProjectNumber(id) == project);
+        }
+
+        // "<project>-<id>.apps.googleusercontent.com" or "com.googleusercontent.apps.<project>-<id>"
+        private static string GoogleProjectNumber(string clientId)
+        {
+            var match = Regex.Match(clientId, @"^(?:com\.googleusercontent\.apps\.)?(\d+)-[0-9a-z]+(?:\.apps\.googleusercontent\.com)?$");
+            return match.Success ? match.Groups[1].Value : null;
         }
 
         public async Task<DeepLink> GenerateDynamicLink(string key, string domain, string androidPackage, string iosPackage, string iosAppId, Dictionary<string, string> parameters)

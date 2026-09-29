@@ -29,6 +29,10 @@ builder.Logging.Services.Configure<LoggerFilterOptions>(options =>
     }
 });
 
+// ASP.NET Core logs every request URL at Information, and the query string carries the function key and
+// user tokens; keep only its warnings (the app's own Information logs are unaffected)
+builder.Logging.AddFilter("Microsoft.AspNetCore", LogLevel.Warning);
+
 IdentityModelEventSource.ShowPII = true;
 // Set the configuration from local.settings.json into constant class
 Configurations.Configuration = builder.Configuration;

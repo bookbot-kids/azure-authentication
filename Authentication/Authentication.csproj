@@ -57,4 +57,7 @@
   <ItemGroup>
     <Compile Remove="UpdateADB2CUser.cs" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Authentication.MockTests" />
+  </ItemGroup>
 </Project>
