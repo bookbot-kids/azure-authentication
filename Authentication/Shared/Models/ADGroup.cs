@@ -183,13 +183,13 @@ namespace Authentication.Shared.Models
             }
 
             // create user if needed
-            await CosmosService.Instance.CreateUser(Name);
+            await CosmosService.Instance.EnsureUser(Name);
 
             // admin should have read-write permission for all except tables that have id-read or id-read-write
             if (Name.EqualsIgnoreCase("admin"))
             {
                 List<Task<PermissionProperties>> adminTasks = new List<Task<PermissionProperties>>();
-                var tables = await CosmosRolePermission.GetAllTables();
+                var tables = await CosmosRolePermission.GetAllTablesCached();
                 foreach (var table in tables)
                 {
                     if(definedTables.Count > 0 && !definedTables.Contains(table))
@@ -277,7 +277,13 @@ namespace Authentication.Shared.Models
         /// <returns>A permission class or null</returns>
         private async Task<PermissionProperties> GetOrCreateAdminPermission(string table)
         {
-            var permission = await CosmosService.Instance.GetPermission("admin", table);
+            var (permission, missing) = await CosmosService.Instance.ReadPermission("admin", table);
+            if (permission == null && !missing)
+            {
+                // the read failed (e.g. throttled): it may exist, so do not try to create it
+                return null;
+            }
+
             if (permission == null)
             {
                 // create permission if not exist
@@ -308,7 +314,13 @@ namespace Authentication.Shared.Models
         private async Task<PermissionProperties> GetOrCreatePermission(CosmosRolePermission rolePermission)
         {
             // get cosmos permission by id: role_name/table_name
-            var permission = await CosmosService.Instance.GetPermission(Name, rolePermission.Table);
+            var (permission, missing) = await CosmosService.Instance.ReadPermission(Name, rolePermission.Table);
+            if (permission == null && !missing)
+            {
+                // the read failed (e.g. throttled): it may exist, so do not try to create it
+                return null;
+            }
+
             if (permission == null)
             {
                 // create permission if not exist

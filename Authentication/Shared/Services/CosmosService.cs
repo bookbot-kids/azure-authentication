@@ -1,6 +1,9 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
+using System.Runtime.Caching;
+using System.Threading;
 using System.Threading.Tasks;
 using Authentication.Shared.Library;
 using Microsoft.Azure.Cosmos;
@@ -25,7 +28,13 @@ namespace Authentication.Shared.Services
         private CosmosService()
         {
             client = new CosmosClient(Configurations.Cosmos.DatabaseUrl, Configurations.Cosmos.DatabaseMasterKey);
+            ensuredUsers = new OncePerKey("cosmos-users", CreateUserIfMissing, TimeSpan.FromMinutes(30));
         }
+
+        /// <summary>
+        /// Cosmos users this instance has already made sure exist
+        /// </summary>
+        private readonly OncePerKey ensuredUsers;
 
         /// <summary>
         /// Gets singleton instance
@@ -85,6 +94,37 @@ namespace Authentication.Shared.Services
             }
 
             return default;
+        }
+
+        /// <summary>
+        /// Make sure the cosmos user exists, creating it at most once per instance every 30 minutes.
+        /// Creating users is a Cosmos metadata operation, which has a low account-wide rate limit,
+        /// and every token request used to create its users again (409 when they already exist).
+        /// </summary>
+        /// <param name="userId">Cosmos user id</param>
+        /// <returns>Async task</returns>
+        public Task EnsureUser(string userId)
+        {
+            return ensuredUsers.Run(userId);
+        }
+
+        private async Task<bool> CreateUserIfMissing(string userId)
+        {
+            try
+            {
+                await client.GetDatabase(Configurations.Cosmos.DatabaseId).CreateUserAsync(userId);
+                return true;
+            }
+            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.Conflict)
+            {
+                return true;
+            }
+            catch (CosmosException ex)
+            {
+                // not remembered, so the next request tries again
+                Logger.Log?.LogWarning($"Create cosmos user {userId} error {(int)ex.StatusCode}/{ex.SubStatusCode}");
+                return false;
+            }
         }
 
         /// <summary>
@@ -148,6 +188,11 @@ namespace Authentication.Shared.Services
                 var result = await client.GetDatabase(Configurations.Cosmos.DatabaseId)
                     .GetUser(userId).CreatePermissionAsync(permission, tokenExpiryInSeconds: Configurations.Cosmos.ResourceTokenExpiration);
                 return result.Resource;
+            }
+            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.Conflict)
+            {
+                // a parallel request created it first: use that one
+                return (await ReadPermission(userId, permissionId)).Permission;
             }
             catch (CosmosException)
             {
@@ -214,22 +259,48 @@ namespace Authentication.Shared.Services
         /// <returns>Permission object</returns>
         public async Task<PermissionProperties> GetPermission(string userId, string permissionName)
         {
+            return (await ReadPermission(userId, permissionName)).Permission;
+        }
+
+        /// <summary>
+        /// Read a cosmos permission and say why there is none.
+        /// Missing is true only when Cosmos reports it does not exist (404), so callers create permissions
+        /// only then. A throttled read (429) means nothing about existence, and creating on it just adds
+        /// more load to the same rate limit.
+        /// </summary>
+        /// <param name="userId">user id</param>
+        /// <param name="permissionName">permission name</param>
+        /// <returns>The permission, or null and whether it is missing</returns>
+        public async Task<(PermissionProperties Permission, bool Missing)> ReadPermission(string userId, string permissionName)
+        {
             try
             {
                 var permission = client.GetDatabase(Configurations.Cosmos.DatabaseId).GetUser(userId).GetPermission(permissionName);
-                return await permission.ReadAsync(tokenExpiryInSeconds: Configurations.Cosmos.ResourceTokenExpiration);
+                PermissionProperties result = await permission.ReadAsync(tokenExpiryInSeconds: Configurations.Cosmos.ResourceTokenExpiration);
+                return (result, false);
             }
             catch (CosmosException ex)
             {
-                Logger.Log?.LogError("GetPermission error " + ex.Message);
+                var missing = IsMissing(ex);
+                if (!missing)
+                {
+                    Logger.Log?.LogError("GetPermission error " + ex.Message);
+                }
+
+                return (null, missing);
             }
-            catch (NullReferenceException ex) 
+            catch (NullReferenceException ex)
             {
                 Logger.Log?.LogError("GetPermission null error " + ex.Message);
             }
 
-            return null;
+            return (null, false);
         }
+
+        /// <summary>
+        /// Whether a failed cosmos read means the resource does not exist
+        /// </summary>
+        internal static bool IsMissing(CosmosException ex) => ex.StatusCode == HttpStatusCode.NotFound;
 
         /// <summary>
         /// Remove permission 
@@ -300,5 +371,113 @@ namespace Authentication.Shared.Services
 
             return result;
         }
+    }
+
+    /// <summary>
+    /// Runs some work at most once per key: parallel callers share one attempt, and a successful
+    /// attempt is remembered for a while. A failed attempt is not remembered, so the next call retries.
+    /// </summary>
+    internal sealed class OncePerKey
+    {
+        private readonly Func<string, Task<bool>> work;
+        private readonly TimeSpan remember;
+        private readonly MemoryCache done;
+        private readonly ConcurrentDictionary<string, Lazy<Task>> running = new ConcurrentDictionary<string, Lazy<Task>>();
+
+        /// <param name="name">cache name</param>
+        /// <param name="work">the work; returns true when it succeeded</param>
+        /// <param name="remember">how long a success is remembered</param>
+        public OncePerKey(string name, Func<string, Task<bool>> work, TimeSpan remember)
+        {
+            this.work = work;
+            this.remember = remember;
+            done = new MemoryCache(name);
+        }
+
+        public Task Run(string key)
+        {
+            if (done.Contains(key))
+            {
+                return Task.CompletedTask;
+            }
+
+            return running.GetOrAdd(key, k => new Lazy<Task>(() => RunCore(k))).Value;
+        }
+
+        private async Task RunCore(string key)
+        {
+            // never complete synchronously, so the running entry is always stored before it is removed
+            await Task.Yield();
+            try
+            {
+                if (await work(key))
+                {
+                    done.Set(key, true, DateTimeOffset.UtcNow.Add(remember));
+                }
+            }
+            finally
+            {
+                running.TryRemove(key, out _);
+            }
+        }
+    }
+
+    /// <summary>
+    /// A value loaded on demand and kept for a time. Parallel callers share one load. When a refresh
+    /// fails, the previous value keeps being served and the next refresh waits a minute, so an outage
+    /// or throttling is not hit again by every request.
+    /// </summary>
+    internal sealed class CachedValue<T> where T : class
+    {
+        private static readonly TimeSpan RetryAfterFailure = TimeSpan.FromMinutes(1);
+        private readonly Func<Task<T>> load;
+        private readonly TimeSpan ttl;
+        private readonly Func<DateTime> utcNow;
+        private readonly SemaphoreSlim gate = new SemaphoreSlim(1, 1);
+        private T value;
+        private DateTime loadedAt;
+
+        public CachedValue(Func<Task<T>> load, TimeSpan ttl, Func<DateTime> utcNow = null)
+        {
+            this.load = load;
+            this.ttl = ttl;
+            this.utcNow = utcNow ?? (() => DateTime.UtcNow);
+        }
+
+        public async Task<T> Get()
+        {
+            if (IsFresh())
+            {
+                return value;
+            }
+
+            await gate.WaitAsync();
+            try
+            {
+                if (IsFresh())
+                {
+                    return value;
+                }
+
+                try
+                {
+                    value = await load();
+                    loadedAt = utcNow();
+                    return value;
+                }
+                catch (Exception ex) when (value != null)
+                {
+                    Logger.Log?.LogWarning($"Refresh failed ({ex.GetType().Name}), using the cached value");
+                    loadedAt = utcNow() - ttl + RetryAfterFailure;
+                    return value;
+                }
+            }
+            finally
+            {
+                gate.Release();
+            }
+        }
+
+        private bool IsFresh() => value != null && utcNow() - loadedAt < ttl;
     }
 }

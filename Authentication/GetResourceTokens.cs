@@ -69,13 +69,17 @@ namespace Authentication
                 foreach (var partition in qualified.Value)
                 {
                     var permissionId = $"{table}-{partition}";
-                    var scoped = await CosmosService.Instance.GetPermission(roleName, permissionId)
-                        ?? await CosmosService.Instance.CreatePermission(
+                    var (scoped, missing) = await CosmosService.Instance.ReadPermission(roleName, permissionId);
+                    if (scoped == null && missing)
+                    {
+                        // create only when it does not exist, not when the read was throttled
+                        scoped = await CosmosService.Instance.CreatePermission(
                             roleName,
                             permissionId,
                             granted.PermissionMode == PermissionMode.Read,
                             table,
                             partition);
+                    }
 
                     if (scoped == null)
                     {

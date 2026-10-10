@@ -96,6 +96,22 @@ namespace Authentication.Shared.Models
         }
 
         /// <summary>
+        /// Listing containers is a Cosmos metadata operation (low account-wide rate limit) and tables
+        /// rarely change, so token requests use a list cached for 20 minutes
+        /// </summary>
+        private static readonly CachedValue<List<string>> cachedTables =
+            new CachedValue<List<string>>(() => CosmosService.Instance.GetAllTables(), System.TimeSpan.FromMinutes(20));
+
+        /// <summary>
+        /// Get all the defined tables in database, cached for 20 minutes
+        /// </summary>
+        /// <returns>List of table names</returns>
+        public static Task<List<string>> GetAllTablesCached()
+        {
+            return cachedTables.Get();
+        }
+
+        /// <summary>
         /// Create cosmos permission
         /// </summary>
         /// <param name="userId">user id</param>

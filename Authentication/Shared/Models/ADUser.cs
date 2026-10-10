@@ -245,7 +245,7 @@ namespace Authentication.Shared.Models
         {
             var result = new List<PermissionProperties>();
             // create user if needed
-            await CosmosService.Instance.CreateUser(ObjectId);
+            await CosmosService.Instance.EnsureUser(ObjectId);
 
             var rolePermissions = await CosmosRolePermission.QueryByIdPermissions();
             List<Task<PermissionProperties>> tasks = new List<Task<PermissionProperties>>();
@@ -296,7 +296,13 @@ namespace Authentication.Shared.Models
         /// <returns>A permission class or null</returns>
         private async Task<PermissionProperties> GetOrCreateUserPermissions(CosmosRolePermission rolePermission)
         {
-            var permission = await CosmosService.Instance.GetPermission(ObjectId, rolePermission.Table);
+            var (permission, missing) = await CosmosService.Instance.ReadPermission(ObjectId, rolePermission.Table);
+            if (permission == null && !missing)
+            {
+                // the read failed (e.g. throttled): it may exist, so do not try to create it
+                return null;
+            }
+
             if (permission == null)
             {
                 // create permission if not exist
@@ -343,7 +349,13 @@ namespace Authentication.Shared.Models
         /// <returns>A permission class or null</returns>
         private async Task<PermissionProperties> GetOrCreateAdminPermissions(CosmosRolePermission rolePermission)
         {
-            var adminPermission = await CosmosService.Instance.GetPermission(ObjectId, rolePermission.Table);
+            var (adminPermission, missing) = await CosmosService.Instance.ReadPermission(ObjectId, rolePermission.Table);
+            if (adminPermission == null && !missing)
+            {
+                // the read failed (e.g. throttled): it may exist, so do not try to create it
+                return null;
+            }
+
             if (adminPermission == null)
             {
                 // create permission if not exist
