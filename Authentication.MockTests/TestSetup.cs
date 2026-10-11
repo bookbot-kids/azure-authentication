@@ -28,7 +28,7 @@ namespace Authentication.MockTests
             { "CognitoRegion", "test-nowhere-1" }, { "AWSS3MainRegion", "test-nowhere-1" },
             // CognitoUrl points at the in-process FakeCognito (set in the static constructor)
             { "AWSRestUrl", Unreachable }, { "AppleRedirectUrl", Unreachable },
-            { "CognitoPoolId", "test-pool" }, { "CognitoClientId", "test-client" }, { "AWSRestCode", "test-code" },
+            { "CognitoPoolId", "test-pool" }, { "CognitoClientId", FakeCognito.ClientId }, { "AWSRestCode", "test-code" },
             { "AWSS3MainBucket", "test-bucket" }, { "AWSS3MainPrefixPath", "test/" },
             // Cosmos
             { "DatabaseUrl", Unreachable }, { "DatabaseId", "test-db" },

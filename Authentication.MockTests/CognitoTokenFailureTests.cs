@@ -57,15 +57,34 @@ namespace Authentication.MockTests
         [Theory]
         [InlineData(HttpStatusCode.BadRequest)]
         [InlineData(HttpStatusCode.Unauthorized)]
-        [InlineData(HttpStatusCode.Forbidden)]
         public async Task CognitoRejectingTheTokenIsNotRetried(HttpStatusCode status)
         {
-            var (token, error, calls, waits) = await Run(Throw(await CognitoError(status)));
+            var (token, error, calls, waits) = await Run(Throw(await CognitoError(status, "{\"error\":\"invalid_grant\",\"error_description\":\"Refresh Token has been revoked\"}")));
 
             Assert.Null(token);
             Assert.Null(error);
             Assert.Equal(1, calls);
             Assert.Empty(waits);
+        }
+
+        // A 4xx about our request (bad config, a proxy, a WAF page) says nothing about the user's token,
+        // so it must never become a 401 that signs every user out
+        [Theory]
+        [InlineData(HttpStatusCode.BadRequest, "{\"error\":\"invalid_request\",\"error_description\":\"invalid_refresh_token\"}")]
+        [InlineData(HttpStatusCode.BadRequest, "{\"error\":\"invalid_client\"}")]
+        [InlineData(HttpStatusCode.Unauthorized, "{\"error\":\"invalid_client\"}")]
+        [InlineData(HttpStatusCode.BadRequest, "{\"error\":\"unauthorized_client\"}")]
+        [InlineData(HttpStatusCode.BadRequest, "{\"error\":\"unsupported_grant_type\"}")]
+        [InlineData(HttpStatusCode.Forbidden, "<html>Request blocked</html>")]
+        [InlineData(HttpStatusCode.NotFound, "")]
+        [InlineData(HttpStatusCode.BadRequest, "[\"invalid_grant\"]")]
+        public async Task OtherClientErrorsAreNotARejection(HttpStatusCode status, string body)
+        {
+            var (token, error, calls, _) = await Run(Throw(await CognitoError(status, body)));
+
+            Assert.Null(token);
+            Assert.IsType<CognitoUnavailableException>(error);
+            Assert.Equal(2, calls);
         }
 
         public static IEnumerable<object[]> Transient() => new[]
@@ -141,6 +160,23 @@ namespace Authentication.MockTests
         }
 
         [Fact]
+        public async Task RefreshTokenIsSentInTheBodyNotTheUrl()
+        {
+            var refresh = Unique("valid-");
+            Assert.NotNull(await AWSService.Instance.GetAccessToken(refresh));
+            Assert.Equal(1, FakeCognito.Calls(refresh)); // the fake reads the body only
+            Assert.DoesNotContain(FakeCognito.Targets, target => target.Contains(refresh) || target.Contains('?'));
+        }
+
+        [Fact]
+        public async Task MisconfiguredRequestMeansUnavailable()
+        {
+            var before = FakeCognito.Calls("misconfigured");
+            await Assert.ThrowsAsync<CognitoUnavailableException>(() => AWSService.Instance.GetAccessToken("misconfigured"));
+            Assert.Equal(before + 2, FakeCognito.Calls("misconfigured"));
+        }
+
+        [Fact]
         public async Task DroppedConnectionIsRetriedOnANewConnection()
         {
             var refresh = Unique("drop-once-");
@@ -178,6 +214,7 @@ namespace Authentication.MockTests
         [Theory]
         [InlineData("drop")]
         [InlineData("down")]
+        [InlineData("misconfigured")]
         public async Task GetResourceTokensAnswers503WhenCognitoGivesNoAnswer(string refresh) =>
             AssertStatus(await GetResourceTokens.Run(Request($"refresh_token={refresh}&source=cognito"), NullLogger.Instance), 503, Unavailable);
 

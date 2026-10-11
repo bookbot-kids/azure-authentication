@@ -15,6 +15,8 @@ using Authentication.Shared.Models;
 using Authentication.Shared.Services.Responses;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Refit;
 
 namespace Authentication.Shared.Services
@@ -23,9 +25,9 @@ namespace Authentication.Shared.Services
     {
         public interface ICognitoRestApi
         {
-            [Headers("Content-Type: application/x-www-form-urlencoded")]
-            [Post("/oauth2/token?grant_type=refresh_token")]
-            Task<ADToken> GetAccessToken([AliasAs("client_id")] string clientId, [AliasAs("refresh_token")] string refreshToken);
+            // parameters go in the form body: a query string is recorded in App Insights dependency telemetry
+            [Post("/oauth2/token")]
+            Task<ADToken> GetAccessToken([Body(BodySerializationMethod.UrlEncoded)] Dictionary<string, string> form);
         }
 
         public interface IAWSRestApi
@@ -224,12 +226,19 @@ namespace Authentication.Shared.Services
 
         public Task<ADToken> GetAccessToken(string refreshToken)
         {
-            return RequestAccessToken(() => cognitoRestApi.GetAccessToken(Configurations.Cognito.CognitoClientId, refreshToken));
+            return RequestAccessToken(() => cognitoRestApi.GetAccessToken(new Dictionary<string, string>
+            {
+                ["grant_type"] = "refresh_token",
+                ["client_id"] = Configurations.Cognito.CognitoClientId,
+                ["refresh_token"] = refreshToken,
+            }));
         }
 
         /// <summary>
-        /// Retry once on anything but a Cognito 4xx. Most failures are a pooled connection Cognito had already
-        /// closed, which fails within milliseconds and succeeds on a new connection.
+        /// Only invalid_grant means Cognito rejected the refresh token (expired, revoked, user disabled or deleted).
+        /// Any other failure is retried once: most are a pooled connection Cognito had already closed, which fails
+        /// within milliseconds and succeeds on a new connection. Other 4xx errors (invalid_request, invalid_client...)
+        /// are about our request, not the user's token, so they must not sign the user out either.
         /// </summary>
         internal static async Task<ADToken> RequestAccessToken(Func<Task<ADToken>> request, Func<TimeSpan, Task> delay = null)
         {
@@ -247,9 +256,9 @@ namespace Authentication.Shared.Services
 
                     return token;
                 }
-                catch (ApiException ex) when (IsRejection(ex.StatusCode))
+                catch (ApiException ex) when (OAuthError(ex) == "invalid_grant")
                 {
-                    Logger.Log?.LogWarning($"Cognito rejected the refresh token: {(int)ex.StatusCode} {ex.Content?.Substring(0, Math.Min(ex.Content.Length, 200))}");
+                    Logger.Log?.LogWarning($"Cognito rejected the refresh token: {(int)ex.StatusCode} invalid_grant");
                     return null;
                 }
                 catch (Exception ex) when (attempt == 1)
@@ -259,21 +268,31 @@ namespace Authentication.Shared.Services
                 }
                 catch (Exception ex)
                 {
-                    Logger.Log?.LogError($"Cognito token request failed twice ({Describe(ex)})");
+                    var refused = ex is ApiException api && (int)api.StatusCode >= 400 && (int)api.StatusCode < 500 && OAuthError(api) != null;
+                    Logger.Log?.LogError(refused
+                        ? $"Cognito refused the token request twice ({Describe(ex)}): check CognitoUrl and CognitoClientId"
+                        : $"Cognito token request failed twice ({Describe(ex)})");
                     throw new CognitoUnavailableException("Cognito did not answer the token request", ex);
                 }
             }
         }
 
-        private static bool IsRejection(System.Net.HttpStatusCode status)
+        /// <summary>The OAuth "error" code of a Cognito error answer, or null when the answer is not one</summary>
+        private static string OAuthError(ApiException ex)
         {
-            var code = (int)status;
-            return code >= 400 && code < 500 && code != 408 && code != 429;
+            try
+            {
+                return JObject.Parse(ex.Content ?? "").Value<string>("error");
+            }
+            catch (Exception e) when (e is JsonException || e is InvalidCastException)
+            {
+                return null;
+            }
         }
 
         private static string Describe(Exception ex)
         {
-            return ex is ApiException api ? $"HTTP {(int)api.StatusCode}" : $"{ex.GetType().Name}: {ex.Message}";
+            return ex is ApiException api ? $"HTTP {(int)api.StatusCode} {OAuthError(api)}".TrimEnd() : $"{ex.GetType().Name}: {ex.Message}";
         }
 
         public async Task<(bool, string, string, string)> ValidateAccessToken(string token)
