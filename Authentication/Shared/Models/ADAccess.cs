@@ -80,7 +80,7 @@ namespace Authentication.Shared.Models
             }
             catch (Exception ex)
             {
-                Logger.Log?.LogError($"get azure access token from refresh token {token} error {ex.Message}");
+                Logger.Log?.LogError($"get azure access token from refresh token error {ex.Message}");
                 return null;
             }
         }

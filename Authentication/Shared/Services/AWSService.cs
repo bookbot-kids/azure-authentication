@@ -48,9 +48,11 @@ namespace Authentication.Shared.Services
         private AWSService()
         {
             // init rest api
-            cognitoRestApi = RestService.For<ICognitoRestApi>(new HttpClient(new HttpLoggingHandler())
+            cognitoRestApi = RestService.For<ICognitoRestApi>(new HttpClient(new HttpLoggingHandler(CognitoConnections()))
             {
-                BaseAddress = new Uri(Configurations.Cognito.CognitoUrl)
+                BaseAddress = new Uri(Configurations.Cognito.CognitoUrl),
+                // token calls take ~0.3 s (99.9% under 1 s); do not hold a request for the default 100 s
+                Timeout = TimeSpan.FromSeconds(10),
             }, new RefitSettings(new NewtonsoftJsonContentSerializer()));
 
             awsRestApi = RestService.For<IAWSRestApi>(new HttpClient(new HttpLoggingHandler())
@@ -201,18 +203,77 @@ namespace Authentication.Shared.Services
             return null;
         }
 
-        public async Task<ADToken> GetAccessToken(string refreshToken)
+        /// <summary>
+        /// Exchange a refresh token for an access token.
+        /// Returns null only when Cognito rejects the refresh token (a 4xx such as invalid_grant); callers answer that with 401.
+        /// Throws <see cref="CognitoUnavailableException"/> when Cognito gives no answer (connection failure, timeout, 5xx),
+        /// which must not become a 401: the apps sign the user out and wipe local data on 401.
+        /// </summary>
+        /// <summary>
+        /// Connections to Cognito. Cognito closes idle connections, and reusing one it already closed fails at once
+        /// ("An error occurred while sending the request"), so retire pooled connections before that happens.
+        /// </summary>
+        internal static SocketsHttpHandler CognitoConnections()
         {
-            try
+            return new SocketsHttpHandler
             {
-                return await cognitoRestApi.GetAccessToken(Configurations.Cognito.CognitoClientId, refreshToken);
-            }
-            catch (Exception ex)
+                PooledConnectionIdleTimeout = TimeSpan.FromSeconds(20),
+                PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+            };
+        }
+
+        public Task<ADToken> GetAccessToken(string refreshToken)
+        {
+            return RequestAccessToken(() => cognitoRestApi.GetAccessToken(Configurations.Cognito.CognitoClientId, refreshToken));
+        }
+
+        /// <summary>
+        /// Retry once on anything but a Cognito 4xx. Most failures are a pooled connection Cognito had already
+        /// closed, which fails within milliseconds and succeeds on a new connection.
+        /// </summary>
+        internal static async Task<ADToken> RequestAccessToken(Func<Task<ADToken>> request, Func<TimeSpan, Task> delay = null)
+        {
+            delay ??= Task.Delay;
+            for (var attempt = 1; ; attempt++)
             {
-                Logger.Log?.LogError($"get cognito access token from refresh token {refreshToken} error {ex.Message}");
-                return null;
+                try
+                {
+                    var token = await request();
+                    if (string.IsNullOrWhiteSpace(token?.AccessToken))
+                    {
+                        // a success without a token is not Cognito rejecting the refresh token
+                        throw new InvalidDataException("Cognito answered without an access token");
+                    }
+
+                    return token;
+                }
+                catch (ApiException ex) when (IsRejection(ex.StatusCode))
+                {
+                    Logger.Log?.LogWarning($"Cognito rejected the refresh token: {(int)ex.StatusCode} {ex.Content?.Substring(0, Math.Min(ex.Content.Length, 200))}");
+                    return null;
+                }
+                catch (Exception ex) when (attempt == 1)
+                {
+                    Logger.Log?.LogWarning($"Cognito token request failed ({Describe(ex)}), retrying");
+                    await delay(TimeSpan.FromMilliseconds(300));
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log?.LogError($"Cognito token request failed twice ({Describe(ex)})");
+                    throw new CognitoUnavailableException("Cognito did not answer the token request", ex);
+                }
             }
-            
+        }
+
+        private static bool IsRejection(System.Net.HttpStatusCode status)
+        {
+            var code = (int)status;
+            return code >= 400 && code < 500 && code != 408 && code != 429;
+        }
+
+        private static string Describe(Exception ex)
+        {
+            return ex is ApiException api ? $"HTTP {(int)api.StatusCode}" : $"{ex.GetType().Name}: {ex.Message}";
         }
 
         public async Task<(bool, string, string, string)> ValidateAccessToken(string token)
@@ -611,5 +672,16 @@ namespace Authentication.Shared.Services
             return amazonS3Client.GetPreSignedURL(request);
         }
         #endregion
+    }
+
+    /// <summary>
+    /// Cognito gave no answer to a token request (connection failure, timeout or 5xx, even after a retry).
+    /// The refresh token itself may be fine, so this must not be reported to clients as 401.
+    /// </summary>
+    public class CognitoUnavailableException : Exception
+    {
+        public CognitoUnavailableException(string message, Exception innerException) : base(message, innerException)
+        {
+        }
     }
 }

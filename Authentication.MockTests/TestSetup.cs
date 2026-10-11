@@ -26,7 +26,8 @@ namespace Authentication.MockTests
             // Cognito / AWS (explicit credentials only; unknown region cannot resolve)
             { "CognitoKey", "test-key" }, { "CognitoSecret", "test-secret" },
             { "CognitoRegion", "test-nowhere-1" }, { "AWSS3MainRegion", "test-nowhere-1" },
-            { "CognitoUrl", Unreachable }, { "AWSRestUrl", Unreachable }, { "AppleRedirectUrl", Unreachable },
+            // CognitoUrl points at the in-process FakeCognito (set in the static constructor)
+            { "AWSRestUrl", Unreachable }, { "AppleRedirectUrl", Unreachable },
             { "CognitoPoolId", "test-pool" }, { "CognitoClientId", "test-client" }, { "AWSRestCode", "test-code" },
             { "AWSS3MainBucket", "test-bucket" }, { "AWSS3MainPrefixPath", "test/" },
             // Cosmos
@@ -59,6 +60,7 @@ namespace Authentication.MockTests
         static TestSetup()
         {
             Values["AppleSecret"] = Convert.ToBase64String(AppleKey.ExportPkcs8PrivateKey());
+            Values["CognitoUrl"] = FakeCognito.Url;
             Configurations.Configuration = new ConfigurationBuilder().AddInMemoryCollection(Values).Build();
 
             // Apple/Google id tokens are verified against a local test key instead of the providers' published keys

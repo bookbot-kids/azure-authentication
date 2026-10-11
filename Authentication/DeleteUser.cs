@@ -55,17 +55,28 @@ namespace Authentication
             }
 
             string userId;
-            var adToken = await AWSService.Instance.GetAccessToken(refreshToken);
+            ADToken adToken;
+            try
+            {
+                adToken = await AWSService.Instance.GetAccessToken(refreshToken);
+            }
+            catch (CognitoUnavailableException ex)
+            {
+                log.LogError(ex, "DeleteUser: Cognito did not answer the token request (" + ex.InnerException?.GetType().Name + ": " + ex.InnerException?.Message + "), answering 503 instead of 401");
+                // Cognito gave no answer, so the refresh token was not rejected: never 401 here,
+                // the apps sign the user out and wipe local data on 401
+                return CreateErrorResponse("sign-in service is temporarily unavailable, please retry", StatusCodes.Status503ServiceUnavailable);
+            }
             if (adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
             {
-                return CreateErrorResponse($"refresh_token is invalid: {refreshToken} ", StatusCodes.Status401Unauthorized);
+                return CreateErrorResponse("refresh_token is invalid", StatusCodes.Status401Unauthorized);
             }
 
             // Validate the access token, then get id and group name
             var (result, message, id, _) = await AWSService.Instance.ValidateAccessToken(adToken.AccessToken);
             if (!result)
             {
-                log.LogError($"can not get access token from refresh token {refreshToken}");
+                log.LogError($"can not validate the access token from cognito");
                 return CreateErrorResponse(message, StatusCodes.Status403Forbidden);
             }
 

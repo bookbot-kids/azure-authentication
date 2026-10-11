@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Authentication.Shared.Library;
+using Authentication.Shared.Models;
 using Authentication.Shared.Services;
 using Extensions;
 using Microsoft.AspNetCore.Http;
@@ -36,10 +37,21 @@ namespace Authentication
             }
 
             // cognito authentication
-            var adToken = await AWSService.Instance.GetAccessToken(refreshToken);
+            ADToken adToken;
+            try
+            {
+                adToken = await AWSService.Instance.GetAccessToken(refreshToken);
+            }
+            catch (CognitoUnavailableException ex)
+            {
+                log.LogError(ex, "ExpireToken: Cognito did not answer the token request (" + ex.InnerException?.GetType().Name + ": " + ex.InnerException?.Message + "), answering 503 instead of 401");
+                // Cognito gave no answer, so the refresh token was not rejected: never 401 here,
+                // the apps sign the user out and wipe local data on 401
+                return CreateErrorResponse("sign-in service is temporarily unavailable, please retry", StatusCodes.Status503ServiceUnavailable);
+            }
             if (adToken == null || string.IsNullOrWhiteSpace(adToken.AccessToken))
             {
-                return CreateErrorResponse($"refresh_token is invalid: {refreshToken} ", StatusCodes.Status401Unauthorized);
+                return CreateErrorResponse("refresh_token is invalid", StatusCodes.Status401Unauthorized);
             }
 
             var user = await AWSService.Instance.FindUserByEmail(email, removeChallenge: false);
