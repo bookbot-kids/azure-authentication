@@ -252,7 +252,18 @@ namespace Authentication
 
         private async Task<IActionResult> ProcessCognitoRequest(ILogger log, string email, string name, string country, string ipAddress, bool requestPasscode, string language, string appId, string signInToken, bool autoSignInTokenValid, string linkType, string os, string userType, string gclid, string fbc)
         {
-            var (exist, user) = await AWSService.Instance.FindOrCreateUser(email, name, country, ipAddress,language: language, os: os, appId: appId, userType: userType, gclid: gclid, fbc: fbc);
+            bool exist;
+            Amazon.CognitoIdentityProvider.Model.UserType user;
+            try
+            {
+                (exist, user) = await AWSService.Instance.FindOrCreateUser(email, name, country, ipAddress,language: language, os: os, appId: appId, userType: userType, gclid: gclid, fbc: fbc);
+            }
+            catch (Amazon.CognitoIdentityProvider.Model.InvalidParameterException ex) when (ex.Message.Contains("email", StringComparison.OrdinalIgnoreCase))
+            {
+                // Cognito is stricter than IsValidEmailAddress: answer like any other invalid email, not 500
+                log.LogWarning($"Cognito rejected email {email}: {ex.Message}");
+                return CreateErrorResponse($"Email {email} is invalid");
+            }
             // there is an error when creating user
             if (user == null)
             {

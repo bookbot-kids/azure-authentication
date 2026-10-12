@@ -62,7 +62,15 @@ namespace Extensions
                 if (!Regex.IsMatch(email, emailPattern))
                 {
                     return false;
-                }                   
+                }
+
+                // The pattern allows a dot at the end of the name ("abc.@mail.com") and a hyphen at either end
+                // of a domain label ("abc@-mail.com"); Cognito rejects these with "Username should be an email"
+                var at = email.LastIndexOf('@');
+                if (email[at - 1] == '.' || email.Substring(at + 1).Split('.').Any(label => label.StartsWith('-') || label.EndsWith('-')))
+                {
+                    return false;
+                }
 
                 var mailAddress = new MailAddress(email);
                 return mailAddress.Address == email;
