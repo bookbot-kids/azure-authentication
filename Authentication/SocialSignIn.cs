@@ -176,12 +176,20 @@ namespace Authentication
                         }
                     }
 
-                    var qrcodeUrl = await AnalyticsService.Instance.SubscribeNewUser(email, name, ipAddress, appId, language: language, country: country, os: os, userType: userType);
-                    if (!string.IsNullOrWhiteSpace(qrcodeUrl))
+                    try
                     {
-                        var updateParams = new Dictionary<string, string>();
-                        updateParams["custom:qrcode"] = qrcodeUrl;
-                        await AWSService.Instance.UpdateUser(user.Username, updateParams);
+                        var qrcodeUrl = await AnalyticsService.Instance.SubscribeNewUser(email, name, ipAddress, appId, language: language, country: country, os: os, userType: userType);
+                        if (!string.IsNullOrWhiteSpace(qrcodeUrl))
+                        {
+                            var updateParams = new Dictionary<string, string>();
+                            updateParams["custom:qrcode"] = qrcodeUrl;
+                            await AWSService.Instance.UpdateUser(user.Username, updateParams);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // the account is created: a welcome step (offer link, QR code, mailing lists) must not fail sign-in
+                        log.LogError($"{AnalyticsService.WelcomeFlowFailed}: new user {email} (social sign-in, app {appId}) signed in without the welcome offer: {ex.Message} ({ex.InnerException?.Message})");
                     }
 
                     try

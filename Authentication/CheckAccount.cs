@@ -361,12 +361,20 @@ namespace Authentication
                         }
                     }
 
-                    var qrcodeUrl = await AnalyticsService.Instance.SubscribeNewUser(email, name, ipAddress, appId, language: language, country: country, os: os, userType: userType);
-                    if(!string.IsNullOrWhiteSpace(qrcodeUrl))
+                    try
                     {
-                        var updateParams = new Dictionary<string, string>();
-                        updateParams["custom:qrcode"] = qrcodeUrl;
-                        await AWSService.Instance.UpdateUser(user.Username, updateParams);
+                        var qrcodeUrl = await AnalyticsService.Instance.SubscribeNewUser(email, name, ipAddress, appId, language: language, country: country, os: os, userType: userType);
+                        if(!string.IsNullOrWhiteSpace(qrcodeUrl))
+                        {
+                            var updateParams = new Dictionary<string, string>();
+                            updateParams["custom:qrcode"] = qrcodeUrl;
+                            await AWSService.Instance.UpdateUser(user.Username, updateParams);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // the account is created: a welcome step (offer link, QR code, mailing lists) must not fail sign-up
+                        log.LogError($"{AnalyticsService.WelcomeFlowFailed}: new user {email} (cognito, app {appId}) signed up without the welcome offer: {ex.Message} ({ex.InnerException?.Message})");
                     }
 
                     // Send analytics tracking

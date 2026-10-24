@@ -61,6 +61,7 @@ namespace Authentication.MockTests
         {
             Values["AppleSecret"] = Convert.ToBase64String(AppleKey.ExportPkcs8PrivateKey());
             Values["CognitoUrl"] = FakeCognito.Url;
+            Values["SendyUrl"] = FakeSendy.Url;
             Configurations.Configuration = new ConfigurationBuilder().AddInMemoryCollection(Values).Build();
 
             // Apple/Google id tokens are verified against a local test key instead of the providers' published keys

@@ -15,6 +15,12 @@ namespace Authentication.Shared.Services
 {
     public class AnalyticsService
     {
+        /// <summary>
+        /// Starts every log line for a new-user welcome step (Reoon, Branch, QR code, Sendy) that still failed after
+        /// its retries. Sign-in carries on without it; the "welcome flow failed" alert emails on this text.
+        /// </summary>
+        public const string WelcomeFlowFailed = "Welcome flow failed";
+
         public interface IAnalyticsApi
         {
             /// <summary>
@@ -130,7 +136,7 @@ namespace Authentication.Shared.Services
                     {"list_id", listId},
                 };
                 await sendyApi.DeleteSubscriber(data);
-            }, comment: "delete from sendy");
+            }, maxRetries: 2, comment: "delete from sendy");
         }
 
         public async Task<string> ValidateEmailStatus(string email)
@@ -142,7 +148,7 @@ namespace Authentication.Shared.Services
                 var jsonObject = JObject.Parse(jsonString);
                 string status = jsonObject["status"]?.ToString();
                 return status;
-            }, comment: "Verify email");
+            }, maxRetries: 2, comment: "Verify email");
             return status;
         }
 
@@ -172,7 +178,7 @@ namespace Authentication.Shared.Services
                 catch (Exception ex)
                 {
                     // ignore in case error
-                    Logger.Log?.LogError($"Check email status error {ex.Message}");
+                    Logger.Log?.LogError($"{WelcomeFlowFailed}: Reoon email check for {email}, subscribing without it: {ex.Message} ({ex.InnerException?.Message})");
                 }
             }            
 
@@ -246,8 +252,9 @@ namespace Authentication.Shared.Services
 
             await HttpHelper.ExecuteWithRetryAsync(async () =>
             {
-                await sendyApi.Subscribe(data);
-            }, comment: "Subscribe sendy");
+                var response = await sendyApi.Subscribe(data);
+                response.EnsureSuccessStatusCode();
+            }, maxRetries: 2, comment: "Subscribe sendy");
         }
 
         public async Task<string> CreateDeepLink(Dictionary<string, object> data)
@@ -257,11 +264,12 @@ namespace Authentication.Shared.Services
             return await HttpHelper.ExecuteWithRetryAsync(async () =>
             {
                 var response = await branchIOApi.CreateLink(data);
+                response.EnsureSuccessStatusCode();
                 var jsonString = await response.Content.ReadAsStringAsync();
                 var jsonObject = JObject.Parse(jsonString);
                 string url = jsonObject["url"].ToString();
                 return url;
-            }, comment: "CreateDeepLink");
+            }, maxRetries: 2, comment: "CreateDeepLink");
         }
 
         public async Task<string> CreateOfferLink(string appId, string prefixKey = "BranchIOKey", int days = 10)
@@ -328,7 +336,7 @@ namespace Authentication.Shared.Services
                     await HttpHelper.ExecuteWithRetryAsync(async () =>
                     {
                         await StorageService.UpdateToCloudFlareR2(Configurations.Configuration["CloudFlareR2Key"], qrcodeUrl, qrCodeImage, "image/png");
-                    }, comment: "Upload qrcode to cloudflare");                    
+                    }, maxRetries: 2, comment: "Upload qrcode to cloudflare");                    
 
                     // Send to sendy registered and tips list
                     await SubscribeToSendyList(Configurations.Analytics.SendyRegisteredListId, email, name: name,
@@ -360,7 +368,7 @@ namespace Authentication.Shared.Services
                 await HttpHelper.ExecuteWithRetryAsync(async () =>
                 {
                     await StorageService.UpdateToCloudFlareR2(Configurations.Configuration["CloudFlareR2Key"], qrcodeUrl, qrCodeImage, "image/png");
-                }, comment: "Upload qrcode to cloudflare");
+                }, maxRetries: 2, comment: "Upload qrcode to cloudflare");
             }
 
             return qrcodeUrl;
