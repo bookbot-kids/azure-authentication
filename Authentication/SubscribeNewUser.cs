@@ -56,7 +56,16 @@ namespace Authentication
                 return CreateErrorResponse($"User $email is invalid");
             }           
 
-            var qrcodeUrl = await AnalyticsService.Instance.SubscribeNewUser(email, name, ipAddress, appId, language: language, country: country, os: os, userType: userType);
+            string qrcodeUrl = null;
+            try
+            {
+                qrcodeUrl = await AnalyticsService.Instance.SubscribeNewUser(email, name, ipAddress, appId, language: language, country: country, os: os, userType: userType);
+            }
+            catch (System.Exception ex)
+            {
+                // a welcome step (offer link, QR code, mailing lists) must not stop the user's profile update below
+                log.LogError($"{AnalyticsService.WelcomeFlowFailed}: new user {email} (subscribe, app {appId}) signed up without the welcome offer: {ex.Message} ({ex.InnerException?.Message})");
+            }
 
             // update user info
             var updateParams = new Dictionary<string, string>();
