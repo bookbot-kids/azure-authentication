@@ -71,7 +71,7 @@ namespace Authentication.Shared.Services
             }
             catch(Exception ex)
             {
-                Console.WriteLine($"Failed to create home dir: {ex}");
+                Logger.Log?.LogError(ex, "Failed to create AWS home directory.");
             }
 
             try
@@ -98,7 +98,7 @@ namespace Authentication.Shared.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to initialize AWSService: {ex}");
+                Logger.Log?.LogError(ex, "Failed to initialize AWSService.");
                 throw;
             }
         }
