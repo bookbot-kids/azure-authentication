@@ -48,7 +48,7 @@ namespace Authentication
                 return CreateErrorResponse("refresh_token is invalid", StatusCodes.Status401Unauthorized);
             }
 
-            log.LogInformation("GetStorageToken processed a request.");
+            // log.LogInformation("GetStorageToken processed a request.");
             var storageService = new StorageService(Configurations.Storage.MainStorageConnection);
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             dynamic data = JsonConvert.DeserializeObject(requestBody);

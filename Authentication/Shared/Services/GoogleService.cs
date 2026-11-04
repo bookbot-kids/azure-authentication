@@ -56,7 +56,7 @@ namespace Authentication.Shared.Services
         /// </summary>
         public async Task<(bool, string)> ValidateAccessToken(string email, string accessToken, string idToken)
         {
-            Logger.Log?.LogInformation($"validate google sign in {email}");
+            // Logger.Log?.LogInformation($"validate google sign in {email}");
             if (!string.IsNullOrWhiteSpace(idToken))
             {
                 var (valid, payload) = await TokenService.ValidateIdToken(idToken, email, TokenService.OpenIdProvider.Google);
@@ -72,7 +72,7 @@ namespace Authentication.Shared.Services
                     return (false, "id_token is invalid");
                 }
 
-                Logger.Log?.LogInformation($"client id aud {aud} is valid from id_token");
+                // Logger.Log?.LogInformation($"client id aud {aud} is valid from id_token");
             }
 
             try
@@ -81,7 +81,7 @@ namespace Authentication.Shared.Services
                 var expiredIn = int.Parse(response.Exp);
                 var time = DateTime.UnixEpoch.AddSeconds(expiredIn);
                 var now = DateTime.UtcNow;
-                Logger.Log?.LogInformation($"validate access token google sign aud {response.Aud}, email {response.Email}");
+                // Logger.Log?.LogInformation($"validate access token google sign aud {response.Aud}, email {response.Email}");
                 var isAccessTokenValid = now < time // not expired
                     && response.Email == email // email is matched with token
                     && IsOurGoogleClient(response.Aud); // issued to one of our apps, not another app's token

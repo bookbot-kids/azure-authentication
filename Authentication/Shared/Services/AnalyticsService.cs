@@ -326,7 +326,7 @@ namespace Authentication.Shared.Services
                 var filename = Guid.NewGuid().ToString() + ".png";
                 var qrcodeUrl = $"{Configurations.Configuration["CloudFlareR2Url"]}/qrcode/{filename}";
 
-                Logger.Log?.LogInformation($"Generate link {deepLink}, qrcode url {qrcodeUrl} for user ${email}");
+                // Logger.Log?.LogInformation($"Generate link {deepLink}, qrcode url {qrcodeUrl} for user ${email}");
                 using (QRCodeGenerator qrGenerator = new QRCodeGenerator())
                 using (QRCodeData qrCodeData = qrGenerator.CreateQrCode(deepLink, QRCodeGenerator.ECCLevel.Q))
                 using (PngByteQRCode qrCode = new PngByteQRCode(qrCodeData))

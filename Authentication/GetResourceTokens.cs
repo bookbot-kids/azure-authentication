@@ -61,7 +61,7 @@ namespace Authentication
                 var granted = permissions.FirstOrDefault(p => p.Id == table);
                 if (granted == null)
                 {
-                    log.LogInformation($"role {roleName} has no permission for table {table}, skip qualified partitions");
+                    // log.LogInformation($"role {roleName} has no permission for table {table}, skip qualified partitions");
                     continue;
                 }
 
@@ -243,7 +243,7 @@ namespace Authentication
             ADGroup userGroup = new ADGroup { Name = groupName };
 
 
-            log.LogInformation($"user {user?.ObjectId} has group {userGroup?.Name}");
+            // log.LogInformation($"user {user?.ObjectId} has group {userGroup?.Name}");
 
             var tasks = new List<Task<List<PermissionProperties>>>();
             // get group permissions

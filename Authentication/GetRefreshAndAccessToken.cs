@@ -75,13 +75,13 @@ namespace Authentication
                     return CreateErrorResponse("Can not get access token. The username or password provided in the request are invalid");
                 }
 
-                Logger.Log?.LogInformation($"Find user by email {email}");
+                // Logger.Log?.LogInformation($"Find user by email {email}");
                 var user = await ADUser.FindByEmail(email);
                 var group = await user.GroupName();
                 if(!StringHelper.IsTestEmail(Configurations.AzureB2C.EmailTestDomain, email)) {
                     try
                     {
-                        Logger.Log?.LogInformation($"Found user {user.ObjectId} {email}, group = {group}");
+                        // Logger.Log?.LogInformation($"Found user {user.ObjectId} {email}, group = {group}");
                         if(!email.Contains(Configurations.Whatsapp.PlaceholderEmail))
                         {
                             await SendAnalytics(email, user.ObjectId);
@@ -95,7 +95,7 @@ namespace Authentication
                         }
                     }
                 } else {
-                    Logger.Log?.LogInformation($"User ${email} is a test user, skip sending analytics");
+                    // Logger.Log?.LogInformation($"User ${email} is a test user, skip sending analytics");
                 }               
 
                 // return access token and refresh token result

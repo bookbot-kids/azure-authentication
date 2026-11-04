@@ -56,7 +56,7 @@ namespace Authentication.Shared.Services
         /// </param>
         public async Task<(bool, string)> ValidateToken(string email, string authCode, string idToken, string redirectUri = null)
         {
-            Logger.Log?.LogInformation($"validate apple sign in {email}");
+            // Logger.Log?.LogInformation($"validate apple sign in {email}");
             if (!string.IsNullOrWhiteSpace(redirectUri)
                 && !(Uri.TryCreate(redirectUri, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps && redirectUri.Length <= 2048))
             {
@@ -75,7 +75,7 @@ namespace Authentication.Shared.Services
                 return (false, "id_token is invalid");
             }
 
-            Logger.Log?.LogInformation($"client id aud {clientId} is valid from id_token");
+            // Logger.Log?.LogInformation($"client id aud {clientId} is valid from id_token");
 
             try
             {
@@ -89,7 +89,7 @@ namespace Authentication.Shared.Services
                 });
 
                 var redeemed = !string.IsNullOrWhiteSpace(response?.AccessToken);
-                Logger.Log?.LogInformation($"request access token issued {redeemed}");
+                // Logger.Log?.LogInformation($"request access token issued {redeemed}");
                 if (redeemed)
                 {
                     return (true, "");

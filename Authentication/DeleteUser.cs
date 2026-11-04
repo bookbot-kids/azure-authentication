@@ -26,7 +26,7 @@ namespace Authentication
 
         public async Task<IActionResult> Run(HttpRequest req, ILogger log)
         {
-            log.LogInformation("C# HTTP trigger function processed a request.");
+            // log.LogInformation("C# HTTP trigger function processed a request.");
             // validate client token
             string clientToken = req.Query["client_token"];
             if (string.IsNullOrWhiteSpace(clientToken))

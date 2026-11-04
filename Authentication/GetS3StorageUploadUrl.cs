@@ -18,7 +18,7 @@ namespace Authentication
 
         public static IActionResult Run(HttpRequest req, ILogger log)
         {
-            log.LogInformation("GetS3StorageUploadUrl processed a request.");
+            // log.LogInformation("GetS3StorageUploadUrl processed a request.");
 
             // Parse the request body
             var uploadPath = req.Query["upload_path"];

@@ -57,7 +57,7 @@ namespace Authentication
             string linkType = req.Query["link_type"];
             string os = req.Query["os"];
             string userType = req.Query["user_type"];
-            log.LogInformation($"Check account for user {email}, source: {source}");
+            // log.LogInformation($"Check account for user {email}, source: {source}");
             string signInToken = req.Query["sign_in_token"];
             string gclid = req.Query["gclid"];
             string fbc = req.Query["fbc"];
@@ -143,7 +143,7 @@ namespace Authentication
                             return CreateErrorResponse($"phone is invalid");
                         }
 
-                        log.LogInformation($"Check account for user {phone}, source: {source}");
+                        // log.LogInformation($"Check account for user {phone}, source: {source}");
                         return await ProcessWhatsappRequest(log, phone, email, name, country, ipAddress, language, appId, signInToken, autoSignInTokenValid, linkType, os, userType, gclid, fbc);
                     }
                 default:
@@ -157,7 +157,7 @@ namespace Authentication
             var existing = true;
             var placeholderEmail = phone + Configurations.Whatsapp.PlaceholderEmail;
             var userEmail = string.IsNullOrWhiteSpace(email) ? placeholderEmail : email;
-            log.LogInformation($"ProcessWhatsappRequest {userEmail}, phone: {phone}");
+            // log.LogInformation($"ProcessWhatsappRequest {userEmail}, phone: {phone}");
             if (user == null)
             {
                 // if user with phone not exist, then create a new one with place holder email
@@ -244,7 +244,7 @@ namespace Authentication
 
             // send passcode to whatsapp
             await AWSService.Instance.RequestPasscode(userEmail, language, appId: appId, phone: phone, sendType: "whatsapp", linkType: linkType);
-            log.LogInformation($"Send OTP into whatsapp {phone}");
+            // log.LogInformation($"Send OTP into whatsapp {phone}");
             // Success, return user info
             AWSService.Instance.RemoveAttribute(user, "custom:tokens");
             return new JsonResult(new { success = true, exist = existing, user }) { StatusCode = StatusCodes.Status200OK };
@@ -316,7 +316,7 @@ namespace Authentication
                 }
 
                 await AWSService.Instance.UpdateUser(user.Username, updateParams, user.Enabled != true);
-                log.LogInformation($"User ${email} exists, {ipAddress}, {country}");
+                // log.LogInformation($"User ${email} exists, {ipAddress}, {country}");
 
                 if (autoSignInTokenValid)
                 {
@@ -392,7 +392,7 @@ namespace Authentication
                 }
                 else
                 {
-                    log.LogInformation($"User ${email} is a test user, skip sending analytics");
+                    // log.LogInformation($"User ${email} is a test user, skip sending analytics");
                 }
             }
 

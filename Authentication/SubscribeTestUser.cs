@@ -20,7 +20,7 @@ namespace Authentication
 
         public async Task<IActionResult> Run(HttpRequest req, ILogger log)
         {
-            log.LogInformation("C# HTTP trigger function processed a request.");
+            // log.LogInformation("C# HTTP trigger function processed a request.");
             string clientToken = req.Query["client_token"];
             if (string.IsNullOrWhiteSpace(clientToken))
             {
@@ -59,7 +59,7 @@ namespace Authentication
             }
 
             var userId = user.Username;
-            log.LogInformation($"Subscribe user {userId}, {email}");
+            // log.LogInformation($"Subscribe user {userId}, {email}");
             await AWSService.Instance.UpdateUserGroup(userId, "subscriber");
             return CreateSuccessResponse();
         }
